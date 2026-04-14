@@ -1,0 +1,178 @@
+[Tue Apr 14 21:36:14 2026] PHP 8.2.12 Development Server (http://localhost:8000) started
+[Tue Apr 14 21:36:20 2026] 127.0.0.1:40532 Accepted
+[Tue Apr 14 21:36:20 2026] 127.0.0.1:40532 [200]: GET /login.php
+[Tue Apr 14 21:36:20 2026] 127.0.0.1:40532 Closing
+[Tue Apr 14 21:36:35 2026] 127.0.0.1:49736 Accepted
+[Tue Apr 14 21:36:35 2026] 127.0.0.1:49736 [200]: GET /login.php
+[Tue Apr 14 21:36:35 2026] 127.0.0.1:49736 Closing
+[Tue Apr 14 21:36:36 2026] 127.0.0.1:49752 Accepted
+[Tue Apr 14 21:36:36 2026] 127.0.0.1:49752 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:36:36 2026] 127.0.0.1:49752 Closing
+[Tue Apr 14 21:36:36 2026] 127.0.0.1:49760 Accepted
+[Tue Apr 14 21:36:36 2026] 127.0.0.1:49760 [200]: POST /login.php
+[Tue Apr 14 21:36:36 2026] 127.0.0.1:49760 Closing
+[Tue Apr 14 21:36:47 2026] 127.0.0.1:39646 Accepted
+[Tue Apr 14 21:36:47 2026] 127.0.0.1:39646 [200]: GET /login.php
+[Tue Apr 14 21:36:47 2026] 127.0.0.1:39646 Closing
+[Tue Apr 14 21:36:48 2026] 127.0.0.1:39656 Accepted
+[Tue Apr 14 21:36:48 2026] 127.0.0.1:39656 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:36:48 2026] 127.0.0.1:39656 Closing
+[Tue Apr 14 21:36:49 2026] 127.0.0.1:39670 Accepted
+[Tue Apr 14 21:36:49 2026] 127.0.0.1:39670 [200]: POST /login.php
+[Tue Apr 14 21:36:49 2026] 127.0.0.1:39670 Closing
+[Tue Apr 14 21:37:00 2026] 127.0.0.1:45550 Accepted
+[Tue Apr 14 21:37:00 2026] 127.0.0.1:45550 [200]: GET /login.php
+[Tue Apr 14 21:37:00 2026] 127.0.0.1:45550 Closing
+[Tue Apr 14 21:37:01 2026] 127.0.0.1:45554 Accepted
+[Tue Apr 14 21:37:01 2026] 127.0.0.1:45554 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:37:01 2026] 127.0.0.1:45554 Closing
+[Tue Apr 14 21:37:01 2026] 127.0.0.1:45556 Accepted
+[Tue Apr 14 21:37:01 2026] 127.0.0.1:45556 [200]: POST /login.php
+[Tue Apr 14 21:37:01 2026] 127.0.0.1:45556 Closing
+[Tue Apr 14 21:37:12 2026] 127.0.0.1:51912 Accepted
+[Tue Apr 14 21:37:12 2026] 127.0.0.1:51912 [200]: GET /login.php
+[Tue Apr 14 21:37:12 2026] 127.0.0.1:51912 Closing
+[Tue Apr 14 21:37:13 2026] 127.0.0.1:51922 Accepted
+[Tue Apr 14 21:37:13 2026] 127.0.0.1:51922 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:37:13 2026] 127.0.0.1:51922 Closing
+[Tue Apr 14 21:37:13 2026] 127.0.0.1:51924 Accepted
+[Tue Apr 14 21:37:13 2026] 127.0.0.1:51924 [200]: POST /login.php
+[Tue Apr 14 21:37:13 2026] 127.0.0.1:51924 Closing
+[Tue Apr 14 21:37:24 2026] 127.0.0.1:53960 Accepted
+[Tue Apr 14 21:37:24 2026] 127.0.0.1:53960 [200]: GET /login.php
+[Tue Apr 14 21:37:24 2026] 127.0.0.1:53960 Closing
+[Tue Apr 14 21:37:25 2026] 127.0.0.1:53968 Accepted
+[Tue Apr 14 21:37:25 2026] 127.0.0.1:53968 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:37:25 2026] 127.0.0.1:53968 Closing
+[Tue Apr 14 21:37:25 2026] 127.0.0.1:53978 Accepted
+[Tue Apr 14 21:37:26 2026] 127.0.0.1:53978 [200]: POST /login.php
+[Tue Apr 14 21:37:26 2026] 127.0.0.1:53978 Closing
+[Tue Apr 14 21:37:36 2026] 127.0.0.1:47198 Accepted
+[Tue Apr 14 21:37:36 2026] 127.0.0.1:47198 [200]: GET /login.php
+[Tue Apr 14 21:37:36 2026] 127.0.0.1:47198 Closing
+[Tue Apr 14 21:37:37 2026] 127.0.0.1:47210 Accepted
+[Tue Apr 14 21:37:37 2026] 127.0.0.1:47210 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:37:37 2026] 127.0.0.1:47210 Closing
+[Tue Apr 14 21:37:37 2026] 127.0.0.1:55034 Accepted
+[Tue Apr 14 21:37:37 2026] 127.0.0.1:55034 [200]: POST /login.php
+[Tue Apr 14 21:37:37 2026] 127.0.0.1:55034 Closing
+[Tue Apr 14 21:37:48 2026] 127.0.0.1:33974 Accepted
+[Tue Apr 14 21:37:48 2026] 127.0.0.1:33974 [200]: GET /login.php
+[Tue Apr 14 21:37:48 2026] 127.0.0.1:33974 Closing
+[Tue Apr 14 21:37:49 2026] 127.0.0.1:33988 Accepted
+[Tue Apr 14 21:37:49 2026] 127.0.0.1:33988 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:37:49 2026] 127.0.0.1:33988 Closing
+[Tue Apr 14 21:37:50 2026] 127.0.0.1:34000 Accepted
+[Tue Apr 14 21:37:50 2026] 127.0.0.1:34000 [200]: POST /login.php
+[Tue Apr 14 21:37:50 2026] 127.0.0.1:34000 Closing
+[Tue Apr 14 21:38:01 2026] 127.0.0.1:35976 Accepted
+[Tue Apr 14 21:38:01 2026] 127.0.0.1:35976 [200]: GET /login.php
+[Tue Apr 14 21:38:01 2026] 127.0.0.1:35976 Closing
+[Tue Apr 14 21:38:01 2026] 127.0.0.1:35992 Accepted
+[Tue Apr 14 21:38:01 2026] 127.0.0.1:35992 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:38:01 2026] 127.0.0.1:35992 Closing
+[Tue Apr 14 21:38:01 2026] 127.0.0.1:36006 Accepted
+[Tue Apr 14 21:38:02 2026] 127.0.0.1:36006 [200]: POST /login.php
+[Tue Apr 14 21:38:02 2026] 127.0.0.1:36006 Closing
+[Tue Apr 14 21:38:13 2026] 127.0.0.1:43198 Accepted
+[Tue Apr 14 21:38:13 2026] 127.0.0.1:43198 [200]: GET /login.php
+[Tue Apr 14 21:38:13 2026] 127.0.0.1:43198 Closing
+[Tue Apr 14 21:38:13 2026] 127.0.0.1:43212 Accepted
+[Tue Apr 14 21:38:13 2026] 127.0.0.1:43212 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:38:13 2026] 127.0.0.1:43212 Closing
+[Tue Apr 14 21:38:14 2026] 127.0.0.1:43228 Accepted
+[Tue Apr 14 21:38:14 2026] 127.0.0.1:43228 [200]: POST /login.php
+[Tue Apr 14 21:38:14 2026] 127.0.0.1:43228 Closing
+[Tue Apr 14 21:38:25 2026] 127.0.0.1:58750 Accepted
+[Tue Apr 14 21:38:25 2026] 127.0.0.1:58750 [200]: GET /login.php
+[Tue Apr 14 21:38:25 2026] 127.0.0.1:58750 Closing
+[Tue Apr 14 21:38:25 2026] 127.0.0.1:58754 Accepted
+[Tue Apr 14 21:38:25 2026] 127.0.0.1:58754 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:38:25 2026] 127.0.0.1:58754 Closing
+[Tue Apr 14 21:38:26 2026] 127.0.0.1:58760 Accepted
+[Tue Apr 14 21:38:26 2026] 127.0.0.1:58760 [200]: POST /login.php
+[Tue Apr 14 21:38:26 2026] 127.0.0.1:58760 Closing
+[Tue Apr 14 21:38:37 2026] 127.0.0.1:35228 Accepted
+[Tue Apr 14 21:38:37 2026] 127.0.0.1:35228 [200]: GET /login.php
+[Tue Apr 14 21:38:37 2026] 127.0.0.1:35228 Closing
+[Tue Apr 14 21:38:37 2026] 127.0.0.1:35238 Accepted
+[Tue Apr 14 21:38:37 2026] 127.0.0.1:35238 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:38:37 2026] 127.0.0.1:35238 Closing
+[Tue Apr 14 21:38:38 2026] 127.0.0.1:57824 Accepted
+[Tue Apr 14 21:38:38 2026] 127.0.0.1:57824 [200]: POST /login.php
+[Tue Apr 14 21:38:38 2026] 127.0.0.1:57824 Closing
+[Tue Apr 14 21:38:49 2026] 127.0.0.1:38666 Accepted
+[Tue Apr 14 21:38:49 2026] 127.0.0.1:38666 [200]: GET /login.php
+[Tue Apr 14 21:38:49 2026] 127.0.0.1:38666 Closing
+[Tue Apr 14 21:38:50 2026] 127.0.0.1:38682 Accepted
+[Tue Apr 14 21:38:50 2026] 127.0.0.1:38682 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:38:50 2026] 127.0.0.1:38682 Closing
+[Tue Apr 14 21:38:50 2026] 127.0.0.1:38684 Accepted
+[Tue Apr 14 21:38:50 2026] 127.0.0.1:38684 [200]: POST /login.php
+[Tue Apr 14 21:38:50 2026] 127.0.0.1:38684 Closing
+[Tue Apr 14 21:39:01 2026] 127.0.0.1:41288 Accepted
+[Tue Apr 14 21:39:01 2026] 127.0.0.1:41288 [200]: GET /login.php
+[Tue Apr 14 21:39:01 2026] 127.0.0.1:41288 Closing
+[Tue Apr 14 21:39:01 2026] 127.0.0.1:41296 Accepted
+[Tue Apr 14 21:39:01 2026] 127.0.0.1:41296 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:39:01 2026] 127.0.0.1:41296 Closing
+[Tue Apr 14 21:39:02 2026] 127.0.0.1:41300 Accepted
+[Tue Apr 14 21:39:02 2026] 127.0.0.1:41300 [200]: POST /login.php
+[Tue Apr 14 21:39:02 2026] 127.0.0.1:41300 Closing
+[Tue Apr 14 21:39:13 2026] 127.0.0.1:57586 Accepted
+[Tue Apr 14 21:39:13 2026] 127.0.0.1:57586 [200]: GET /login.php
+[Tue Apr 14 21:39:13 2026] 127.0.0.1:57586 Closing
+[Tue Apr 14 21:39:14 2026] 127.0.0.1:57594 Accepted
+[Tue Apr 14 21:39:14 2026] 127.0.0.1:57594 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:39:14 2026] 127.0.0.1:57594 Closing
+[Tue Apr 14 21:39:14 2026] 127.0.0.1:57610 Accepted
+[Tue Apr 14 21:39:15 2026] 127.0.0.1:57610 [200]: POST /login.php
+[Tue Apr 14 21:39:15 2026] 127.0.0.1:57610 Closing
+[Tue Apr 14 21:39:25 2026] 127.0.0.1:53974 Accepted
+[Tue Apr 14 21:39:25 2026] 127.0.0.1:53974 [200]: GET /login.php
+[Tue Apr 14 21:39:25 2026] 127.0.0.1:53974 Closing
+[Tue Apr 14 21:39:26 2026] 127.0.0.1:53978 Accepted
+[Tue Apr 14 21:39:26 2026] 127.0.0.1:53978 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:39:26 2026] 127.0.0.1:53978 Closing
+[Tue Apr 14 21:39:27 2026] 127.0.0.1:53986 Accepted
+[Tue Apr 14 21:39:27 2026] 127.0.0.1:53986 [200]: POST /login.php
+[Tue Apr 14 21:39:27 2026] 127.0.0.1:53986 Closing
+[Tue Apr 14 21:39:38 2026] 127.0.0.1:49758 Accepted
+[Tue Apr 14 21:39:38 2026] 127.0.0.1:49758 [200]: GET /login.php
+[Tue Apr 14 21:39:38 2026] 127.0.0.1:49758 Closing
+[Tue Apr 14 21:39:39 2026] 127.0.0.1:49772 Accepted
+[Tue Apr 14 21:39:39 2026] 127.0.0.1:49772 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:39:39 2026] 127.0.0.1:49772 Closing
+[Tue Apr 14 21:39:40 2026] 127.0.0.1:49776 Accepted
+[Tue Apr 14 21:39:40 2026] 127.0.0.1:49776 [200]: POST /login.php
+[Tue Apr 14 21:39:40 2026] 127.0.0.1:49776 Closing
+[Tue Apr 14 21:39:51 2026] 127.0.0.1:37190 Accepted
+[Tue Apr 14 21:39:51 2026] 127.0.0.1:37190 [200]: GET /login.php
+[Tue Apr 14 21:39:51 2026] 127.0.0.1:37190 Closing
+[Tue Apr 14 21:39:51 2026] 127.0.0.1:37202 Accepted
+[Tue Apr 14 21:39:51 2026] 127.0.0.1:37202 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:39:51 2026] 127.0.0.1:37202 Closing
+[Tue Apr 14 21:39:52 2026] 127.0.0.1:37212 Accepted
+[Tue Apr 14 21:39:52 2026] 127.0.0.1:37212 [200]: POST /login.php
+[Tue Apr 14 21:39:52 2026] 127.0.0.1:37212 Closing
+[Tue Apr 14 21:40:03 2026] 127.0.0.1:34126 Accepted
+[Tue Apr 14 21:40:03 2026] 127.0.0.1:34126 [200]: GET /login.php
+[Tue Apr 14 21:40:03 2026] 127.0.0.1:34126 Closing
+[Tue Apr 14 21:40:04 2026] 127.0.0.1:34132 Accepted
+[Tue Apr 14 21:40:04 2026] 127.0.0.1:34132 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:40:04 2026] 127.0.0.1:34132 Closing
+[Tue Apr 14 21:40:04 2026] 127.0.0.1:34142 Accepted
+[Tue Apr 14 21:40:04 2026] 127.0.0.1:34142 [200]: POST /login.php
+[Tue Apr 14 21:40:04 2026] 127.0.0.1:34142 Closing
+[Tue Apr 14 21:40:15 2026] 127.0.0.1:32990 Accepted
+[Tue Apr 14 21:40:15 2026] 127.0.0.1:32990 [200]: GET /login.php
+[Tue Apr 14 21:40:15 2026] 127.0.0.1:32990 Closing
+[Tue Apr 14 21:40:16 2026] 127.0.0.1:33004 Accepted
+[Tue Apr 14 21:40:16 2026] 127.0.0.1:33004 [404]: GET /favicon.ico - No such file or directory
+[Tue Apr 14 21:40:16 2026] 127.0.0.1:33004 Closing
+[Tue Apr 14 21:40:17 2026] 127.0.0.1:33016 Accepted
+[Tue Apr 14 21:40:17 2026] 127.0.0.1:33016 [200]: POST /login.php
+[Tue Apr 14 21:40:17 2026] 127.0.0.1:33016 Closing
+[Tue Apr 14 21:44:25 2026] 127.0.0.1:43888 Accepted
+[Tue Apr 14 21:44:25 2026] 127.0.0.1:43888 [200]: GET /login.php
+[Tue Apr 14 21:44:25 2026] 127.0.0.1:43888 Closing
