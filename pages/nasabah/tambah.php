@@ -167,7 +167,13 @@ if ($_POST) {
                                     
                                     <div class="mb-3">
                                         <label class="form-label">Foto KTP</label>
-                                        <input type="file" name="foto_ktp" class="form-control" accept="image/*">
+                                        <div class="input-group">
+                                            <input type="file" name="foto_ktp" class="form-control" accept="image/*" id="foto_ktp">
+                                            <button type="button" class="btn btn-outline-secondary" onclick="scanKTP()">
+                                                <i class="bi bi-camera"></i> Scan OCR
+                                            </button>
+                                        </div>
+                                        <small class="form-text">Upload foto KTP dan klik Scan OCR untuk ekstrak data otomatis</small>
                                     </div>
                                     
                                     <div class="mb-3">
@@ -191,5 +197,57 @@ if ($_POST) {
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function scanKTP() {
+            const fileInput = document.getElementById('foto_ktp');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Pilih foto KTP terlebih dahulu');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('ktp_image', file);
+            
+            fetch('/api/ocr?action=scan', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer kewer-api-token-2024'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const extracted = data.data;
+                    
+                    // Fill form fields with extracted data
+                    if (extracted.nama) {
+                        document.querySelector('input[name="nama"]').value = extracted.nama;
+                    }
+                    if (extracted.nik) {
+                        document.querySelector('input[name="ktp"]').value = extracted.nik;
+                    }
+                    if (extracted.alamat) {
+                        document.querySelector('textarea[name="alamat"]').value = extracted.alamat;
+                    }
+                    if (extracted.tempat_lahir) {
+                        // Could add tempat_lahir field if needed
+                    }
+                    if (extracted.tanggal_lahir) {
+                        // Could add tanggal_lahir field if needed
+                    }
+                    
+                    alert('Data KTP berhasil diekstrak! Silakan periksa dan lengkapi data yang kurang.');
+                } else {
+                    alert('Gagal scan KTP: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Terjadi kesalahan: ' + error.message);
+            });
+        }
+    </script>
 </body>
 </html>

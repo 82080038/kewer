@@ -1,0 +1,30 @@
+<?php
+require_once '../../includes/functions.php';
+requireLogin();
+
+$cabang_id = getCurrentCabang();
+$id = $_GET['id'] ?? '';
+if (!$id) {
+    header('Location: index.php');
+    exit();
+}
+
+$pembayaran = query("SELECT * FROM pembayaran WHERE id = ? AND cabang_id = ?", [$id, $cabang_id]);
+if (!$pembayaran) {
+    header('Location: index.php');
+    exit();
+}
+$pembayaran = $pembayaran[0];
+
+$oldValue = $pembayaran;
+$result = query("DELETE FROM pembayaran WHERE id = ?", [$id]);
+
+if ($result) {
+    logAudit('DELETE', 'pembayaran', $id, $oldValue, null);
+    $_SESSION['success'] = 'Pembayaran berhasil dihapus';
+} else {
+    $_SESSION['error'] = 'Gagal menghapus pembayaran';
+}
+
+header('Location: index.php');
+exit();

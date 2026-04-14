@@ -1,0 +1,241 @@
+<?php
+/**
+ * Dynamic Interest Rate Calculator
+ * 
+ * Handles dynamic interest rate calculation based on:
+ * - Loan type
+ * - Tenor
+ * - Customer risk profile
+ * - Collateral type
+ * - Branch-specific settings
+ */
+
+require_once __DIR__ . '/database_class.php';
+
+class BungaCalculator {
+    private $db;
+    private $cabangId;
+    
+    public function __construct($cabangId = null) {
+        $this->db = db();
+        $this->cabangId = $cabangId;
+    }
+    
+    /**
+     * Get default interest rate for loan type and tenor
+     */
+    public function getBungaDasar($jenisPinjaman, $tenor) {
+        $sql = "SELECT bunga_default, bunga_min, bunga_max 
+                FROM setting_bunga 
+                WHERE jenis_pinjaman = ? 
+                AND tenor_min <= ? 
+                AND tenor_max >= ? 
+                AND status = 'aktif'";
+        
+        if ($this->cabangId) {
+            $sql .= " AND (cabang_id = ? OR cabang_id IS NULL)";
+            $result = $this->db->selectOne($sql, [$jenisPinjaman, $tenor, $tenor, $this->cabangId]);
+        } else {
+            $sql .= " AND cabang_id IS NULL";
+            $result = $this->db->selectOne($sql, [$jenisPinjaman, $tenor, $tenor]);
+        }
+        
+        if (!$result) {
+            // Return default if no specific setting found
+            return [
+                'bunga_default' => 2.5,
+                'bunga_min' => 1.5,
+                'bunga_max' => 4.0
+            ];
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Get risk adjustment based on customer history
+     */
+    public function getRisikoAdjustment($nasabahId) {
+        // Check customer's payment history
+        $sql = "SELECT 
+                    COUNT(*) as total_pinjaman,
+                    SUM(CASE WHEN p.status = 'lunas' THEN 1 ELSE 0 END) as lunas,
+                    SUM(CASE WHEN a.status = 'telat' THEN 1 ELSE 0 END) as telat
+                FROM pinjaman p
+                LEFT JOIN angsuran a ON p.id = a.pinjaman_id
+                WHERE p.nasabah_id = ?";
+        
+        $history = $this->db->selectOne($sql, [$nasabahId]);
+        
+        if (!$history || $history['total_pinjaman'] == 0) {
+            // New customer - higher risk
+            return 1.0; // +1% adjustment
+        }
+        
+        $lunas_ratio = $history['lunas'] / $history['total_pinjaman'];
+        $telat_ratio = $history['total_pinjaman'] > 0 ? $history['telat'] / $history['total_pinjaman'] : 0;
+        
+        // Risk scoring
+        if ($lunas_ratio >= 0.9 && $telat_ratio <= 0.1) {
+            return -0.5; // Excellent customer - lower rate
+        } elseif ($lunas_ratio >= 0.7 && $telat_ratio <= 0.3) {
+            return 0; // Good customer - standard rate
+        } elseif ($telat_ratio > 0.5) {
+            return 1.5; // High risk - higher rate
+        } else {
+            return 0.5; // Fair customer - slight increase
+        }
+    }
+    
+    /**
+     * Get collateral adjustment
+     */
+    public function getJaminanAdjustment($jaminanTipe) {
+        $adjustments = [
+            'tanpa' => 1.0,        // No collateral - +1%
+            'bpkb' => 0,            // BPKB - no adjustment
+            'shm' => -0.5,          // SHM - -0.5%
+            'ajb' => 0,             // AJB - no adjustment
+            'tabungan' => -0.5      // Savings guarantee - -0.5%
+        ];
+        
+        return $adjustments[$jaminanTipe] ?? 1.0;
+    }
+    
+    /**
+     * Calculate final interest rate
+     */
+    public function hitungBungaDinamis($jenisPinjaman, $tenor, $nasabahId = null, $jaminanTipe = 'tanpa') {
+        $bungaDasar = $this->getBungaDasar($jenisPinjaman, $tenor);
+        $risikoAdjustment = $nasabahId ? $this->getRisikoAdjustment($nasabahId) : 1.0;
+        $jaminanAdjustment = $this->getJaminanAdjustment($jaminanTipe);
+        
+        $sukuBunga = $bungaDasar['bunga_default'] + $risikoAdjustment + $jaminanAdjustment;
+        
+        // Ensure within min/max bounds
+        $sukuBunga = max($bungaDasar['bunga_min'], min($bungaDasar['bunga_max'], $sukuBunga));
+        
+        return [
+            'suku_bunga' => round($sukuBunga, 2),
+            'bunga_dasar' => $bungaDasar['bunga_default'],
+            'risiko_adjustment' => $risikoAdjustment,
+            'jaminan_adjustment' => $jaminanAdjustment,
+            'jenis_pinjaman' => $jenisPinjaman,
+            'tenor' => $tenor
+        ];
+    }
+    
+    /**
+     * Calculate loan schedule with dynamic interest
+     */
+    public function hitungAngsuran($pokok, $tenor, $sukuBunga, $metode = 'flat') {
+        $totalBunga = 0;
+        $angsuranPokok = 0;
+        $angsuranBunga = 0;
+        $angsuranTotal = 0;
+        
+        switch ($metode) {
+            case 'flat':
+                // Flat rate: bunga tetap dari pokok awal
+                $totalBunga = $pokok * ($sukuBunga / 100) * $tenor;
+                $angsuranPokok = $pokok / $tenor;
+                $angsuranBunga = $totalBunga / $tenor;
+                $angsuranTotal = $angsuranPokok + $angsuranBunga;
+                break;
+                
+            case 'efektif':
+                // Effective rate: bunga menurun dari sisa pokok
+                $angsuranPokok = $pokok / $tenor;
+                $sisaPokok = $pokok;
+                $totalBunga = 0;
+                
+                for ($i = 0; $i < $tenor; $i++) {
+                    $bungaPeriode = $sisaPokok * ($sukuBunga / 100);
+                    $totalBunga += $bungaPeriode;
+                    $sisaPokok -= $angsuranPokok;
+                }
+                
+                $angsuranBunga = $totalBunga / $tenor;
+                $angsuranTotal = $angsuranPokok + $angsuranBunga;
+                break;
+                
+            case 'anuitas':
+                // Anuitas: angsuran tetap
+                $i = $sukuBunga / 100;
+                $n = $tenor;
+                $angsuranTotal = $pokok * ($i * pow(1 + $i, $n)) / (pow(1 + $i, $n) - 1);
+                $totalPembayaran = $angsuranTotal * $tenor;
+                $totalBunga = $totalPembayaran - $pokok;
+                $angsuranPokok = $pokok / $tenor;
+                $angsuranBunga = $angsuranTotal - $angsuranPokok;
+                break;
+        }
+        
+        return [
+            'total_bunga' => round($totalBunga, 2),
+            'total_pembayaran' => round($pokok + $totalBunga, 2),
+            'angsuran_pokok' => round($angsuranPokok, 2),
+            'angsuran_bunga' => round($angsuranBunga, 2),
+            'angsuran_total' => round($angsuranTotal, 2),
+            'metode' => $metode
+        ];
+    }
+    
+    /**
+     * Get all interest rate settings for a branch
+     */
+    public function getAllSettings() {
+        $sql = "SELECT sb.*, c.nama_cabang 
+                FROM setting_bunga sb
+                LEFT JOIN cabang c ON sb.cabang_id = c.id
+                WHERE sb.status = 'aktif'";
+        
+        if ($this->cabangId) {
+            $sql .= " AND (sb.cabang_id = ? OR sb.cabang_id IS NULL)";
+            return $this->db->select($sql, [$this->cabangId]);
+        }
+        
+        return $this->db->select($sql);
+    }
+    
+    /**
+     * Update interest rate setting
+     */
+    public function updateSetting($id, $data) {
+        $sql = "UPDATE setting_bunga 
+                SET bunga_default = ?, bunga_min = ?, bunga_max = ?, 
+                    faktor_risiko = ?, jaminan_adjustment = ?, updated_at = NOW()
+                WHERE id = ?";
+        
+        return $this->db->update($sql, [
+            $data['bunga_default'],
+            $data['bunga_min'],
+            $data['bunga_max'],
+            $data['faktor_risiko'] ?? 0,
+            $data['jaminan_adjustment'] ?? 0,
+            $id
+        ]);
+    }
+    
+    /**
+     * Create new interest rate setting
+     */
+    public function createSetting($data) {
+        $sql = "INSERT INTO setting_bunga 
+                (cabang_id, jenis_pinjaman, tenor_min, tenor_max, bunga_default, bunga_min, bunga_max, faktor_risiko, jaminan_adjustment)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        
+        return $this->db->insert($sql, [
+            $data['cabang_id'] ?? null,
+            $data['jenis_pinjaman'],
+            $data['tenor_min'],
+            $data['tenor_max'],
+            $data['bunga_default'],
+            $data['bunga_min'],
+            $data['bunga_max'],
+            $data['faktor_risiko'] ?? 0,
+            $data['jaminan_adjustment'] ?? 0
+        ]);
+    }
+}
+?>

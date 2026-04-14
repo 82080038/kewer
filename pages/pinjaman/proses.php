@@ -25,24 +25,35 @@ switch ($action) {
         if ($pinjaman['status'] !== 'pengajuan') {
             $_SESSION['error'] = 'Hanya dapat menyetujui pinjaman dengan status pengajuan';
         } else {
-            // Update status to disetujui
-            $result = query("UPDATE pinjaman SET status = 'disetujui' WHERE id = ?", [$id]);
+            // Check family risk before approving
+            require_once '../../includes/family_risk.php';
+            $familyRisk = new FamilyRisk(getCurrentCabang());
+            $riskCheck = $familyRisk->validateLoanApplication($pinjaman['nasabah_id'], $pinjaman['plafon']);
             
-            if ($result) {
-                // Create loan schedule
-                createLoanSchedule($id, $pinjaman['plafon'], $pinjaman['tenor'], $pinjaman['bunga_per_bulan'], $pinjaman['tanggal_akad']);
-                
-                // Update to aktif
-                query("UPDATE pinjaman SET status = 'aktif' WHERE id = ?", [$id]);
-                
-                $_SESSION['success'] = 'Pinjaman berhasil disetujui dan diaktifkan';
-                
-                // Send notification
-                $nasabah = query("SELECT telp FROM nasabah WHERE id = ?", [$pinjaman['nasabah_id']])[0];
-                $message = "Pinjaman Anda dengan kode {$pinjaman['kode_pinjaman']} telah disetujui. Plafon: " . formatRupiah($pinjaman['plafon']);
-                sendWhatsApp($nasabah['telp'], $message);
+            if (!$riskCheck['approved']) {
+                $_SESSION['error'] = 'Pinjaman ditolak: ' . $riskCheck['message'];
+            } elseif ($riskCheck['requires_verification']) {
+                $_SESSION['error'] = 'Pinjaman memerlukan verifikasi tambahan: ' . $riskCheck['message'];
             } else {
-                $_SESSION['error'] = 'Gagal menyetujui pinjaman';
+                // Update status to disetujui
+                $result = query("UPDATE pinjaman SET status = 'disetujui' WHERE id = ?", [$id]);
+                
+                if ($result) {
+                    // Create loan schedule
+                    createLoanSchedule($id, $pinjaman['plafon'], $pinjaman['tenor'], $pinjaman['bunga_per_bulan'], $pinjaman['tanggal_akad']);
+                    
+                    // Update to aktif
+                    query("UPDATE pinjaman SET status = 'aktif' WHERE id = ?", [$id]);
+                    
+                    $_SESSION['success'] = 'Pinjaman berhasil disetujui dan diaktifkan';
+                    
+                    // Send notification
+                    $nasabah = query("SELECT telp FROM nasabah WHERE id = ?", [$pinjaman['nasabah_id']])[0];
+                    $message = "Pinjaman Anda dengan kode {$pinjaman['kode_pinjaman']} telah disetujui. Plafon: " . formatRupiah($pinjaman['plafon']);
+                    sendWhatsApp($nasabah['telp'], $message);
+                } else {
+                    $_SESSION['error'] = 'Gagal menyetujui pinjaman';
+                }
             }
         }
         break;

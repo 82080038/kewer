@@ -1,6 +1,32 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/session.php';
+require_once __DIR__ . '/bunga_calculator.php';
+require_once __DIR__ . '/family_risk.php';
+
+// Audit logging function for fraud prevention
+function logAudit($action, $table, $recordId = null, $oldValue = null, $newValue = null) {
+    $user = getCurrentUser();
+    $userId = $user ? $user['id'] : null;
+    
+    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+    
+    $sql = "INSERT INTO audit_log 
+            (user_id, action, table_name, record_id, old_value, new_value, ip_address, user_agent)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    
+    return query($sql, [
+        $userId,
+        $action,
+        $table,
+        $recordId,
+        $oldValue ? json_encode($oldValue) : null,
+        $newValue ? json_encode($newValue) : null,
+        $ipAddress,
+        $userAgent
+    ]);
+}
 
 // Generate unique code
 function generateKode($prefix, $table, $field) {
@@ -9,7 +35,7 @@ function generateKode($prefix, $table, $field) {
     return $prefix . str_pad($next_num, 3, '0', STR_PAD_LEFT);
 }
 
-// Calculate loan interest (Flat Rate)
+// Calculate loan interest (Flat Rate) - Legacy function
 function calculateLoan($plafon, $tenor, $bunga_per_bulan) {
     $total_bunga = $plafon * ($bunga_per_bulan / 100) * $tenor;
     $total_pembayaran = $plafon + $total_bunga;
@@ -24,6 +50,26 @@ function calculateLoan($plafon, $tenor, $bunga_per_bulan) {
         'angsuran_bunga' => $angsuran_bunga,
         'angsuran_total' => $angsuran_total
     ];
+}
+
+// Calculate loan with dynamic interest rate (NEW)
+function calculateLoanDinamis($plafon, $tenor, $jenis_pinjaman, $nasabah_id = null, $jaminan_tipe = 'tanpa', $metode = 'flat') {
+    $cabangId = getCurrentCabang();
+    $calculator = new BungaCalculator($cabangId);
+    
+    // Get dynamic interest rate
+    $bungaInfo = $calculator->hitungBungaDinamis($jenis_pinjaman, $tenor, $nasabah_id, $jaminan_tipe);
+    $sukuBunga = $bungaInfo['suku_bunga'];
+    
+    // Calculate installment
+    $calc = $calculator->hitungAngsuran($plafon, $tenor, $sukuBunga, $metode);
+    
+    return array_merge($calc, [
+        'suku_bunga' => $sukuBunga,
+        'bunga_dasar' => $bungaInfo['bunga_dasar'],
+        'risiko_adjustment' => $bungaInfo['risiko_adjustment'],
+        'jaminan_adjustment' => $bungaInfo['jaminan_adjustment']
+    ]);
 }
 
 // Create loan schedule
@@ -44,6 +90,28 @@ function createLoanSchedule($pinjaman_id, $plafon, $tenor, $bunga_per_bulan, $ta
             $calc['angsuran_total']
         ]);
     }
+}
+
+// Create loan schedule with dynamic interest (NEW)
+function createLoanScheduleDinamis($pinjaman_id, $plafon, $tenor, $jenis_pinjaman, $tanggal_akad, $nasabah_id = null, $jaminan_tipe = 'tanpa', $metode = 'flat') {
+    $calc = calculateLoanDinamis($plafon, $tenor, $jenis_pinjaman, $nasabah_id, $jaminan_tipe, $metode);
+    $cabang_id = getCurrentCabang();
+    
+    for ($i = 1; $i <= $tenor; $i++) {
+        $jatuh_tempo = date('Y-m-d', strtotime("+$i month", strtotime($tanggal_akad)));
+        
+        query("INSERT INTO angsuran (cabang_id, pinjaman_id, no_angsuran, jatuh_tempo, pokok, bunga, total_angsuran) VALUES (?, ?, ?, ?, ?, ?, ?)", [
+            $cabang_id,
+            $pinjaman_id,
+            $i,
+            $jatuh_tempo,
+            $calc['angsuran_pokok'],
+            $calc['angsuran_bunga'],
+            $calc['angsuran_total']
+        ]);
+    }
+    
+    return $calc;
 }
 
 // Check late payments
@@ -88,5 +156,21 @@ function sendWhatsApp($phone, $message) {
     // For now, just log the message
     error_log("WA to $phone: $message");
     return true;
+}
+
+// Validate loan application with family risk check (NEW)
+function validateLoanApplicationWithFamilyRisk($nasabah_id, $plafon) {
+    $cabangId = getCurrentCabang();
+    $familyRisk = new FamilyRisk($cabangId);
+    
+    return $familyRisk->validateLoanApplication($nasabah_id, $plafon);
+}
+
+// Check family risk for nasabah (NEW)
+function checkFamilyRisk($nasabah_id) {
+    $cabangId = getCurrentCabang();
+    $familyRisk = new FamilyRisk($cabangId);
+    
+    return $familyRisk->checkFamilyRisk($nasabah_id);
 }
 ?>

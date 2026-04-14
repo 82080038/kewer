@@ -56,6 +56,12 @@ $stats = query("
     <title>Data Pinjaman - Kewer</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/light.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -203,7 +209,7 @@ $stats = query("
                 <div class="card">
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-striped table-hover">
+                            <table class="table table-striped table-hover" id="pinjamanTable">
                                 <thead class="table-dark">
                                     <tr>
                                         <th>Kode</th>
@@ -282,19 +288,90 @@ $stats = query("
         </div>
     </div>
     
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/id.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>
     <script>
+        $(document).ready(function() {
+            // Initialize DataTable
+            $('#pinjamanTable').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
+                },
+                pageLength: 25,
+                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                responsive: true,
+                order: [[0, 'desc']]
+            });
+            
+            // Initialize Select2
+            $('.form-select').select2({
+                theme: 'bootstrap-5',
+                language: 'id',
+                width: '100%'
+            });
+            
+            // Initialize Flatpickr for date inputs
+            flatpickr('input[type="date"]', {
+                locale: 'id',
+                dateFormat: 'Y-m-d',
+                allowInput: true,
+                altInput: true,
+                altFormat: 'd F Y',
+                theme: 'light'
+            });
+        });
+        
         function approveLoan(id) {
-            if (confirm('Apakah Anda yakin ingin menyetujui pinjaman ini?')) {
-                window.location.href = `proses.php?action=approve&id=${id}`;
-            }
+            Swal.fire({
+                title: 'Setujui Pinjaman',
+                text: 'Apakah Anda yakin ingin menyetujui pinjaman ini?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Ya, Setujui',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = `proses.php?action=approve&id=${id}`;
+                }
+            });
         }
         
         function rejectLoan(id) {
-            if (confirm('Apakah Anda yakin ingin menolak pinjaman ini?')) {
-                window.location.href = `proses.php?action=reject&id=${id}`;
-            }
+            Swal.fire({
+                title: 'Tolak Pinjaman',
+                text: 'Apakah Anda yakin ingin menolak pinjaman ini?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Tolak',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = `proses.php?action=reject&id=${id}`;
+                }
+            });
         }
+        
+        // Convert session alerts to SweetAlert2
+        <?php
+        if (isset($_SESSION['success'])) {
+            echo "Swal.fire({icon: 'success', title: 'Berhasil', text: '" . $_SESSION['success'] . "', timer: 3000, showConfirmButton: false});";
+            unset($_SESSION['success']);
+        }
+        if (isset($_SESSION['error'])) {
+            echo "Swal.fire({icon: 'error', title: 'Gagal', text: '" . $_SESSION['error'] . "', timer: 3000, showConfirmButton: false});";
+            unset($_SESSION['error']);
+        }
+        ?>
     </script>
 </body>
 </html>

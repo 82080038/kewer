@@ -63,6 +63,31 @@ try {
             require_once 'auth.php';
             break;
             
+        case 'setting':
+        case 'setting_bunga':
+            require_once 'setting_bunga.php';
+            break;
+            
+        case 'kas_petugas':
+            require_once 'kas_petugas.php';
+            break;
+            
+        case 'pengeluaran':
+            require_once 'pengeluaran.php';
+            break;
+            
+        case 'ocr':
+            require_once 'ocr.php';
+            break;
+            
+        case 'family_risk':
+            require_once 'family_risk.php';
+            break;
+            
+        case 'kas_bon':
+            require_once 'kas_bon.php';
+            break;
+            
         default:
             http_response_code(404);
             echo json_encode(['error' => 'Endpoint not found']);
