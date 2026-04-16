@@ -22,46 +22,71 @@ if (!is_array($nasabah_list)) {
 if ($_POST) {
     $nasabah_id = $_POST['nasabah_id'] ?? '';
     $plafon = str_replace(['.', ','], '', $_POST['plafon'] ?? '');
+    $frekuensi = $_POST['frekuensi'] ?? 'bulanan';
     $tenor = $_POST['tenor'] ?? '';
     $bunga_per_bulan = $_POST['bunga_per_bulan'] ?? '';
     $tanggal_akad = $_POST['tanggal_akad'] ?? '';
     $tujuan_pinjaman = $_POST['tujuan_pinjaman'] ?? '';
     $jaminan = $_POST['jaminan'] ?? '';
+    $jaminan_tipe = $_POST['jaminan_tipe'] ?? 'tanpa';
+    $jaminan_nilai = str_replace(['.', ','], '', $_POST['jaminan_nilai'] ?? '0');
+    
+    // Validate frekuensi
+    if (!in_array($frekuensi, ['harian', 'mingguan', 'bulanan'])) {
+        $frekuensi = 'bulanan';
+    }
     
     // Validation
+    $max_tenor = getMaxTenor($frekuensi);
+    $period_label = getFrequencyPeriodLabel($frekuensi);
+    
     if (!$nasabah_id || !$plafon || !$tenor || !$bunga_per_bulan || !$tanggal_akad) {
         $error = 'Semua field wajib diisi';
     } elseif (!is_numeric($plafon) || $plafon <= 0) {
         $error = 'Plafon harus berupa angka positif';
-    } elseif (!is_numeric($tenor) || $tenor <= 0 || $tenor > 12) {
-        $error = 'Tenor harus antara 1-12 bulan';
+    } elseif (!is_numeric($tenor) || $tenor <= 0 || $tenor > $max_tenor) {
+        $error = "Tenor harus antara 1-$max_tenor $period_label";
     } elseif (!is_numeric($bunga_per_bulan) || $bunga_per_bulan < 0 || $bunga_per_bulan > 10) {
         $error = 'Bunga harus antara 0-10%';
     } else {
+        // Check if nasabah is blacklisted
+        $nasabah_status = query("SELECT status FROM nasabah WHERE id = ?", [$nasabah_id]);
+        if ($nasabah_status && $nasabah_status[0]['status'] === 'blacklist') {
+            $error = 'Nasabah dalam status blacklist, tidak dapat mengajukan pinjaman';
+        }
         // Check if nasabah has active loan
-        $active_loan = query("SELECT id FROM pinjaman WHERE nasabah_id = ? AND status IN ('disetujui', 'aktif')", [$nasabah_id]);
-        if ($active_loan) {
+        elseif (($active_loan = query("SELECT id FROM pinjaman WHERE nasabah_id = ? AND status IN ('disetujui', 'aktif')", [$nasabah_id]))) {
             $error = 'Nasabah masih memiliki pinjaman aktif';
         } else {
             // Calculate loan
-            $calc = calculateLoan($plafon, $tenor, $bunga_per_bulan);
+            $calc = calculateLoan($plafon, $tenor, $bunga_per_bulan, $frekuensi);
             
             // Generate kode pinjaman
             $kode_pinjaman = generateKode('PNJ', 'pinjaman', 'kode_pinjaman');
             
-            // Calculate due date
-            $tanggal_jatuh_tempo = date('Y-m-d', strtotime("+$tenor month", strtotime($tanggal_akad)));
+            // Calculate due date based on frequency
+            switch ($frekuensi) {
+                case 'harian':
+                    $tanggal_jatuh_tempo = date('Y-m-d', strtotime("+$tenor day", strtotime($tanggal_akad)));
+                    break;
+                case 'mingguan':
+                    $tanggal_jatuh_tempo = date('Y-m-d', strtotime("+$tenor week", strtotime($tanggal_akad)));
+                    break;
+                default:
+                    $tanggal_jatuh_tempo = date('Y-m-d', strtotime("+$tenor month", strtotime($tanggal_akad)));
+                    break;
+            }
             
             // Insert pinjaman
             $result = query("INSERT INTO pinjaman (
-                cabang_id, kode_pinjaman, nasabah_id, plafon, tenor, bunga_per_bulan, 
+                cabang_id, kode_pinjaman, nasabah_id, plafon, tenor, frekuensi, bunga_per_bulan, 
                 total_bunga, total_pembayaran, angsuran_pokok, angsuran_bunga, angsuran_total,
-                tanggal_akad, tanggal_jatuh_tempo, tujuan_pinjaman, jaminan, status, petugas_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pengajuan', ?)", [
-                $cabang_id, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $bunga_per_bulan,
+                tanggal_akad, tanggal_jatuh_tempo, tujuan_pinjaman, jaminan, jaminan_tipe, jaminan_nilai, status, petugas_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pengajuan', ?)", [
+                $cabang_id, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi, $bunga_per_bulan,
                 $calc['total_bunga'], $calc['total_pembayaran'], $calc['angsuran_pokok'], 
                 $calc['angsuran_bunga'], $calc['angsuran_total'], $tanggal_akad, 
-                $tanggal_jatuh_tempo, $tujuan_pinjaman, $jaminan, getCurrentUser()['id']
+                $tanggal_jatuh_tempo, $tujuan_pinjaman, $jaminan, $jaminan_tipe, $jaminan_nilai ?: null, getCurrentUser()['id']
             ]);
             
             if ($result) {
@@ -167,11 +192,21 @@ if ($_POST) {
                                     </div>
                                     
                                     <div class="mb-3">
+                                        <label class="form-label">Frekuensi Angsuran *</label>
+                                        <select name="frekuensi" class="form-select" id="frekuensi" required>
+                                            <option value="harian" <?php echo ($_POST['frekuensi'] ?? '') === 'harian' ? 'selected' : ''; ?>>Harian</option>
+                                            <option value="mingguan" <?php echo ($_POST['frekuensi'] ?? '') === 'mingguan' ? 'selected' : ''; ?>>Mingguan</option>
+                                            <option value="bulanan" <?php echo ($_POST['frekuensi'] ?? 'bulanan') === 'bulanan' ? 'selected' : ''; ?>>Bulanan</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
                                         <label class="form-label">Tenor *</label>
                                         <div class="input-group">
-                                            <input type="number" name="tenor" class="form-control" id="tenor" value="<?php echo $_POST['tenor'] ?? ''; ?>" min="1" max="12" required>
-                                            <span class="input-group-text">bulan</span>
+                                            <input type="number" name="tenor" class="form-control" id="tenor" value="<?php echo $_POST['tenor'] ?? ''; ?>" min="1" max="24" required>
+                                            <span class="input-group-text" id="tenorLabel">bulan</span>
                                         </div>
+                                        <small class="form-text" id="tenorHelp">Harian: 1-365 | Mingguan: 1-52 | Bulanan: 1-24</small>
                                     </div>
                                     
                                     <div class="mb-3">
@@ -180,6 +215,7 @@ if ($_POST) {
                                             <input type="number" name="bunga_per_bulan" class="form-control" id="bunga" value="<?php echo $_POST['bunga_per_bulan'] ?? '2.5'; ?>" step="0.1" min="0" max="10" required>
                                             <span class="input-group-text">%</span>
                                         </div>
+                                        <small class="form-text text-muted">Bunga per bulan (akan dikonversi otomatis sesuai frekuensi)</small>
                                     </div>
                                     
                                     <div class="mb-3">
@@ -195,8 +231,22 @@ if ($_POST) {
                                     </div>
                                     
                                     <div class="mb-3">
-                                        <label class="form-label">Jaminan</label>
-                                        <textarea name="jaminan" class="form-control" rows="3"><?php echo $_POST['jaminan'] ?? ''; ?></textarea>
+                                        <label class="form-label">Tipe Jaminan</label>
+                                        <select name="jaminan_tipe" class="form-select">
+                                            <option value="tanpa" <?php echo ($_POST['jaminan_tipe'] ?? '') === 'tanpa' ? 'selected' : ''; ?>>Tanpa Jaminan</option>
+                                            <option value="bpkb" <?php echo ($_POST['jaminan_tipe'] ?? '') === 'bpkb' ? 'selected' : ''; ?>>BPKB Kendaraan</option>
+                                            <option value="shm" <?php echo ($_POST['jaminan_tipe'] ?? '') === 'shm' ? 'selected' : ''; ?>>SHM (Sertifikat Hak Milik)</option>
+                                            <option value="ajb" <?php echo ($_POST['jaminan_tipe'] ?? '') === 'ajb' ? 'selected' : ''; ?>>AJB (Akta Jual Beli)</option>
+                                            <option value="tabungan" <?php echo ($_POST['jaminan_tipe'] ?? '') === 'tabungan' ? 'selected' : ''; ?>>Tabungan/Deposito</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Nilai Jaminan</label>
+                                        <input type="text" name="jaminan_nilai" class="form-control" placeholder="Rp" value="<?php echo $_POST['jaminan_nilai'] ?? ''; ?>">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Keterangan Jaminan</label>
+                                        <textarea name="jaminan" class="form-control" rows="2" placeholder="Deskripsi detail jaminan..."><?php echo $_POST['jaminan'] ?? ''; ?></textarea>
                                     </div>
                                     
                                     <!-- Loan Calculation Preview -->
@@ -230,13 +280,35 @@ if ($_POST) {
             return new Intl.NumberFormat('id-ID').format(angka);
         }
         
+        const freqConfig = {
+            harian:   { label: 'hari', periodLabel: 'Hari', max: 365, bungaDivisor: 30 },
+            mingguan: { label: 'minggu', periodLabel: 'Minggu', max: 52, bungaDivisor: 4 },
+            bulanan:  { label: 'bulan', periodLabel: 'Bulan', max: 24, bungaDivisor: 1 }
+        };
+        
+        function updateFrequencyUI() {
+            const frek = document.getElementById('frekuensi').value;
+            const cfg = freqConfig[frek];
+            document.getElementById('tenorLabel').textContent = cfg.label;
+            document.getElementById('tenor').max = cfg.max;
+            // Reset tenor if over max
+            const tenorEl = document.getElementById('tenor');
+            if (parseInt(tenorEl.value) > cfg.max) tenorEl.value = cfg.max;
+            calculatePreview();
+        }
+        
         function calculatePreview() {
             const plafon = parseFloat(document.getElementById('plafon').value.replace(/[^\d]/g, '')) || 0;
             const tenor = parseInt(document.getElementById('tenor').value) || 0;
-            const bunga = parseFloat(document.getElementById('bunga').value) || 0;
+            const bungaBulanan = parseFloat(document.getElementById('bunga').value) || 0;
+            const frek = document.getElementById('frekuensi').value;
+            const cfg = freqConfig[frek];
             
-            if (plafon > 0 && tenor > 0 && bunga >= 0) {
-                const totalBunga = plafon * (bunga / 100) * tenor;
+            // Convert monthly rate to per-period rate
+            const bungaPerPeriod = bungaBulanan / cfg.bungaDivisor;
+            
+            if (plafon > 0 && tenor > 0 && bungaBulanan >= 0) {
+                const totalBunga = plafon * (bungaPerPeriod / 100) * tenor;
                 const totalPembayaran = plafon + totalBunga;
                 const angsuranPokok = plafon / tenor;
                 const angsuranBunga = totalBunga / tenor;
@@ -244,6 +316,10 @@ if ($_POST) {
                 
                 document.getElementById('loanPreview').innerHTML = `
                     <table class="table table-sm">
+                        <tr>
+                            <td>Frekuensi:</td>
+                            <td class="text-end"><span class="badge bg-primary">${cfg.periodLabel}</span></td>
+                        </tr>
                         <tr>
                             <td>Total Pinjaman:</td>
                             <td class="text-end">Rp ${formatRupiah(totalPembayaran)}</td>
@@ -253,16 +329,20 @@ if ($_POST) {
                             <td class="text-end">Rp ${formatRupiah(totalBunga)}</td>
                         </tr>
                         <tr>
-                            <td>Angsuran/Bulan:</td>
+                            <td>Angsuran/${cfg.periodLabel}:</td>
                             <td class="text-end fw-bold">Rp ${formatRupiah(angsuranTotal)}</td>
                         </tr>
                         <tr>
-                            <td>Pokok/Bulan:</td>
+                            <td>Pokok/${cfg.periodLabel}:</td>
                             <td class="text-end">Rp ${formatRupiah(angsuranPokok)}</td>
                         </tr>
                         <tr>
-                            <td>Bunga/Bulan:</td>
+                            <td>Bunga/${cfg.periodLabel}:</td>
                             <td class="text-end">Rp ${formatRupiah(angsuranBunga)}</td>
+                        </tr>
+                        <tr>
+                            <td>Bunga per ${cfg.label}:</td>
+                            <td class="text-end">${bungaPerPeriod.toFixed(4)}%</td>
                         </tr>
                     </table>
                 `;
@@ -277,10 +357,12 @@ if ($_POST) {
             calculatePreview();
         });
         
+        document.getElementById('frekuensi').addEventListener('change', updateFrequencyUI);
         document.getElementById('tenor').addEventListener('input', calculatePreview);
         document.getElementById('bunga').addEventListener('input', calculatePreview);
         
-        // Initial calculation
+        // Initial setup
+        updateFrequencyUI();
         calculatePreview();
     </script>
 </body>

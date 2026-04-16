@@ -73,11 +73,11 @@ class Pinjaman {
      */
     public function create($data) {
         $sql = "INSERT INTO pinjaman 
-                (cabang_id, kode_pinjaman, nasabah_id, plafon, tenor, bunga_per_bulan, 
+                (cabang_id, kode_pinjaman, nasabah_id, plafon, tenor, frekuensi, bunga_per_bulan, 
                  total_bunga, total_pembayaran, angsuran_pokok, angsuran_bunga, angsuran_total,
                  tanggal_akad, tanggal_jatuh_tempo, tujuan_pinjaman, jaminan, 
                  jaminan_tipe, jaminan_nilai, jaminan_dokumen, status, petugas_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         return $this->db->insert($sql, [
             $data['cabang_id'],
@@ -85,6 +85,7 @@ class Pinjaman {
             $data['nasabah_id'],
             $data['plafon'],
             $data['tenor'],
+            $data['frekuensi'] ?? 'bulanan',
             $data['bunga_per_bulan'],
             $data['total_bunga'],
             $data['total_pembayaran'],
@@ -108,7 +109,7 @@ class Pinjaman {
      */
     public function update($id, $data) {
         $sql = "UPDATE pinjaman 
-                SET plafon = ?, tenor = ?, bunga_per_bulan = ?, 
+                SET plafon = ?, tenor = ?, frekuensi = ?, bunga_per_bulan = ?, 
                     total_bunga = ?, total_pembayaran = ?, 
                     angsuran_pokok = ?, angsuran_bunga = ?, angsuran_total = ?,
                     tanggal_akad = ?, tanggal_jatuh_tempo = ?, tujuan_pinjaman = ?, 
@@ -119,6 +120,7 @@ class Pinjaman {
         return $this->db->update($sql, [
             $data['plafon'],
             $data['tenor'],
+            $data['frekuensi'] ?? 'bulanan',
             $data['bunga_per_bulan'],
             $data['total_bunga'],
             $data['total_pembayaran'],

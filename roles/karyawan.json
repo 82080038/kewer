@@ -1,0 +1,216 @@
+{
+  "role": {
+    "name": "Karyawan",
+    "code": "karyawan",
+    "hierarchy_level": 7,
+    "description": "Employee with basic administrative support and cash handling responsibilities",
+    "status": "aktif"
+  },
+  "access_scope": {
+    "type": "cabang",
+    "branches": "single",
+    "data_visibility": "branch_specific"
+  },
+  "application_standards": {
+    "language": {
+      "ui_language": "Bahasa Indonesia",
+      "labels": "Indonesian",
+      "messages": "Indonesian",
+      "notifications": "Indonesian"
+    },
+    "formatting": {
+      "currency": {
+        "symbol": "Rp",
+        "format": "Rp1.000.000",
+        "thousands_separator": ".",
+        "decimal_separator": ",",
+        "php_function": "number_format($value, 0, ',', '.')"
+      },
+      "date": {
+        "display_format": "d F Y",
+        "example": "16 April 2026",
+        "database_format": "Y-m-d",
+        "example_db": "2026-04-16",
+        "library": "Flatpickr",
+        "altFormat": "d F Y"
+      },
+      "number": {
+        "thousands_separator": ".",
+        "decimal_separator": ",",
+        "example": "1.000,50"
+      }
+    }
+  },
+  "permissions": {
+    "automatic_grant": false,
+    "can_manage": []
+  },
+  "modules": {
+    "dashboard": {
+      "access": true,
+      "features": [
+        "View branch statistics",
+        "View total nasabah count in branch",
+        "View total pinjaman count in branch",
+        "View outstanding balance in branch",
+        "View recent activities in branch"
+      ]
+    },
+    "nasabah": {
+      "access": true,
+      "permissions": ["nasabah.read"],
+      "features": [
+        "View nasabah in branch",
+        "View nasabah details"
+      ]
+    },
+    "pinjaman": {
+      "access": true,
+      "permissions": ["pinjaman.read"],
+      "features": [
+        "View pinjaman in branch",
+        "View pinjaman details",
+        "View pinjaman schedules (harian/mingguan/bulanan)",
+        "Cetak kartu angsuran",
+        "Cetak kwitansi pembayaran"
+      ]
+    },
+    "angsuran": {
+      "access": true,
+      "permissions": ["angsuran.read", "manage_pembayaran"],
+      "features": [
+        "View angsuran in branch",
+        "Record payments",
+        "View payment history",
+        "View auto-calculated denda (penalty)",
+        "Cetak kwitansi pembayaran"
+      ]
+    },
+    "cash_reconciliation": {
+      "access": true,
+      "permissions": ["kas.read", "kas.update"],
+      "features": [
+        "Lihat saldo kas cabang",
+        "Lakukan rekonsiliasi kas harian",
+        "Lihat laporan perbedaan",
+        "Lihat jejak audit"
+      ]
+    },
+    "pengeluaran": {
+      "access": true,
+      "permissions": ["view_pengeluaran"],
+      "features": [
+        "Lihat pengeluaran cabang (hanya baca)",
+        "Lihat laporan pengeluaran"
+      ]
+    }
+  },
+  "tasks_and_responsibilities": {
+    "administrative": [
+      "Data entry",
+      "Document management",
+      "Record keeping",
+      "Filing and organization",
+      "Basic reporting"
+    ],
+    "cash_handling": [
+      "Cash reconciliation",
+      "Payment processing",
+      "Cash counting",
+      "Receipt generation",
+      "Cash security"
+    ],
+    "customer_service": [
+      "Basic customer assistance",
+      "Payment receipt handling",
+      "Customer inquiry response",
+      "Document verification",
+      "Basic problem resolution"
+    ],
+    "support": [
+      "Support staff operations",
+      "Assist with administrative tasks",
+      "Maintain office supplies",
+      "Handle phone calls",
+      "Schedule appointments"
+    ]
+  },
+  "rights": {
+    "system_access": [
+      "Access to basic system features",
+      "View branch data",
+      "View branch reports"
+    ],
+    "payment_access": [
+      "Record payments",
+      "View payment history",
+      "Generate payment receipts"
+    ],
+    "cash_access": [
+      "View cash balance",
+      "Perform cash reconciliation",
+      "View cash reports"
+    ],
+    "reporting": [
+      "View basic reports",
+      "Access branch data",
+      "Generate simple reports"
+    ]
+  },
+  "obligations": {
+    "administrative": [
+      "Maintain accurate records",
+      "Complete data entry tasks",
+      "Organize documents properly",
+      "Follow procedures",
+      "Maintain confidentiality"
+    ],
+    "cash_handling": [
+      "Handle cash securely",
+      "Reconcile cash daily",
+      "Report discrepancies",
+      "Follow cash handling procedures",
+      "Maintain cash security"
+    ],
+    "customer_service": [
+      "Provide courteous service",
+      "Maintain professionalism",
+      "Respond to inquiries promptly",
+      "Maintain customer confidentiality",
+      "Follow service standards"
+    ],
+    "reporting": [
+      "Submit accurate reports",
+      "Report issues promptly",
+      "Maintain documentation",
+      "Follow reporting procedures",
+      "Track performance"
+    ]
+  },
+  "simulation_parameters": {
+    "login": {
+      "username": "petugas1",
+      "password": "password",
+      "test_login_url": "/login.php?test_login=true&username=petugas1&password=password"
+    },
+    "daily_activities": [
+      "Review daily dashboard",
+      "Perform data entry tasks",
+      "Process payments",
+      "Perform cash reconciliation",
+      "Assist customers"
+    ],
+    "weekly_activities": [
+      "Review weekly activities",
+      "Organize documents",
+      "Assist with reports",
+      "Support staff operations"
+    ],
+    "monthly_activities": [
+      "Review monthly activities",
+      "Organize monthly records",
+      "Assist with monthly reports",
+      "Support administrative tasks"
+    ]
+  }
+}

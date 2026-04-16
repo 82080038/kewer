@@ -1,0 +1,354 @@
+{
+  "role": {
+    "name": "Owner",
+    "code": "owner",
+    "hierarchy_level": 1,
+    "description": "Pemilik dengan akses penuh untuk pengawasan strategis dan tata kelola sistem di semua cabang",
+    "status": "aktif"
+  },
+  "access_scope": {
+    "type": "pusat",
+    "branches": "all",
+    "data_visibility": "consolidated"
+  },
+  "application_standards": {
+    "language": {
+      "ui_language": "Bahasa Indonesia",
+      "labels": "Indonesian",
+      "messages": "Indonesian",
+      "notifications": "Indonesian"
+    },
+    "formatting": {
+      "currency": {
+        "symbol": "Rp",
+        "format": "Rp1.000.000",
+        "thousands_separator": ".",
+        "decimal_separator": ",",
+        "php_function": "number_format($value, 0, ',', '.')"
+      },
+      "date": {
+        "display_format": "d F Y",
+        "example": "16 April 2026",
+        "database_format": "Y-m-d",
+        "example_db": "2026-04-16",
+        "library": "Flatpickr",
+        "altFormat": "d F Y"
+      },
+      "number": {
+        "thousands_separator": ".",
+        "decimal_separator": ",",
+        "example": "1.000,50"
+      }
+    }
+  },
+  "permissions": {
+    "automatic_grant": true,
+    "can_manage": [
+      "owner",
+      "manajer_cabang",
+      "admin_pusat",
+      "admin_cabang",
+      "petugas_pusat",
+      "petugas_cabang",
+      "karyawan"
+    ]
+  },
+  "modules": {
+    "dashboard": {
+      "access": true,
+      "features": [
+        "View consolidated statistics for all branches",
+        "View total nasabah count across all branches",
+        "View total pinjaman count across all branches",
+        "View outstanding balance across all branches",
+        "View recent activities across all branches",
+        "Switch between branch views",
+        "View performance metrics"
+      ]
+    },
+    "nasabah": {
+      "access": true,
+      "permissions": ["nasabah.read", "manage_blacklist"],
+      "features": [
+        "View all nasabah across all branches",
+        "View nasabah details",
+        "View nasabah family links",
+        "View nasabah risk assessment",
+        "Monitor nasabah portfolio performance",
+        "Review high-risk nasabah alerts",
+        "Blacklist/unblacklist nasabah",
+        "View blacklist history log"
+      ]
+    },
+    "pinjaman": {
+      "access": true,
+      "permissions": ["pinjaman.read", "pinjaman.approve_high_value"],
+      "features": [
+        "View all pinjaman across all branches",
+        "Approve high-value pinjaman applications",
+        "Override loan approval decisions",
+        "View pinjaman details",
+        "View pinjaman schedules (harian/mingguan/bulanan)",
+        "View pinjaman risk assessment",
+        "View pinjaman family risk",
+        "Configure auto-confirm policies",
+        "Monitor loan portfolio performance",
+        "Cetak kartu angsuran",
+        "Cetak kwitansi pembayaran"
+      ]
+    },
+    "angsuran": {
+      "access": true,
+      "permissions": ["angsuran.read", "manage_denda"],
+      "features": [
+        "View all angsuran across all branches",
+        "View payment history",
+        "View late payments",
+        "Monitor collection performance",
+        "View auto-calculated denda (penalty)",
+        "Configure denda settings per frekuensi",
+        "Cetak kwitansi pembayaran"
+      ]
+    },
+    "field_activities": {
+      "access": true,
+      "permissions": ["angsuran.read"],
+      "features": [
+        "View field activities across all branches",
+        "View activity reports",
+        "View GPS tracking data",
+        "View photo documentation"
+      ]
+    },
+    "kas_petugas": {
+      "access": true,
+      "permissions": ["kas_petugas.read"],
+      "features": [
+        "View kas petugas across all branches",
+        "View deposit tracking",
+        "View balance management",
+        "View transaction history",
+        "View reconciliation reports",
+        "Monitor kas petugas compliance"
+      ]
+    },
+    "cash_reconciliation": {
+      "access": true,
+      "permissions": ["kas.read"],
+      "features": [
+        "View cash balance across all branches",
+        "View discrepancy reports",
+        "View audit trails"
+      ]
+    },
+    "auto_confirm": {
+      "access": true,
+      "permissions": ["pinjaman.auto_confirm"],
+      "features": [
+        "View auto-confirm settings",
+        "Configure global auto-confirm rules",
+        "Configure branch-specific auto-confirm rules",
+        "View auto-confirm statistics",
+        "Set risk thresholds",
+        "Set approval limits"
+      ]
+    },
+    "users": {
+      "access": true,
+      "permissions": ["users.read", "manage_admin_users", "assign_permissions"],
+      "features": [
+        "View all users across all branches",
+        "Create admin and manager accounts",
+        "Assign roles to admin/manager users",
+        "Assign permissions to users",
+        "View user activity logs",
+        "Deactivate user accounts"
+      ]
+    },
+    "cabang": {
+      "access": true,
+      "permissions": ["cabang.read", "manage_cabang"],
+      "features": [
+        "View all branches",
+        "Create new branches",
+        "Edit branch information",
+        "Delete branches",
+        "View branch statistics",
+        "View branch performance",
+        "Manage branch settings"
+      ]
+    },
+    "setting_bunga": {
+      "access": true,
+      "permissions": ["manage_bunga", "view_settings"],
+      "features": [
+        "Lihat pengaturan suku bunga",
+        "Ubah suku bunga dasar",
+        "Konfigurasi faktor penyesuaian risiko",
+        "Konfigurasi faktor penyesuaian jaminan",
+        "Atur konfigurasi jenis pinjaman",
+        "Konfigurasi perhitungan bunga dinamis"
+      ]
+    },
+    "pengeluaran": {
+      "access": true,
+      "permissions": ["manage_pengeluaran", "view_pengeluaran"],
+      "features": [
+        "Lihat pengeluaran semua cabang",
+        "Setujui pengeluaran besar",
+        "Lihat laporan pengeluaran",
+        "Monitor kepatuhan anggaran",
+        "Review tren pengeluaran"
+      ]
+    },
+    "kas_bon": {
+      "access": true,
+      "permissions": ["manage_kas_bon", "view_kas_bon"],
+      "features": [
+        "Lihat kas bon semua cabang",
+        "Setujui kas bon bernilai tinggi",
+        "Lihat laporan kas bon",
+        "Monitor kepatuhan kas bon"
+      ]
+    },
+    "family_risk": {
+      "access": true,
+      "permissions": ["view_laporan"],
+      "features": [
+        "Lihat laporan risiko keluarga",
+        "Lihat pelacakan hubungan keluarga",
+        "Lihat perhitungan skor risiko",
+        "Lihat penyesuaian limit pinjaman",
+        "Lihat peringatan risiko"
+      ]
+    },
+    "petugas": {
+      "access": true,
+      "permissions": ["manage_petugas", "view_petugas"],
+      "features": [
+        "Lihat petugas semua cabang",
+        "Kelola profil petugas",
+        "Pantau kinerja petugas",
+        "Lihat laporan petugas"
+      ]
+    },
+    "permissions": {
+      "access": true,
+      "permissions": ["assign_permissions"],
+      "features": [
+        "Lihat sistem izin",
+        "Kelola izin role",
+        "Kelola izin pengguna",
+        "Lihat log audit izin"
+      ]
+    },
+    "laporan": {
+      "access": true,
+      "permissions": ["view_laporan"],
+      "features": [
+        "Lihat laporan keuangan konsolidasi",
+        "Lihat laporan kinerja pinjaman",
+        "Lihat laporan nasabah",
+        "Lihat laporan komprehensif",
+        "Filter berdasarkan cabang dan periode",
+        "Cetak laporan"
+      ]
+    }
+  },
+  "tasks_and_responsibilities": {
+    "strategic": [
+      "Overall system oversight and governance",
+      "Strategic decision making for the cooperative",
+      "Business development and growth planning",
+      "Financial planning and budgeting",
+      "Risk management and compliance"
+    ],
+    "operational": [
+      "Monitor all branch operations",
+      "Review consolidated reports",
+      "Approve major decisions",
+      "Configure global system settings",
+      "Oversee admin and manager assignments"
+    ],
+    "administrative": [
+      "Create and manage branches",
+      "Assign and manage system administrators",
+      "Configure global system policies",
+      "Review audit logs",
+      "Ensure data security and integrity"
+    ],
+    "financial": [
+      "Monitor financial performance across all branches",
+      "Review consolidated financial reports",
+      "Approve major financial transactions",
+      "Set interest rate policies",
+      "Manage cash flow across branches"
+    ]
+  },
+  "rights": {
+    "system_access": [
+      "Full access to all system features",
+      "Access to all branches' data",
+      "Unrestricted view of all reports",
+      "Ability to modify system configuration"
+    ],
+    "user_management": [
+      "Create and manage all user accounts",
+      "Assign any role except owner",
+      "Grant and revoke permissions",
+      "Deactivate user accounts"
+    ],
+    "decision_making": [
+      "Final approval on all major decisions",
+      "Override lower-level decisions",
+      "Set organizational policies",
+      "Define business rules"
+    ]
+  },
+  "obligations": {
+    "compliance": [
+      "Ensure compliance with cooperative regulations",
+      "Maintain accurate financial records",
+      "Follow audit requirements",
+      "Report to board of directors"
+    ],
+    "oversight": [
+      "Monitor branch performance",
+      "Review and approve major transactions",
+      "Ensure proper risk management",
+      "Maintain system security"
+    ],
+    "accountability": [
+      "Take responsibility for system-wide decisions",
+      "Ensure proper governance",
+      "Maintain transparency in operations",
+      "Report on organizational performance"
+    ]
+  },
+  "simulation_parameters": {
+    "login": {
+      "username": "admin",
+      "password": "password",
+      "test_login_url": "/login.php?test_login=true&username=admin&password=password"
+    },
+    "daily_activities": [
+      "Review consolidated dashboard statistics",
+      "Monitor branch performance metrics",
+      "Review and approve pending requests",
+      "Review audit logs for security",
+      "Generate and review reports"
+    ],
+    "weekly_activities": [
+      "Review consolidated weekly reports",
+      "Monitor financial performance",
+      "Review risk assessments",
+      "Plan strategic initiatives"
+    ],
+    "monthly_activities": [
+      "Review monthly consolidated reports",
+      "Review branch performance",
+      "Plan budget adjustments",
+      "Review and update policies"
+    ]
+  }
+}

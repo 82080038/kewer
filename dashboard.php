@@ -9,7 +9,7 @@ $role = $user['role'];
 
 // Pusat roles (owner, superadmin, admin) see consolidated data
 // Cabang roles (manager, petugas, karyawan) see only their branch data
-$pusat_roles = ['owner', 'superadmin', 'admin'];
+$pusat_roles = ['owner', 'superadmin', 'admin', 'admin_pusat', 'petugas_pusat'];
 
 if (in_array($role, $pusat_roles)) {
     // Get consolidated stats for all branches
@@ -162,6 +162,67 @@ if (!is_array($recent_activities)) {
                         <li class="nav-item">
                             <a class="nav-link" href="pages/cabang/index.php">
                                 <i class="bi bi-building"></i> Cabang
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('manage_bunga') || hasPermission('view_settings')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pages/setting_bunga/index.php">
+                                <i class="bi bi-percent"></i> Setting Bunga
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('manage_pengeluaran') || hasPermission('view_pengeluaran')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pages/pengeluaran/index.php">
+                                <i class="bi bi-wallet2"></i> Pengeluaran
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('manage_kas_bon') || hasPermission('view_kas_bon')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pages/kas_bon/index.php">
+                                <i class="bi bi-receipt"></i> Kas Bon
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('view_laporan')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pages/family_risk/index.php">
+                                <i class="bi bi-diagram-3"></i> Family Risk
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('manage_petugas') || hasPermission('view_petugas')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pages/petugas/index.php">
+                                <i class="bi bi-person-badge"></i> Petugas
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('view_laporan') || in_array($role, $pusat_roles)): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pages/laporan/index.php">
+                                <i class="bi bi-file-earmark-bar-graph"></i> Laporan
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pages/rute_harian/index.php">
+                                <i class="bi bi-map"></i> Rute Harian
+                            </a>
+                        </li>
+                        <?php if (!in_array($role, ['karyawan'])): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pages/kinerja/index.php">
+                                <i class="bi bi-bar-chart"></i> Kinerja Petugas
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('view_laporan') || hasPermission('assign_permissions')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pages/audit/index.php">
+                                <i class="bi bi-shield-check"></i> Audit Trail
                             </a>
                         </li>
                         <?php endif; ?>

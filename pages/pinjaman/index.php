@@ -233,6 +233,7 @@ $stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] :
                                         <th>Kode</th>
                                         <th>Nasabah</th>
                                         <th>Plafon</th>
+                                        <th>Frekuensi</th>
                                         <th>Tenor</th>
                                         <th>Bunga/Bln</th>
                                         <th>Angsuran</th>
@@ -243,7 +244,7 @@ $stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] :
                                 <tbody>
                                     <?php if (empty($pinjaman)): ?>
                                         <tr>
-                                            <td colspan="8" class="text-center text-muted">Tidak ada data pinjaman</td>
+                                            <td colspan="9" class="text-center text-muted">Tidak ada data pinjaman</td>
                                         </tr>
                                     <?php else: ?>
                                         <?php foreach ($pinjaman as $p): ?>
@@ -257,7 +258,16 @@ $stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] :
                                                     </div>
                                                 </td>
                                                 <td><?php echo formatRupiah($p['plafon']); ?></td>
-                                                <td><?php echo $p['tenor']; ?> bln</td>
+                                                <td>
+                                                    <?php
+                                                    $freq_class = ['harian' => 'warning', 'mingguan' => 'info', 'bulanan' => 'primary'];
+                                                    $frek = $p['frekuensi'] ?? 'bulanan';
+                                                    ?>
+                                                    <span class="badge bg-<?php echo $freq_class[$frek] ?? 'primary'; ?>">
+                                                        <?php echo getFrequencyLabel($frek); ?>
+                                                    </span>
+                                                </td>
+                                                <td><?php echo $p['tenor']; ?> <?php echo getFrequencyPeriodLabel($frek); ?></td>
                                                 <td><?php echo $p['bunga_per_bulan']; ?>%</td>
                                                 <td><?php echo formatRupiah($p['angsuran_total']); ?></td>
                                                 <td>

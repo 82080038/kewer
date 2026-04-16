@@ -116,6 +116,11 @@ $stats = query("
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Detail Pinjaman</h1>
                     <div>
+                        <?php if (in_array($pinjaman['status'], ['aktif', 'lunas'])): ?>
+                            <a href="cetak_kartu.php?id=<?php echo $pinjaman['id']; ?>" class="btn btn-outline-primary me-2" target="_blank">
+                                <i class="bi bi-printer"></i> Cetak Kartu
+                            </a>
+                        <?php endif; ?>
                         <?php if ($pinjaman['status'] === 'aktif'): ?>
                             <a href="../angsuran/bayar.php?pinjaman_id=<?php echo $pinjaman['id']; ?>" class="btn btn-success me-2">
                                 <i class="bi bi-cash"></i> Bayar Angsuran
@@ -153,8 +158,20 @@ $stats = query("
                                         <td><?php echo formatRupiah($pinjaman['plafon']); ?></td>
                                     </tr>
                                     <tr>
+                                        <td><strong>Frekuensi:</strong></td>
+                                        <td>
+                                            <?php
+                                            $frek = $pinjaman['frekuensi'] ?? 'bulanan';
+                                            $freq_class = ['harian' => 'warning', 'mingguan' => 'info', 'bulanan' => 'primary'];
+                                            ?>
+                                            <span class="badge bg-<?php echo $freq_class[$frek] ?? 'primary'; ?>">
+                                                <?php echo getFrequencyLabel($frek); ?>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
                                         <td><strong>Tenor:</strong></td>
-                                        <td><?php echo $pinjaman['tenor']; ?> bulan</td>
+                                        <td><?php echo $pinjaman['tenor']; ?> <?php echo getFrequencyPeriodLabel($frek); ?></td>
                                     </tr>
                                     <tr>
                                         <td><strong>Bunga/Bulan:</strong></td>
@@ -165,7 +182,7 @@ $stats = query("
                                         <td><?php echo formatRupiah($pinjaman['total_pembayaran']); ?></td>
                                     </tr>
                                     <tr>
-                                        <td><strong>Angsuran/Bulan:</strong></td>
+                                        <td><strong>Angsuran/<?php echo getFrequencyPeriodLabel($frek); ?>:</strong></td>
                                         <td><?php echo formatRupiah($pinjaman['angsuran_total']); ?></td>
                                     </tr>
                                     <tr>
@@ -214,7 +231,24 @@ $stats = query("
                                         <td><?php echo $pinjaman['tujuan_pinjaman'] ?: '-'; ?></td>
                                     </tr>
                                     <tr>
-                                        <td><strong>Jaminan:</strong></td>
+                                        <td><strong>Tipe Jaminan:</strong></td>
+                                        <td>
+                                            <?php 
+                                            $jaminan_labels = ['tanpa'=>'Tanpa Jaminan','bpkb'=>'BPKB Kendaraan','shm'=>'SHM','ajb'=>'AJB','tabungan'=>'Tabungan/Deposito'];
+                                            $jt = $pinjaman['jaminan_tipe'] ?? 'tanpa';
+                                            $jt_color = ['tanpa'=>'secondary','bpkb'=>'info','shm'=>'success','ajb'=>'primary','tabungan'=>'warning'];
+                                            ?>
+                                            <span class="badge bg-<?php echo $jt_color[$jt] ?? 'secondary'; ?>"><?php echo $jaminan_labels[$jt] ?? '-'; ?></span>
+                                        </td>
+                                    </tr>
+                                    <?php if (($pinjaman['jaminan_nilai'] ?? 0) > 0): ?>
+                                    <tr>
+                                        <td><strong>Nilai Jaminan:</strong></td>
+                                        <td><?php echo formatRupiah($pinjaman['jaminan_nilai']); ?></td>
+                                    </tr>
+                                    <?php endif; ?>
+                                    <tr>
+                                        <td><strong>Ket. Jaminan:</strong></td>
                                         <td><?php echo $pinjaman['jaminan'] ?: '-'; ?></td>
                                     </tr>
                                 </table>
@@ -318,6 +352,10 @@ $stats = query("
                                                 <?php if ($a['status'] !== 'lunas' && $pinjaman['status'] === 'aktif'): ?>
                                                     <a href="../angsuran/bayar.php?id=<?php echo $a['id']; ?>" class="btn btn-sm btn-success">
                                                         <i class="bi bi-cash"></i> Bayar
+                                                    </a>
+                                                <?php elseif ($a['status'] === 'lunas'): ?>
+                                                    <a href="cetak_kwitansi.php?angsuran_id=<?php echo $a['id']; ?>" class="btn btn-sm btn-outline-primary" target="_blank" title="Cetak Kwitansi">
+                                                        <i class="bi bi-printer"></i>
                                                     </a>
                                                 <?php endif; ?>
                                             </td>

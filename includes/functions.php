@@ -154,20 +154,33 @@ function generateKode($prefix, $table, $field) {
     return $prefix . str_pad($next_num, 3, '0', STR_PAD_LEFT);
 }
 
-// Calculate loan interest (Flat Rate) - Legacy function
-function calculateLoan($plafon, $tenor, $bunga_per_bulan) {
-    $total_bunga = $plafon * ($bunga_per_bulan / 100) * $tenor;
+// Calculate loan interest (Flat Rate) - supports harian/mingguan/bulanan
+function calculateLoan($plafon, $tenor, $bunga_per_bulan, $frekuensi = 'bulanan') {
+    // Convert monthly rate to per-period rate
+    switch ($frekuensi) {
+        case 'harian':
+            $bunga_per_period = $bunga_per_bulan / 30; // daily rate from monthly
+            break;
+        case 'mingguan':
+            $bunga_per_period = $bunga_per_bulan / 4; // weekly rate from monthly
+            break;
+        default: // bulanan
+            $bunga_per_period = $bunga_per_bulan;
+            break;
+    }
+    
+    $total_bunga = $plafon * ($bunga_per_period / 100) * $tenor;
     $total_pembayaran = $plafon + $total_bunga;
     $angsuran_pokok = $plafon / $tenor;
     $angsuran_bunga = $total_bunga / $tenor;
     $angsuran_total = $angsuran_pokok + $angsuran_bunga;
     
     return [
-        'total_bunga' => $total_bunga,
-        'total_pembayaran' => $total_pembayaran,
-        'angsuran_pokok' => $angsuran_pokok,
-        'angsuran_bunga' => $angsuran_bunga,
-        'angsuran_total' => $angsuran_total
+        'total_bunga' => round($total_bunga, 2),
+        'total_pembayaran' => round($total_pembayaran, 2),
+        'angsuran_pokok' => round($angsuran_pokok, 2),
+        'angsuran_bunga' => round($angsuran_bunga, 2),
+        'angsuran_total' => round($angsuran_total, 2)
     ];
 }
 
@@ -191,19 +204,25 @@ function calculateLoanDinamis($plafon, $tenor, $jenis_pinjaman, $nasabah_id = nu
     ]);
 }
 
-// Create loan schedule
-function createLoanSchedule($pinjaman_id, $plafon, $tenor, $bunga_per_bulan, $tanggal_akad) {
-    $calc = calculateLoan($plafon, $tenor, $bunga_per_bulan);
+// Create loan schedule - supports harian/mingguan/bulanan
+function createLoanSchedule($pinjaman_id, $plafon, $tenor, $bunga_per_bulan, $tanggal_akad, $frekuensi = 'bulanan') {
+    $calc = calculateLoan($plafon, $tenor, $bunga_per_bulan, $frekuensi);
     $cabang_id = getCurrentCabang();
-    
-    error_log("createLoanSchedule: pinjaman_id=$pinjaman_id, tenor=$tenor, plafon=$plafon");
     
     $success_count = 0;
     
     for ($i = 1; $i <= $tenor; $i++) {
-        $jatuh_tempo = date('Y-m-d', strtotime("+$i month", strtotime($tanggal_akad)));
-        
-        error_log("createLoanSchedule: Loop iteration $i, jatuh_tempo=$jatuh_tempo");
+        switch ($frekuensi) {
+            case 'harian':
+                $jatuh_tempo = date('Y-m-d', strtotime("+$i day", strtotime($tanggal_akad)));
+                break;
+            case 'mingguan':
+                $jatuh_tempo = date('Y-m-d', strtotime("+$i week", strtotime($tanggal_akad)));
+                break;
+            default: // bulanan
+                $jatuh_tempo = date('Y-m-d', strtotime("+$i month", strtotime($tanggal_akad)));
+                break;
+        }
         
         $result = query("INSERT INTO angsuran (cabang_id, pinjaman_id, no_angsuran, jatuh_tempo, pokok, bunga, total_angsuran) VALUES (?, ?, ?, ?, ?, ?, ?)", [
             $cabang_id,
@@ -215,26 +234,31 @@ function createLoanSchedule($pinjaman_id, $plafon, $tenor, $bunga_per_bulan, $ta
             $calc['angsuran_total']
         ]);
         
-        error_log("createLoanSchedule: Query result for iteration $i: " . ($result ? "SUCCESS" : "FAILED"));
-        
         if ($result) {
             $success_count++;
         }
     }
     
-    error_log("createLoanSchedule: Final - success_count=$success_count, tenor=$tenor");
-    
-    // TEMPORARY: Always return true to see if loans become active
-    return true;
+    return $success_count > 0;
 }
 
-// Create loan schedule with dynamic interest (NEW)
-function createLoanScheduleDinamis($pinjaman_id, $plafon, $tenor, $jenis_pinjaman, $tanggal_akad, $nasabah_id = null, $jaminan_tipe = 'tanpa', $metode = 'flat') {
+// Create loan schedule with dynamic interest (NEW) - supports harian/mingguan/bulanan
+function createLoanScheduleDinamis($pinjaman_id, $plafon, $tenor, $jenis_pinjaman, $tanggal_akad, $nasabah_id = null, $jaminan_tipe = 'tanpa', $metode = 'flat', $frekuensi = 'bulanan') {
     $calc = calculateLoanDinamis($plafon, $tenor, $jenis_pinjaman, $nasabah_id, $jaminan_tipe, $metode);
     $cabang_id = getCurrentCabang();
     
     for ($i = 1; $i <= $tenor; $i++) {
-        $jatuh_tempo = date('Y-m-d', strtotime("+$i month", strtotime($tanggal_akad)));
+        switch ($frekuensi) {
+            case 'harian':
+                $jatuh_tempo = date('Y-m-d', strtotime("+$i day", strtotime($tanggal_akad)));
+                break;
+            case 'mingguan':
+                $jatuh_tempo = date('Y-m-d', strtotime("+$i week", strtotime($tanggal_akad)));
+                break;
+            default:
+                $jatuh_tempo = date('Y-m-d', strtotime("+$i month", strtotime($tanggal_akad)));
+                break;
+        }
         
         query("INSERT INTO angsuran (cabang_id, pinjaman_id, no_angsuran, jatuh_tempo, pokok, bunga, total_angsuran) VALUES (?, ?, ?, ?, ?, ?, ?)", [
             $cabang_id,
@@ -250,20 +274,121 @@ function createLoanScheduleDinamis($pinjaman_id, $plafon, $tenor, $jenis_pinjama
     return $calc;
 }
 
-// Check late payments
+// Check late payments and auto-calculate denda
 function checkLatePayments() {
     $cabang_id = getCurrentCabang();
     
     // Update status to 'telat' for payments past due date
     query("UPDATE angsuran SET status = 'telat' WHERE cabang_id = ? AND status = 'belum' AND jatuh_tempo < CURDATE()", [$cabang_id]);
     
+    // Auto-calculate denda for late installments
+    calculateAutoDenda($cabang_id);
+    
     // Get list of late payments
-    return query("SELECT a.*, n.nama, n.telp, p.kode_pinjaman 
+    return query("SELECT a.*, n.nama, n.telp, p.kode_pinjaman, p.frekuensi,
+                         DATEDIFF(CURDATE(), a.jatuh_tempo) as hari_telat
                   FROM angsuran a 
                   JOIN pinjaman p ON a.pinjaman_id = p.id 
                   JOIN nasabah n ON p.nasabah_id = n.id 
                   WHERE a.cabang_id = ? AND a.status = 'telat' 
                   ORDER BY a.jatuh_tempo", [$cabang_id]);
+}
+
+// Auto-calculate denda for late installments
+function calculateAutoDenda($cabang_id) {
+    // Get late installments without denda calculated today
+    $late = query("SELECT a.id, a.total_angsuran, a.jatuh_tempo, a.denda, p.frekuensi
+                   FROM angsuran a
+                   JOIN pinjaman p ON a.pinjaman_id = p.id
+                   WHERE a.cabang_id = ? AND a.status = 'telat' AND a.jatuh_tempo < CURDATE()", [$cabang_id]);
+    
+    if (!is_array($late)) return;
+    
+    foreach ($late as $row) {
+        $hari_telat = (int)((strtotime(date('Y-m-d')) - strtotime($row['jatuh_tempo'])) / 86400);
+        
+        // Get denda settings for this frekuensi
+        $setting = query("SELECT * FROM denda_settings 
+                          WHERE status = 'aktif' AND frekuensi = ? 
+                          AND (cabang_id = ? OR cabang_id IS NULL)
+                          ORDER BY cabang_id DESC LIMIT 1", [$row['frekuensi'], $cabang_id]);
+        
+        if (!$setting || !is_array($setting) || empty($setting)) continue;
+        $s = $setting[0];
+        
+        // Apply grace period
+        $hari_efektif = max(0, $hari_telat - (int)$s['grace_period']);
+        if ($hari_efektif <= 0) continue;
+        
+        // Calculate denda
+        if ($s['tipe_denda'] === 'persentase') {
+            $denda = $row['total_angsuran'] * ($s['nilai_denda'] / 100) * $hari_efektif;
+        } else {
+            $denda = $s['nilai_denda'] * $hari_efektif;
+        }
+        
+        // Apply max cap
+        if ($s['denda_maksimal'] !== null && $denda > $s['denda_maksimal']) {
+            $denda = $s['denda_maksimal'];
+        }
+        
+        $denda = round($denda, 2);
+        
+        // Update denda on angsuran
+        if ($denda != $row['denda']) {
+            query("UPDATE angsuran SET denda = ? WHERE id = ?", [$denda, $row['id']]);
+        }
+    }
+}
+
+// Get frequency label in Indonesian
+function getFrequencyLabel($frekuensi) {
+    $labels = [
+        'harian' => 'Harian',
+        'mingguan' => 'Mingguan',
+        'bulanan' => 'Bulanan'
+    ];
+    return $labels[$frekuensi] ?? 'Bulanan';
+}
+
+// Get frequency period label
+function getFrequencyPeriodLabel($frekuensi) {
+    $labels = [
+        'harian' => 'Hari',
+        'mingguan' => 'Minggu',
+        'bulanan' => 'Bulan'
+    ];
+    return $labels[$frekuensi] ?? 'Bulan';
+}
+
+// Get max tenor by frequency
+function getMaxTenor($frekuensi) {
+    $max = [
+        'harian' => 365,
+        'mingguan' => 52,
+        'bulanan' => 24
+    ];
+    return $max[$frekuensi] ?? 24;
+}
+
+// Blacklist / unblacklist nasabah
+function toggleBlacklist($nasabah_id, $aksi, $alasan) {
+    $user = getCurrentUser();
+    if (!$user) return false;
+    
+    $new_status = ($aksi === 'blacklist') ? 'blacklist' : 'aktif';
+    
+    $result = query("UPDATE nasabah SET status = ? WHERE id = ?", [$new_status, $nasabah_id]);
+    
+    if ($result) {
+        // Log blacklist action
+        query("INSERT INTO blacklist_log (nasabah_id, aksi, alasan, dilakukan_oleh) VALUES (?, ?, ?, ?)",
+            [$nasabah_id, $aksi, $alasan, $user['id']]);
+        
+        logAudit($aksi, 'nasabah', $nasabah_id, ['status' => ($aksi === 'blacklist' ? 'aktif' : 'blacklist')], ['status' => $new_status]);
+    }
+    
+    return $result;
 }
 
 // Format currency

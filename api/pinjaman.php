@@ -55,10 +55,16 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $nasabah_id = $input['nasabah_id'] ?? '';
         $plafon = $input['plafon'] ?? '';
         $tenor = $input['tenor'] ?? '';
+        $frekuensi = $input['frekuensi'] ?? 'bulanan';
         $bunga_per_bulan = $input['bunga_per_bulan'] ?? '';
         $tanggal_akad = $input['tanggal_akad'] ?? '';
         $tujuan_pinjaman = $input['tujuan_pinjaman'] ?? '';
         $jaminan = $input['jaminan'] ?? '';
+        
+        // Validate frekuensi
+        if (!in_array($frekuensi, ['harian', 'mingguan', 'bulanan'])) {
+            $frekuensi = 'bulanan';
+        }
         
         // Validation
         if (!$nasabah_id || !$plafon || !$tenor || !$bunga_per_bulan || !$tanggal_akad) {
@@ -73,9 +79,12 @@ switch ($_SERVER['REQUEST_METHOD']) {
             break;
         }
         
-        if (!is_numeric($tenor) || $tenor <= 0 || $tenor > 12) {
+        $max_tenor = ['harian' => 365, 'mingguan' => 52, 'bulanan' => 24];
+        $max = $max_tenor[$frekuensi] ?? 24;
+        if (!is_numeric($tenor) || $tenor <= 0 || $tenor > $max) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Tenor harus antara 1-12 bulan']);
+            $label = ['harian' => 'hari', 'mingguan' => 'minggu', 'bulanan' => 'bulan'];
+            echo json_encode(['success' => false, 'error' => "Tenor harus antara 1-$max " . ($label[$frekuensi] ?? 'bulan')]);
             break;
         }
         
@@ -88,21 +97,31 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
         
         // Calculate loan
-        $calc = calculateLoan($plafon, $tenor, $bunga_per_bulan);
+        $calc = calculateLoan($plafon, $tenor, $bunga_per_bulan, $frekuensi);
         
         // Generate kode pinjaman
         $kode_pinjaman = generateKode('PNJ', 'pinjaman', 'kode_pinjaman');
         
-        // Calculate due date
-        $tanggal_jatuh_tempo = date('Y-m-d', strtotime("+$tenor month", strtotime($tanggal_akad)));
+        // Calculate due date based on frequency
+        switch ($frekuensi) {
+            case 'harian':
+                $tanggal_jatuh_tempo = date('Y-m-d', strtotime("+$tenor day", strtotime($tanggal_akad)));
+                break;
+            case 'mingguan':
+                $tanggal_jatuh_tempo = date('Y-m-d', strtotime("+$tenor week", strtotime($tanggal_akad)));
+                break;
+            default:
+                $tanggal_jatuh_tempo = date('Y-m-d', strtotime("+$tenor month", strtotime($tanggal_akad)));
+                break;
+        }
         
         // Insert pinjaman
         $result = query("INSERT INTO pinjaman (
-            cabang_id, kode_pinjaman, nasabah_id, plafon, tenor, bunga_per_bulan, 
+            cabang_id, kode_pinjaman, nasabah_id, plafon, tenor, frekuensi, bunga_per_bulan, 
             total_bunga, total_pembayaran, angsuran_pokok, angsuran_bunga, angsuran_total,
             tanggal_akad, tanggal_jatuh_tempo, tujuan_pinjaman, jaminan, status, petugas_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pengajuan', ?)", [
-            $cabang_id, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $bunga_per_bulan,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pengajuan', ?)", [
+            $cabang_id, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi, $bunga_per_bulan,
             $calc['total_bunga'], $calc['total_pembayaran'], $calc['angsuran_pokok'], 
             $calc['angsuran_bunga'], $calc['angsuran_total'], $tanggal_akad, 
             $tanggal_jatuh_tempo, $tujuan_pinjaman, $jaminan, 1 // Default petugas ID for API
@@ -156,7 +175,8 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 
                 if ($result) {
                     // Create loan schedule
-                    createLoanSchedule($pinjaman_id, $pinjaman['plafon'], $pinjaman['tenor'], $pinjaman['bunga_per_bulan'], $pinjaman['tanggal_akad']);
+                    $frek = $pinjaman['frekuensi'] ?? 'bulanan';
+                    createLoanSchedule($pinjaman_id, $pinjaman['plafon'], $pinjaman['tenor'], $pinjaman['bunga_per_bulan'], $pinjaman['tanggal_akad'], $frek);
                     
                     // Update to aktif
                     query("UPDATE pinjaman SET status = 'aktif' WHERE id = ?", [$pinjaman_id]);

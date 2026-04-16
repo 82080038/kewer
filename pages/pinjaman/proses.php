@@ -56,7 +56,8 @@ switch ($action) {
                     
                     if ($result) {
                         // Create loan schedule
-                        createLoanSchedule($id, $pinjaman['plafon'], $pinjaman['tenor'], $pinjaman['bunga_per_bulan'], $pinjaman['tanggal_akad']);
+                        $frek = $pinjaman['frekuensi'] ?? 'bulanan';
+                        createLoanSchedule($id, $pinjaman['plafon'], $pinjaman['tenor'], $pinjaman['bunga_per_bulan'], $pinjaman['tanggal_akad'], $frek);
                         
                         // Update to aktif
                         query("UPDATE pinjaman SET status = 'aktif' WHERE id = ?", [$id]);

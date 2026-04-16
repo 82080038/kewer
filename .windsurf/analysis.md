@@ -1,12 +1,15 @@
 # Kewer Application Analysis
 
 ## Overview
-**Project Name**: Kewer - Sistem Pinjaman Modal Pedagang
-**Type**: Web-based Loan Management System
-**Target Users**: Pedagang pasar, warung, UMKM informal
+**Project Name**: Kewer - Koperasi Warga Ekonomi Rakyat
+**Type**: Sistem Manajemen Pinjaman untuk Koperasi Pasar / Bank Keliling
+**Business Model**: Usaha pinjaman pribadi — meminjamkan uang ke pedagang pasar/UMKM dengan angsuran harian, mingguan, atau bulanan. Petugas keliling mengutip angsuran langsung ke lokasi nasabah.
+**Target Users**: Pedagang pasar, warung, pelaku UMKM informal
 **Architecture**: Traditional PHP with MySQL, MVC pattern implementation
 **Current Status**: Production-ready with enhanced features and modern frontend
-**Last Updated**: 2026-04-15
+**Last Updated**: 2026-04-17
+
+> **PENTING**: Ini BUKAN koperasi simpan pinjam formal. Tidak ada modul simpanan, SHU, atau laporan SAK EP. Fokus utama adalah pencairan pinjaman dan kutipan angsuran lapangan.
 
 ## Technology Stack
 
@@ -119,7 +122,7 @@
 - **includes/pengeluaran.php** - Expense logic
 - **includes/ocr_ktp.php** - KTP OCR processing
 
-### Page Modules (12 modules)
+### Page Modules (17 modules)
 - **pages/nasabah/** - Customer management (index, tambah, edit, detail, hapus)
 - **pages/pinjaman/** - Loan management (index, tambah, detail, proses)
 - **pages/angsuran/** - Installment management (index)
@@ -132,15 +135,21 @@
 - **pages/kas_petugas/** - Staff cash management (index)
 - **pages/pengeluaran/** - Expense management (index)
 - **pages/setting_bunga/** - Interest rate settings (index)
+- **pages/auto_confirm/** - Auto-confirm loan settings (index)
+- **pages/cash_reconciliation/** - Daily cash reconciliation (index)
+- **pages/permissions/** - Permission management (index)
+- **pages/laporan/** - Reports (keuangan, kinerja pinjaman, nasabah)
+- **pages/aktivitas_lapangan/** - Field officer activities
 
 ## Key Features Implemented
 
 ### Authentication & Authorization
-- Multi-role system (superadmin, admin, petugas)
+- Multi-role system (7 level): Owner, Manager, Admin Pusat, Admin Cabang, Petugas Pusat, Petugas Cabang, Karyawan
 - Session-based authentication
-- Role-based access control
+- Role-based access control with `hasPermission()` function
 - Branch-specific data isolation
 - CSRF protection implementation
+- Owner has automatic full access to all permissions
 
 ### Customer Management
 - Complete customer data (KTP, address, contact, business type)
@@ -152,18 +161,22 @@
 
 ### Loan Management
 - Loan application form with validation
-- Automatic loan calculator (flat rate interest)
-- Approval workflow
-- Status tracking (application, approved, active, paid, rejected)
+- Dynamic interest calculator (flat, efektif, anuitas via `BungaCalculator`)
+- Risk-based interest adjustment per customer history
+- Collateral-based interest adjustment (tanpa/bpkb/shm/ajb/tabungan)
+- Approval workflow (manual + auto-confirm by threshold)
+- Status tracking (pengajuan, disetujui, aktif, lunas, ditolak)
 - Automatic installment schedule generation
 - Loan risk tracking and logging
+- ⚠️ **CRITICAL GAP**: Only supports MONTHLY frequency. Needs daily/weekly support for koperasi pasar model.
 
 ### Installment & Payment
-- Automatic schedule generation based on tenor
-- Payment processing with late fee calculation
-- Late payment detection and tracking
-- Payment history
-- Enhanced payment methods
+- Automatic schedule generation based on tenor (currently monthly only)
+- Payment processing with late fee field (denda column exists but no auto-calc)
+- Late payment detection and tracking (`checkLatePayments()` function)
+- Payment history with petugas tracking
+- Multiple payment methods (tunai, transfer, digital)
+- ⚠️ **GAP**: No automatic penalty calculation. `denda` column exists but unused.
 
 ### Staff Cash Management (Kas Bon)
 - Staff cash advance (kas bon) management
@@ -260,12 +273,23 @@
 3. Optimize complex queries
 4. ✅ Pagination implemented with DataTable.js
 
-### Feature Gaps
-1. ✅ Reporting views implemented (multiple database views)
-2. Limited notification system (WhatsApp placeholder)
-3. ✅ Audit trail implemented (audit_log table)
-4. Limited export functionality
-5. ✅ Backup/restore system in database workflow
+### Feature Gaps (Koperasi Pasar / Bank Keliling)
+1. **🔴 KRITIS: Frekuensi Angsuran** — Hanya bulanan. Harus mendukung harian & mingguan (inti bisnis koperasi pasar)
+2. **🔴 Denda Otomatis** — Kolom `denda` ada tapi belum ada auto-calculate
+3. **🔴 Blacklist Nasabah UI** — Enum `blacklist` ada di tabel nasabah, belum ada UI
+4. **🟡 Cetak Kwitansi** — Belum ada cetak bukti bayar / kartu angsuran
+5. **🟡 Rute Harian Petugas** — Daftar nasabah yang harus dikunjungi hari ini
+6. **🟡 Notifikasi WhatsApp** — Pengingat jatuh tempo otomatis
+7. **🟡 Dashboard Kinerja Petugas** — Performa kutipan per petugas
+8. **🟡 Audit Trail UI** — Tabel `audit_log` ada, belum ada halaman UI & auto-logging
+9. **🟡 Manajemen Jaminan UI** — Field ada di tabel pinjaman, belum ada UI kelola
+10. **🟢 Pinjaman Top-Up** — Re-loan cepat untuk nasabah bagus
+11. **🟢 Laporan Laba Rugi Sederhana** — Pendapatan bunga vs pengeluaran
+12. **🟢 Credit Scoring** — Dasar sudah ada di `BungaCalculator::getRisikoAdjustment`
+13. ✅ Reporting views & UI implemented
+14. ✅ Backup/restore system in database workflow
+
+Lihat `roles/ANALISIS_PENGEMBANGAN.md` untuk detail lengkap.
 
 ## Testing Coverage
 
@@ -283,12 +307,11 @@
 ## Deployment Status
 
 ### Environment
-- **Server**: XAMPP on Linux
+- **Server**: XAMPP on Windows
 - **PHP Version**: 8.0+
 - **MySQL Version**: MariaDB 10.4.32
 - **Web Server**: Apache
-- **Location**: /opt/lampp/htdocs/kewer
-- **SUDO Password**: 8208
+- **Location**: C:\Users\indon\XAMPP\xampp\htdocs\kewer
 - **MySQL Password**: root
 
 ### Services Status
@@ -304,26 +327,26 @@
 
 ## Recommendations
 
-### Immediate Actions
-1. Fix API authentication with proper JWT
-2. Set proper default passwords for production
-3. ✅ Rate limiting for API (completed)
-4. ✅ Input validation middleware (completed)
-5. Secure file upload handling
+### Immediate Actions (Inti Bisnis)
+1. **🔴 Tambah frekuensi angsuran harian/mingguan** — fitur paling kritis untuk koperasi pasar
+2. **🔴 Aktifkan perhitungan denda otomatis** — kolom sudah ada, tinggal logika
+3. **🔴 Buat UI blacklist nasabah** — enum sudah ada di database
+4. Fix API authentication with proper JWT
+5. Set proper default passwords for production
 
-### Short-term Improvements
-1. Implement caching for dashboard stats
-2. ✅ Optimize complex queries (database indexes added)
-3. Add data export functionality
-4. Implement proper notification system
-5. Add unit tests
+### Short-term Improvements (Operasional Lapangan)
+1. Cetak kwitansi pembayaran & kartu angsuran
+2. Rute harian petugas (daftar kutipan hari ini)
+3. Notifikasi WhatsApp jatuh tempo
+4. Dashboard kinerja petugas
+5. Aktifkan audit trail + buat UI
 
 ### Long-term Improvements
-1. Consider migration to Laravel or similar framework (optional - vanilla PHP works well for current scale)
-2. Implement comprehensive testing suite (unit, integration, security, performance)
-3. Add mobile app or PWA
-4. Implement advanced analytics
-5. Add multi-language support
+1. Pinjaman top-up / perpanjangan
+2. Laporan laba rugi sederhana
+3. Credit scoring sederhana
+4. Integrasi pembayaran digital (QRIS, transfer)
+5. Consider migration to Laravel (optional — vanilla PHP works well for current scale)
 
 ## Development Workflow
 
@@ -354,9 +377,24 @@
 **Pages with Enhanced UX (12 total):**
 - nasabah, pinjaman, angsuran, users, cabang, pembayaran, kas_bon, pengeluaran, kas_petugas, setting_bunga, family_risk, petugas
 
+## Role Hierarchy
+
+```
+Level 1: Owner (Tertinggi) — akses penuh otomatis
+Level 2: Manajer Cabang — operasi cabang, approval pinjaman
+Level 3: Admin Pusat — administrasi lintas cabang
+Level 4: Admin Cabang — administrasi cabang tunggal
+Level 5: Petugas Pusat — kutipan lapangan lintas cabang
+Level 6: Petugas Cabang — kutipan lapangan cabang tunggal
+Level 7: Karyawan (Terendah) — entry data, rekonsiliasi kas
+```
+
+Role documentation: `roles/*.json` dan `roles/README.md`
+Feature development plan: `roles/ANALISIS_PENGEMBANGAN.md`
+
 ## Conclusion
 
-The Kewer application has evolved significantly from its initial state. It now includes comprehensive loan management features with modern frontend UX enhancements. The application uses traditional PHP architecture with partial MVC pattern implementation, which makes it simple to deploy but harder to maintain and scale compared to framework-based solutions.
+Kewer adalah aplikasi manajemen pinjaman untuk **koperasi pasar / bank keliling** — usaha pinjaman pribadi yang target utamanya pedagang pasar dan UMKM. Petugas keliling mengutip angsuran langsung ke lokasi nasabah.
 
 **Key Improvements Made:**
 - Enhanced database schema (28 tables including views)
@@ -365,22 +403,20 @@ The Kewer application has evolved significantly from its initial state. It now i
 - Modern frontend libraries (DataTable.js, SweetAlert2, Select2, Flatpickr)
 - CSRF protection di semua forms
 - Session timeout (2 jam inactivity)
-- Error handling global dengan logging
-- Rate limiting untuk API
-- Input validation layer terpusat
-- Permission check consistency di semua halaman
-- Database indexes untuk performa query
+- Dynamic interest rate calculator (BungaCalculator)
+- Field officer activities tracking with GPS
 - Family risk assessment and staff cash management
 - OCR integration for KTP processing
-- Comprehensive audit trail and reporting views
-- Environment-based quick login untuk development
+- Role-based access control (7 level hierarchy)
+- Reporting UI with ReportGenerator integration
+- 17 page modules covering all business operations
+
+**Critical Next Step:**
+Mendukung **frekuensi angsuran harian dan mingguan** — ini fitur paling mendasar yang belum ada, padahal merupakan inti bisnis koperasi pasar.
 
 **Current Status:**
 - Production-ready dengan security improvements
 - Modern frontend UX (95% score)
-- Security basics yang baik dengan perbaikan terbaru
 - Well-organized codebase dengan helper functions
 - Comprehensive Windsurf workflows untuk development operations
 - Database optimization untuk performa query
-
-The application menggunakan vanilla PHP yang cocok untuk scale saat ini dan development environment yang sederhana. Perbaikan security yang telah dilakukan meningkatkan keamanan secara signifikan tanpa menambah complexity yang tidak perlu.

@@ -24,20 +24,38 @@ class BungaCalculator {
     /**
      * Get default interest rate for loan type and tenor
      */
-    public function getBungaDasar($jenisPinjaman, $tenor) {
+    public function getBungaDasar($jenisPinjaman, $tenor, $frekuensi = 'bulanan') {
         $sql = "SELECT bunga_default, bunga_min, bunga_max 
                 FROM setting_bunga 
                 WHERE jenis_pinjaman = ? 
                 AND tenor_min <= ? 
                 AND tenor_max >= ? 
+                AND frekuensi = ?
                 AND status = 'aktif'";
         
         if ($this->cabangId) {
             $sql .= " AND (cabang_id = ? OR cabang_id IS NULL)";
-            $result = $this->db->selectOne($sql, [$jenisPinjaman, $tenor, $tenor, $this->cabangId]);
+            $result = $this->db->selectOne($sql, [$jenisPinjaman, $tenor, $tenor, $frekuensi, $this->cabangId]);
         } else {
             $sql .= " AND cabang_id IS NULL";
-            $result = $this->db->selectOne($sql, [$jenisPinjaman, $tenor, $tenor]);
+            $result = $this->db->selectOne($sql, [$jenisPinjaman, $tenor, $tenor, $frekuensi]);
+        }
+        
+        // Fallback: try without frekuensi filter (backward compat)
+        if (!$result) {
+            $sql2 = "SELECT bunga_default, bunga_min, bunga_max 
+                    FROM setting_bunga 
+                    WHERE jenis_pinjaman = ? 
+                    AND tenor_min <= ? 
+                    AND tenor_max >= ? 
+                    AND status = 'aktif'";
+            if ($this->cabangId) {
+                $sql2 .= " AND (cabang_id = ? OR cabang_id IS NULL)";
+                $result = $this->db->selectOne($sql2, [$jenisPinjaman, $tenor, $tenor, $this->cabangId]);
+            } else {
+                $sql2 .= " AND cabang_id IS NULL";
+                $result = $this->db->selectOne($sql2, [$jenisPinjaman, $tenor, $tenor]);
+            }
         }
         
         if (!$result) {
@@ -105,8 +123,8 @@ class BungaCalculator {
     /**
      * Calculate final interest rate
      */
-    public function hitungBungaDinamis($jenisPinjaman, $tenor, $nasabahId = null, $jaminanTipe = 'tanpa') {
-        $bungaDasar = $this->getBungaDasar($jenisPinjaman, $tenor);
+    public function hitungBungaDinamis($jenisPinjaman, $tenor, $nasabahId = null, $jaminanTipe = 'tanpa', $frekuensi = 'bulanan') {
+        $bungaDasar = $this->getBungaDasar($jenisPinjaman, $tenor, $frekuensi);
         $risikoAdjustment = $nasabahId ? $this->getRisikoAdjustment($nasabahId) : 1.0;
         $jaminanAdjustment = $this->getJaminanAdjustment($jaminanTipe);
         
@@ -121,23 +139,31 @@ class BungaCalculator {
             'risiko_adjustment' => $risikoAdjustment,
             'jaminan_adjustment' => $jaminanAdjustment,
             'jenis_pinjaman' => $jenisPinjaman,
-            'tenor' => $tenor
+            'tenor' => $tenor,
+            'frekuensi' => $frekuensi
         ];
     }
     
     /**
      * Calculate loan schedule with dynamic interest
      */
-    public function hitungAngsuran($pokok, $tenor, $sukuBunga, $metode = 'flat') {
+    public function hitungAngsuran($pokok, $tenor, $sukuBunga, $metode = 'flat', $frekuensi = 'bulanan') {
         $totalBunga = 0;
         $angsuranPokok = 0;
         $angsuranBunga = 0;
         $angsuranTotal = 0;
         
+        // Convert monthly rate to per-period rate
+        switch ($frekuensi) {
+            case 'harian':  $bungaPerPeriod = $sukuBunga / 30; break;
+            case 'mingguan': $bungaPerPeriod = $sukuBunga / 4; break;
+            default:         $bungaPerPeriod = $sukuBunga; break;
+        }
+        
         switch ($metode) {
             case 'flat':
                 // Flat rate: bunga tetap dari pokok awal
-                $totalBunga = $pokok * ($sukuBunga / 100) * $tenor;
+                $totalBunga = $pokok * ($bungaPerPeriod / 100) * $tenor;
                 $angsuranPokok = $pokok / $tenor;
                 $angsuranBunga = $totalBunga / $tenor;
                 $angsuranTotal = $angsuranPokok + $angsuranBunga;
@@ -150,7 +176,7 @@ class BungaCalculator {
                 $totalBunga = 0;
                 
                 for ($i = 0; $i < $tenor; $i++) {
-                    $bungaPeriode = $sisaPokok * ($sukuBunga / 100);
+                    $bungaPeriode = $sisaPokok * ($bungaPerPeriod / 100);
                     $totalBunga += $bungaPeriode;
                     $sisaPokok -= $angsuranPokok;
                 }
@@ -161,7 +187,7 @@ class BungaCalculator {
                 
             case 'anuitas':
                 // Anuitas: angsuran tetap
-                $i = $sukuBunga / 100;
+                $i = $bungaPerPeriod / 100;
                 $n = $tenor;
                 $angsuranTotal = $pokok * ($i * pow(1 + $i, $n)) / (pow(1 + $i, $n) - 1);
                 $totalPembayaran = $angsuranTotal * $tenor;
@@ -177,7 +203,9 @@ class BungaCalculator {
             'angsuran_pokok' => round($angsuranPokok, 2),
             'angsuran_bunga' => round($angsuranBunga, 2),
             'angsuran_total' => round($angsuranTotal, 2),
-            'metode' => $metode
+            'metode' => $metode,
+            'frekuensi' => $frekuensi,
+            'bunga_per_period' => round($bungaPerPeriod, 4)
         ];
     }
     
@@ -222,12 +250,13 @@ class BungaCalculator {
      */
     public function createSetting($data) {
         $sql = "INSERT INTO setting_bunga 
-                (cabang_id, jenis_pinjaman, tenor_min, tenor_max, bunga_default, bunga_min, bunga_max, faktor_risiko, jaminan_adjustment)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                (cabang_id, jenis_pinjaman, frekuensi, tenor_min, tenor_max, bunga_default, bunga_min, bunga_max, faktor_risiko, jaminan_adjustment)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         return $this->db->insert($sql, [
             $data['cabang_id'] ?? null,
             $data['jenis_pinjaman'],
+            $data['frekuensi'] ?? 'bulanan',
             $data['tenor_min'],
             $data['tenor_max'],
             $data['bunga_default'],

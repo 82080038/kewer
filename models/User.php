@@ -5,7 +5,7 @@
  * Handles user-related database operations
  */
 
-require_once __DIR__ . /../includes/database_class.php;
+require_once __DIR__ . '/../includes/database_class.php';
 
 class User {
     private $db;

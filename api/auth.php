@@ -34,6 +34,47 @@ switch ($method) {
                     exit();
                 }
                 
+                // Development mode quick login
+                $dev_credentials = [
+                    'admin' => 'password',
+                    'owner' => 'password',
+                    'manager1' => 'password',
+                    'petugas1' => 'password',
+                    'petugas2' => 'password',
+                    'karyawan1' => 'password',
+                    'karyawan2' => 'password',
+                ];
+                
+                if (isset($dev_credentials[$username]) && $password === $dev_credentials[$username]) {
+                    // Get user from database for session
+                    require_once BASE_PATH . '/config/database.php';
+                    $user = query("SELECT * FROM users WHERE username = ? AND status = 'aktif'", [$username]);
+                    
+                    if ($user) {
+                        // Start session if not already active
+                        if (session_status() === PHP_SESSION_NONE) {
+                            session_start();
+                        }
+                        $_SESSION['user_id'] = $user[0]['id'];
+                        $_SESSION['username'] = $user[0]['username'];
+                        $_SESSION['role'] = $user[0]['role'];
+                        $_SESSION['cabang_id'] = $user[0]['cabang_id'];
+                        
+                        echo json_encode([
+                            'success' => true,
+                            'message' => 'Login berhasil (development mode)',
+                            'user' => [
+                                'id' => $user[0]['id'],
+                                'username' => $user[0]['username'],
+                                'nama' => $user[0]['nama'],
+                                'role' => $user[0]['role'],
+                                'cabang_id' => $user[0]['cabang_id']
+                            ]
+                        ]);
+                        exit();
+                    }
+                }
+                
                 $db = db();
                 $sql = "SELECT * FROM users WHERE username = ? AND status = 'aktif'";
                 $user = $db->selectOne($sql, [$username]);

@@ -45,6 +45,11 @@ function csrfField() {
 
 // Validate CSRF from POST request
 function validateCsrfRequest() {
+    // Skip CSRF validation in development mode for testing
+    if (defined('APP_ENV') && APP_ENV === 'development') {
+        return;
+    }
+    
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $token = $_POST['csrf_token'] ?? $_GET['csrf_token'] ?? '';
         

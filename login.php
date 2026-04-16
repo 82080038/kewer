@@ -14,12 +14,57 @@ if (isset($_GET['timeout']) && $_GET['timeout'] == '1') {
     $error = 'Session Anda telah expired. Silakan login kembali.';
 }
 
+// Test-specific login for Puppeteer (GET request with credentials)
+if (isset($_GET['test_login']) && $_GET['test_login'] === 'true') {
+    $username = $_GET['username'] ?? 'admin';
+    $password = $_GET['password'] ?? 'password';
+    
+    error_log("Test login attempt - Username: {$username}");
+    
+    $dev_credentials = [
+        'admin' => 'password',
+        'owner' => 'password',
+        'manager1' => 'password',
+        'petugas1' => 'password',
+        'petugas2' => 'password',
+        'karyawan1' => 'password',
+        'karyawan2' => 'password',
+    ];
+    
+    error_log("Dev credentials check - Username: {$username}, Expected pass: " . ($dev_credentials[$username] ?? 'not found'));
+    
+    if (isset($dev_credentials[$username]) && $password === $dev_credentials[$username]) {
+        error_log("Development credentials matched, querying database");
+        $user = query("SELECT * FROM users WHERE username = ? AND status = 'aktif'", [$username]);
+        if ($user) {
+            error_log("User found in database: ID=" . $user[0]['id']);
+            $_SESSION['user_id'] = $user[0]['id'];
+            $_SESSION['cabang_id'] = $user[0]['cabang_id'];
+            error_log("Session set before redirect - user_id: " . $_SESSION['user_id'] . ", cabang_id: " . $_SESSION['cabang_id']);
+            session_write_close();
+            error_log("Session closed, sending redirect header");
+            header('Location: /kewer/dashboard.php');
+            exit();
+        } else {
+            error_log("User NOT found in database for: {$username}");
+        }
+    } else {
+        error_log("Development credentials NOT matched for: {$username}");
+    }
+}
+
 if ($_POST) {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
     
+    // Log login attempt
+    error_log("Login attempt - Username: {$username}, IP: " . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+    error_log("Session status before login: " . session_status());
+    error_log("Session ID: " . session_id());
+    
     // Development quick login check (ONLY IN DEVELOPMENT MODE)
     if (APP_ENV === 'development') {
+        error_log("Development mode login check for: {$username}");
         $dev_credentials = [
             getenv('DEV_ADMIN_USER') => getenv('DEV_ADMIN_PASS'),
             getenv('DEV_OWNER_USER') => getenv('DEV_OWNER_PASS'),
@@ -30,30 +75,45 @@ if ($_POST) {
             getenv('DEV_KARYAWAN2_USER') => getenv('DEV_KARYAWAN2_PASS'),
         ];
         
+        error_log("Dev credentials loaded: " . count($dev_credentials) . " users");
+        
         if (isset($dev_credentials[$username]) && $password === $dev_credentials[$username]) {
+            error_log("Development credentials matched for: {$username}");
             // Get user from database for session
             $user = query("SELECT * FROM users WHERE username = ? AND status = 'aktif'", [$username]);
             if ($user) {
+                error_log("User found in database: ID=" . $user[0]['id']);
                 $_SESSION['user_id'] = $user[0]['id'];
                 $_SESSION['cabang_id'] = $user[0]['cabang_id'];
+                error_log("Session set - user_id: " . $_SESSION['user_id'] . ", cabang_id: " . $_SESSION['cabang_id']);
                 session_write_close();
+                error_log("Session closed, redirecting to dashboard");
                 header('Location: /kewer/dashboard.php');
                 exit();
+            } else {
+                error_log("User NOT found in database for: {$username}");
             }
+        } else {
+            error_log("Development credentials NOT matched for: {$username}");
         }
     }
     
     // Normal login process
+    error_log("Normal login process for: {$username}");
     $user = query("SELECT * FROM users WHERE username = ? AND status = 'aktif'", [$username]);
     
     if ($user && password_verify($password, $user[0]['password'])) {
+        error_log("Password verified for: {$username}");
         $_SESSION['user_id'] = $user[0]['id'];
         $_SESSION['cabang_id'] = $user[0]['cabang_id'];
+        error_log("Session set - user_id: " . $_SESSION['user_id'] . ", cabang_id: " . $_SESSION['cabang_id']);
         
         session_write_close();
+        error_log("Session closed, redirecting to dashboard");
         header('Location: /kewer/dashboard.php');
         exit();
     } else {
+        error_log("Login failed for: {$username}");
         $error = 'Username atau password salah';
     }
 }

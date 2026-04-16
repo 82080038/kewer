@@ -1,7 +1,6 @@
 module.exports = {
   launchOptions: {
     headless: false,
-    executablePath: '/usr/bin/google-chrome', // Adjust based on your system
     args: [
       '--start-maximized',
       '--disable-save-password-bubble',

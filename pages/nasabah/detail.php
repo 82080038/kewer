@@ -27,6 +27,32 @@ if (!$nasabah) {
 
 $nasabah = $nasabah[0];
 
+// Handle blacklist/unblacklist action
+if ($_POST && isset($_POST['blacklist_action'])) {
+    $aksi = $_POST['blacklist_action'];
+    $alasan = trim($_POST['alasan'] ?? '');
+    
+    if (in_array($aksi, ['blacklist', 'unblacklist']) && $alasan !== '') {
+        $result = toggleBlacklist($id, $aksi, $alasan);
+        if ($result) {
+            $_SESSION['success'] = ($aksi === 'blacklist') ? 'Nasabah berhasil di-blacklist' : 'Nasabah berhasil di-unblacklist';
+            header("Location: detail.php?id=$id");
+            exit();
+        } else {
+            $_SESSION['error'] = 'Gagal mengubah status nasabah';
+        }
+    } else {
+        $_SESSION['error'] = 'Alasan harus diisi';
+    }
+    // Refresh nasabah data
+    $nasabah_refresh = query("SELECT n.*, c.nama_cabang FROM nasabah n LEFT JOIN cabang c ON n.cabang_id = c.id WHERE n.id = ?", [$id]);
+    if ($nasabah_refresh) $nasabah = $nasabah_refresh[0];
+}
+
+// Get blacklist history
+$blacklist_log = query("SELECT bl.*, u.nama as nama_petugas FROM blacklist_log bl LEFT JOIN users u ON bl.dilakukan_oleh = u.id WHERE bl.nasabah_id = ? ORDER BY bl.created_at DESC", [$id]);
+if (!is_array($blacklist_log)) $blacklist_log = [];
+
 // Get loan history
 $pinjaman = query("
     SELECT * FROM pinjaman
@@ -100,6 +126,15 @@ if (!is_array($pinjaman_aktif)) {
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Detail Nasabah</h1>
                     <div>
+                        <?php if ($nasabah['status'] !== 'blacklist'): ?>
+                            <button class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#blacklistModal">
+                                <i class="bi bi-slash-circle"></i> Blacklist
+                            </button>
+                        <?php else: ?>
+                            <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#unblacklistModal">
+                                <i class="bi bi-check-circle"></i> Unblacklist
+                            </button>
+                        <?php endif; ?>
                         <a href="edit.php?id=<?php echo $nasabah['id']; ?>" class="btn btn-warning me-2">
                             <i class="bi bi-pencil"></i> Edit
                         </a>
@@ -257,6 +292,7 @@ if (!is_array($pinjaman_aktif)) {
                                         <tr>
                                             <th>Kode Pinjaman</th>
                                             <th>Plafon</th>
+                                            <th>Frekuensi</th>
                                             <th>Tenor</th>
                                             <th>Bunga/Bulan</th>
                                             <th>Tanggal Akad</th>
@@ -269,7 +305,13 @@ if (!is_array($pinjaman_aktif)) {
                                             <tr>
                                                 <td><?php echo $p['kode_pinjaman']; ?></td>
                                                 <td><?php echo formatRupiah($p['plafon']); ?></td>
-                                                <td><?php echo $p['tenor']; ?> bulan</td>
+                                                <td>
+                                                    <?php $pfrek = $p['frekuensi'] ?? 'bulanan'; ?>
+                                                    <span class="badge bg-<?php echo ['harian'=>'warning','mingguan'=>'info','bulanan'=>'primary'][$pfrek] ?? 'primary'; ?>">
+                                                        <?php echo getFrequencyLabel($pfrek); ?>
+                                                    </span>
+                                                </td>
+                                                <td><?php echo $p['tenor']; ?> <?php echo getFrequencyPeriodLabel($pfrek); ?></td>
                                                 <td><?php echo $p['bunga_per_bulan']; ?>%</td>
                                                 <td><?php echo formatDate($p['tanggal_akad']); ?></td>
                                                 <td>
@@ -299,10 +341,122 @@ if (!is_array($pinjaman_aktif)) {
                         <?php endif; ?>
                     </div>
                 </div>
+                <!-- Blacklist History -->
+                <?php if (!empty($blacklist_log)): ?>
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h5><i class="bi bi-shield-exclamation"></i> Riwayat Blacklist</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Tanggal</th>
+                                        <th>Aksi</th>
+                                        <th>Alasan</th>
+                                        <th>Oleh</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($blacklist_log as $bl): ?>
+                                    <tr>
+                                        <td><?php echo formatDate($bl['created_at'], 'd M Y H:i'); ?></td>
+                                        <td>
+                                            <?php if ($bl['aksi'] === 'blacklist'): ?>
+                                                <span class="badge bg-danger">Blacklist</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-success">Unblacklist</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($bl['alasan']); ?></td>
+                                        <td><?php echo $bl['nama_petugas'] ?? '-'; ?></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
             </main>
         </div>
     </div>
     
+    <!-- Blacklist Modal -->
+    <div class="modal fade" id="blacklistModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST">
+                    <input type="hidden" name="blacklist_action" value="blacklist">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title"><i class="bi bi-slash-circle"></i> Blacklist Nasabah</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            Anda akan mem-blacklist <strong><?php echo $nasabah['nama']; ?></strong>. 
+                            Nasabah yang di-blacklist tidak dapat mengajukan pinjaman baru.
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Alasan Blacklist *</label>
+                            <textarea name="alasan" class="form-control" rows="3" required placeholder="Masukkan alasan blacklist..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-slash-circle"></i> Blacklist
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Unblacklist Modal -->
+    <div class="modal fade" id="unblacklistModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST">
+                    <input type="hidden" name="blacklist_action" value="unblacklist">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title"><i class="bi bi-check-circle"></i> Unblacklist Nasabah</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            Anda akan menghapus status blacklist dari <strong><?php echo $nasabah['nama']; ?></strong>.
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Alasan Unblacklist *</label>
+                            <textarea name="alasan" class="form-control" rows="3" required placeholder="Masukkan alasan unblacklist..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Unblacklist
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        <?php if (isset($_SESSION['success'])): ?>
+            Swal.fire({icon: 'success', title: 'Berhasil', text: '<?php echo $_SESSION['success']; ?>', timer: 3000, showConfirmButton: false});
+            <?php unset($_SESSION['success']); ?>
+        <?php endif; ?>
+        <?php if (isset($_SESSION['error'])): ?>
+            Swal.fire({icon: 'error', title: 'Gagal', text: '<?php echo $_SESSION['error']; ?>', timer: 3000, showConfirmButton: false});
+            <?php unset($_SESSION['error']); ?>
+        <?php endif; ?>
+    </script>
 </body>
 </html>

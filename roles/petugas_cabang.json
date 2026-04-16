@@ -1,0 +1,222 @@
+{
+  "role": {
+    "name": "Petugas Cabang",
+    "code": "petugas_cabang",
+    "hierarchy_level": 6,
+    "description": "Branch field officer with branch-specific field activities and payment collection",
+    "status": "aktif"
+  },
+  "access_scope": {
+    "type": "cabang",
+    "branches": "single",
+    "data_visibility": "branch_specific"
+  },
+  "application_standards": {
+    "language": {
+      "ui_language": "Bahasa Indonesia",
+      "labels": "Indonesian",
+      "messages": "Indonesian",
+      "notifications": "Indonesian"
+    },
+    "formatting": {
+      "currency": {
+        "symbol": "Rp",
+        "format": "Rp1.000.000",
+        "thousands_separator": ".",
+        "decimal_separator": ",",
+        "php_function": "number_format($value, 0, ',', '.')"
+      },
+      "date": {
+        "display_format": "d F Y",
+        "example": "16 April 2026",
+        "database_format": "Y-m-d",
+        "example_db": "2026-04-16",
+        "library": "Flatpickr",
+        "altFormat": "d F Y"
+      },
+      "number": {
+        "thousands_separator": ".",
+        "decimal_separator": ",",
+        "example": "1.000,50"
+      }
+    }
+  },
+  "permissions": {
+    "automatic_grant": false,
+    "can_manage": []
+  },
+  "modules": {
+    "dashboard": {
+      "access": true,
+      "features": [
+        "View branch statistics",
+        "View total nasabah count in branch",
+        "View total pinjaman count in branch",
+        "View outstanding balance in branch",
+        "View recent activities in branch"
+      ]
+    },
+    "nasabah": {
+      "access": true,
+      "permissions": ["nasabah.read"],
+      "features": [
+        "View nasabah in branch",
+        "View nasabah details",
+        "View nasabah contact information"
+      ]
+    },
+    "pinjaman": {
+      "access": true,
+      "permissions": ["pinjaman.read"],
+      "features": [
+        "View pinjaman in branch",
+        "View pinjaman details",
+        "View pinjaman schedules (harian/mingguan/bulanan)",
+        "Cetak kartu angsuran",
+        "Cetak kwitansi pembayaran"
+      ]
+    },
+    "angsuran": {
+      "access": true,
+      "permissions": ["angsuran.read", "manage_pembayaran"],
+      "features": [
+        "View angsuran in branch",
+        "Record payments",
+        "View payment history",
+        "View late payments",
+        "View auto-calculated denda (penalty)",
+        "Cetak kwitansi pembayaran"
+      ]
+    },
+    "field_activities": {
+      "access": true,
+      "permissions": ["angsuran.read"],
+      "features": [
+        "Log field activities",
+        "View activity reports",
+        "GPS tracking",
+        "Photo documentation"
+      ]
+    },
+    "kas_petugas": {
+      "access": true,
+      "permissions": ["kas_petugas.read", "kas_petugas.update"],
+      "features": [
+        "View kas petugas balance",
+        "Add kas petugas",
+        "View kas petugas history",
+        "Setoran kas petugas",
+        "View setoran history"
+      ]
+    }
+  },
+  "tasks_and_responsibilities": {
+    "field_activities": [
+      "Conduct branch field surveys",
+      "Customer relationship management",
+      "Branch market research",
+      "Promotional activities in branch area",
+      "Customer follow-up"
+    ],
+    "payment_collection": [
+      "Collect loan payments in branch area",
+      "Record payments in system",
+      "Handle customer inquiries",
+      "Provide payment receipts",
+      "Follow up on late payments"
+    ],
+    "customer_service": [
+      "Assist customers with applications",
+      "Provide product information",
+      "Handle customer complaints",
+      "Maintain customer relationships",
+      "Identify customer needs"
+    ],
+    "reporting": [
+      "Submit daily activity reports",
+      "Report collection status",
+      "Report customer feedback",
+      "Report field observations",
+      "Track performance metrics"
+    ]
+  },
+  "rights": {
+    "field_access": [
+      "Access to field activities module",
+      "Log field activities",
+      "GPS tracking access",
+      "Photo documentation access"
+    ],
+    "payment_access": [
+      "Record payments",
+      "View payment history",
+      "Access customer payment information"
+    ],
+    "cash_management": [
+      "Manage kas petugas",
+      "Record setoran",
+      "View kas history"
+    ],
+    "customer_access": [
+      "View customer information",
+      "Access customer contact details",
+      "View customer loan information"
+    ]
+  },
+  "obligations": {
+    "field_work": [
+      "Complete assigned field activities",
+      "Maintain accurate activity logs",
+      "Provide timely reports",
+      "Follow standard procedures",
+      "Maintain professional conduct"
+    ],
+    "collection": [
+      "Collect payments as scheduled",
+      "Record payments accurately",
+      "Provide receipts to customers",
+      "Follow up on late payments",
+      "Handle cash securely"
+    ],
+    "customer_service": [
+      "Provide excellent customer service",
+      "Maintain professional relationships",
+      "Handle customer inquiries promptly",
+      "Resolve customer issues",
+      "Maintain customer confidentiality"
+    ],
+    "reporting": [
+      "Submit accurate daily reports",
+      "Report issues promptly",
+      "Maintain activity documentation",
+      "Track performance metrics",
+      "Provide feedback on market conditions"
+    ]
+  },
+  "simulation_parameters": {
+    "login": {
+      "username": "petugas1",
+      "password": "password",
+      "test_login_url": "/login.php?test_login=true&username=petugas1&password=password"
+    },
+    "daily_activities": [
+      "Review daily collection targets",
+      "Conduct field activities",
+      "Collect payments from customers",
+      "Record payments in system",
+      "Submit daily activity report"
+    ],
+    "weekly_activities": [
+      "Review weekly collection performance",
+      "Plan field activities for the week",
+      "Follow up on late payments",
+      "Submit weekly activity report"
+    ],
+    "monthly_activities": [
+      "Review monthly collection performance",
+      "Analyze field activity data",
+      "Plan monthly field activities",
+      "Submit monthly performance report"
+    ]
+  }
+}
