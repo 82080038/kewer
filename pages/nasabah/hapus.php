@@ -1,6 +1,13 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
+
+// Permission check
+if (!hasPermission('manage_nasabah')) {
+    header('Location: ' . baseUrl('dashboard.php'));
+    exit();
+}
 
 $id = $_GET['id'];
 $cabang_id = getCurrentCabang();
@@ -16,7 +23,8 @@ if (!$nasabah) {
 $nasabah = $nasabah[0];
 
 // Check if nasabah has active loans
-$active_loans = query("SELECT COUNT(*) as count FROM pinjaman WHERE nasabah_id = ? AND status IN ('pengajuan', 'disetujui', 'aktif')", [$id])[0]['count'];
+$active_loans_result = query("SELECT COUNT(*) as count FROM pinjaman WHERE nasabah_id = ? AND status IN ('pengajuan', 'disetujui', 'aktif')", [$id]);
+$active_loans = is_array($active_loans_result) && isset($active_loans_result[0]) ? $active_loans_result[0]['count'] : 0;
 
 if ($active_loans > 0) {
     $_SESSION['error'] = 'Tidak dapat menghapus nasabah yang masih memiliki pinjaman aktif';

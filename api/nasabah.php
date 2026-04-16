@@ -1,5 +1,6 @@
 <?php
-require_once '../includes/functions.php';
+require_once __DIR__ . '/../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 
 // Get current cabang from query parameter (for API)
 $cabang_id = $_GET['cabang_id'] ?? null;
@@ -55,6 +56,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
         
         $nama = $input['nama'] ?? '';
         $alamat = $input['alamat'] ?? '';
+        $province_id = $input['province_id'] ?? '';
+        $regency_id = $input['regency_id'] ?? '';
+        $district_id = $input['district_id'] ?? '';
+        $village_id = $input['village_id'] ?? '';
         $ktp = $input['ktp'] ?? '';
         $telp = $input['telp'] ?? '';
         $jenis_usaha = $input['jenis_usaha'] ?? '';
@@ -85,8 +90,8 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $kode_nasabah = generateKode('NSB', 'nasabah', 'kode_nasabah');
         
         // Insert nasabah
-        $result = query("INSERT INTO nasabah (cabang_id, kode_nasabah, nama, alamat, ktp, telp, jenis_usaha, lokasi_pasar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [
-            $cabang_id, $kode_nasabah, $nama, $alamat, $ktp, $telp, $jenis_usaha, $lokasi_pasar
+        $result = query("INSERT INTO nasabah (cabang_id, kode_nasabah, nama, alamat, province_id, regency_id, district_id, village_id, ktp, telp, jenis_usaha, lokasi_pasar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+            $cabang_id, $kode_nasabah, $nama, $alamat, $province_id ?: null, $regency_id ?: null, $district_id ?: null, $village_id ?: null, $ktp, $telp, $jenis_usaha, $lokasi_pasar
         ]);
         
         if ($result) {
@@ -125,7 +130,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $fields = [];
         $params = [];
         
-        $updatable_fields = ['nama', 'alamat', 'telp', 'jenis_usaha', 'lokasi_pasar', 'status'];
+        $updatable_fields = ['nama', 'alamat', 'province_id', 'regency_id', 'district_id', 'village_id', 'telp', 'jenis_usaha', 'lokasi_pasar', 'status'];
         
         foreach ($updatable_fields as $field) {
             if (isset($input[$field])) {
@@ -145,7 +150,8 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $result = query("UPDATE nasabah SET " . implode(', ', $fields) . " WHERE id = ?", $params);
         
         if ($result) {
-            $updated_nasabah = query("SELECT * FROM nasabah WHERE id = ?", [$nasabah_id])[0];
+            $updated_nasabah_result = query("SELECT * FROM nasabah WHERE id = ?", [$nasabah_id]);
+            $updated_nasabah = is_array($updated_nasabah_result) && isset($updated_nasabah_result[0]) ? $updated_nasabah_result[0] : null;
             echo json_encode([
                 'success' => true,
                 'message' => 'Data nasabah berhasil diperbarui',
@@ -174,7 +180,8 @@ switch ($_SERVER['REQUEST_METHOD']) {
             break;
         }
         
-        $active_loans = query("SELECT COUNT(*) as count FROM pinjaman WHERE nasabah_id = ? AND status IN ('pengajuan', 'disetujui', 'aktif')", [$nasabah_id])[0]['count'];
+        $active_loans_result = query("SELECT COUNT(*) as count FROM pinjaman WHERE nasabah_id = ? AND status IN ('pengajuan', 'disetujui', 'aktif')", [$nasabah_id]);
+        $active_loans = is_array($active_loans_result) && isset($active_loans_result[0]) ? $active_loans_result[0]['count'] : 0;
         
         if ($active_loans > 0) {
             http_response_code(400);
@@ -200,4 +207,5 @@ switch ($_SERVER['REQUEST_METHOD']) {
         echo json_encode(['error' => 'Method not allowed']);
         break;
 }
+?>
 ?>

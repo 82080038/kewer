@@ -1,7 +1,13 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
-requireRole('superadmin');
+
+// Only users with petugas management permission can access
+if (!hasPermission('manage_petugas') && !hasPermission('view_petugas')) {
+    header('Location: ' . baseUrl('dashboard.php'));
+    exit();
+}
 
 $cabang_id = getCurrentCabang();
 $search = $_GET['search'] ?? '';
@@ -33,16 +39,21 @@ $where_clause = "WHERE " . implode(" AND ", $where);
 
 // Get petugas data
 $petugas = query("
-    SELECT u.*, c.nama_cabang 
-    FROM users u 
-    LEFT JOIN cabang c ON u.cabang_id = c.id 
-    $where_clause 
+    SELECT u.*, c.nama_cabang
+    FROM users u
+    LEFT JOIN cabang c ON u.cabang_id = c.id
+    $where_clause
     ORDER BY u.created_at DESC
 ", $params);
 
+// Ensure petugas is an array
+if (!is_array($petugas)) {
+    $petugas = [];
+}
+
 // Get statistics
-$stats = query("
-    SELECT 
+$stats_result = query("
+    SELECT
         COUNT(*) as total,
         SUM(CASE WHEN role = 'superadmin' THEN 1 ELSE 0 END) as superadmin,
         SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) as admin,
@@ -50,10 +61,19 @@ $stats = query("
         SUM(CASE WHEN status = 'aktif' THEN 1 ELSE 0 END) as aktif,
         SUM(CASE WHEN status = 'nonaktif' THEN 1 ELSE 0 END) as nonaktif
     FROM users
-", [])[0];
+", []);
+$stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] : ['total' => 0, 'superadmin' => 0, 'admin' => 0, 'petugas' => 0, 'aktif' => 0, 'nonaktif' => 0];
 
 // Get cabang list
 $cabang_list = query("SELECT * FROM cabang WHERE status = 'aktif' ORDER BY nama_cabang");
+if (!is_array($cabang_list)) {
+    $cabang_list = [];
+}
+
+// Ensure petugas is an array
+if (!is_array($petugas)) {
+    $petugas = [];
+}
 ?>
 
 <!DOCTYPE html>
@@ -61,15 +81,16 @@ $cabang_list = query("SELECT * FROM cabang WHERE status = 'aktif' ORDER BY nama_
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Petugas - Kewer</title>
+    <title>Data Petugas - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php">Kewer</a>
+            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
             <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="../../dashboard.php">Dashboard</a>
                 <a class="nav-link" href="../../logout.php">Logout</a>
             </div>
         </div>
@@ -105,11 +126,20 @@ $cabang_list = query("SELECT * FROM cabang WHERE status = 'aktif' ORDER BY nama_
                                 <i class="bi bi-person-badge"></i> Petugas
                             </a>
                         </li>
+                        <?php if (hasPermission('manage_users') || hasPermission('view_users')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../users/index.php">
+                                <i class="bi bi-person-gear"></i> Users
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('manage_cabang') || hasPermission('view_cabang')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="../cabang/index.php">
                                 <i class="bi bi-building"></i> Cabang
                             </a>
                         </li>
+                        <?php endif; ?>
                     </ul>
                 </div>
             </nav>

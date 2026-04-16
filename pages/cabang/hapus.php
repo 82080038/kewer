@@ -1,15 +1,17 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
 
-if (!hasRole('superadmin')) {
-    header('Location: ../../dashboard.php');
+// Only users with manage_cabang permission can delete cabang
+if (!hasPermission('manage_cabang')) {
+    header('Location: ' . baseUrl('dashboard.php'));
     exit();
 }
 
 $id = $_GET['id'] ?? '';
 if (!$id) {
-    header('Location: index.php');
+    header('Location: ' . baseUrl('pages/cabang/index.php'));
     exit();
 }
 
@@ -21,8 +23,11 @@ if (!$cabang) {
 $cabang = $cabang[0];
 
 // Check if cabang has users or other dependencies
-$users_count = query("SELECT COUNT(*) as count FROM users WHERE cabang_id = ?", [$id])[0]['count'];
-$nasabah_count = query("SELECT COUNT(*) as count FROM nasabah WHERE cabang_id = ?", [$id])[0]['count'];
+$users_count_result = query("SELECT COUNT(*) as count FROM users WHERE cabang_id = ?", [$id]);
+$users_count = is_array($users_count_result) && isset($users_count_result[0]) ? $users_count_result[0]['count'] : 0;
+
+$nasabah_count_result = query("SELECT COUNT(*) as count FROM nasabah WHERE cabang_id = ?", [$id]);
+$nasabah_count = is_array($nasabah_count_result) && isset($nasabah_count_result[0]) ? $nasabah_count_result[0]['count'] : 0;
 
 if ($users_count > 0 || $nasabah_count > 0) {
     $_SESSION['error'] = 'Cabang tidak dapat dihapus karena masih memiliki data terkait';

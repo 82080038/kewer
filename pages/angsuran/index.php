@@ -1,5 +1,6 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
 
 $cabang_id = getCurrentCabang();
@@ -34,16 +35,21 @@ $where_clause = "WHERE " . implode(" AND ", $where);
 // Get angsuran data
 $angsuran = query("
     SELECT a.*, n.nama, n.kode_nasabah, p.kode_pinjaman, p.tenor
-    FROM angsuran a 
-    JOIN pinjaman p ON a.pinjaman_id = p.id 
-    JOIN nasabah n ON p.nasabah_id = n.id 
-    $where_clause 
+    FROM angsuran a
+    JOIN pinjaman p ON a.pinjaman_id = p.id
+    JOIN nasabah n ON p.nasabah_id = n.id
+    $where_clause
     ORDER BY a.jatuh_tempo ASC
 ", $params);
 
+// Ensure angsuran is an array
+if (!is_array($angsuran)) {
+    $angsuran = [];
+}
+
 // Get statistics
-$stats = query("
-    SELECT 
+$stats_result = query("
+    SELECT
         COUNT(*) as total,
         SUM(CASE WHEN status = 'belum' THEN 1 ELSE 0 END) as belum,
         SUM(CASE WHEN status = 'lunas' THEN 1 ELSE 0 END) as lunas,
@@ -51,9 +57,10 @@ $stats = query("
         SUM(total_angsuran) as total_tagihan,
         SUM(total_bayar) as total_dibayar,
         SUM(denda) as total_denda
-    FROM angsuran 
+    FROM angsuran
     WHERE cabang_id = ?
-", [$cabang_id])[0];
+", [$cabang_id]);
+$stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] : ['total' => 0, 'belum' => 0, 'lunas' => 0, 'telat' => 0, 'total_tagihan' => 0, 'total_dibayar' => 0, 'total_denda' => 0];
 
 // Get late payments
 $late_payments = checkLatePayments();
@@ -64,7 +71,7 @@ $late_payments = checkLatePayments();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Angsuran - Kewer</title>
+    <title>Data Angsuran - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
@@ -77,8 +84,9 @@ $late_payments = checkLatePayments();
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php">Kewer</a>
+            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
             <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="../../dashboard.php">Dashboard</a>
                 <a class="nav-link" href="../../logout.php">Logout</a>
             </div>
         </div>
@@ -109,12 +117,21 @@ $late_payments = checkLatePayments();
                                 <i class="bi bi-calendar-check"></i> Angsuran
                             </a>
                         </li>
+                        <?php if (hasPermission('manage_petugas') || hasPermission('view_petugas')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="../petugas/index.php">
                                 <i class="bi bi-person-badge"></i> Petugas
                             </a>
                         </li>
-                        <?php if (getCurrentUser()['role'] === 'superadmin'): ?>
+                        <?php endif; ?>
+                        <?php if (hasPermission('manage_users') || hasPermission('view_users')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../users/index.php">
+                                <i class="bi bi-person-gear"></i> Users
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('manage_cabang') || hasPermission('view_cabang')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="../cabang/index.php">
                                 <i class="bi bi-building"></i> Cabang
@@ -374,16 +391,41 @@ $late_payments = checkLatePayments();
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>
     <script>
         $(document).ready(function() {
-            // Initialize DataTable
-            $('#angsuranTable').DataTable({
-                language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
-                },
-                pageLength: 25,
-                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-                responsive: true,
-                order: [[3, 'asc']]
-            });
+            // Only initialize DataTable if there's data
+            var hasData = <?php echo !empty($angsuran) ? 'true' : 'false'; ?>;
+
+            if (hasData) {
+                try {
+                    var table = $('#angsuranTable').DataTable({
+                        language: {
+                            search: "Cari:",
+                            lengthMenu: "Tampilkan _MENU_ data per halaman",
+                            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                            infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
+                            infoFiltered: "(difilter dari _MAX_ total data)",
+                            paginate: {
+                                first: "Pertama",
+                                last: "Terakhir",
+                                next: "Selanjutnya",
+                                previous: "Sebelumnya"
+                            },
+                            emptyTable: "Tidak ada data tersedia",
+                            zeroRecords: "Tidak ada data yang cocok"
+                        },
+                        pageLength: 25,
+                        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                        responsive: true,
+                        order: [[3, 'asc']]
+                    });
+                } catch (e) {
+                    console.error('DataTables initialization error:', e);
+                    $('#angsuranTable').removeClass('table-striped table-hover');
+                }
+            } else {
+                // Hide DataTables controls when no data
+                $('#angsuranTable').removeClass('table-striped table-hover');
+                $('#angsuranTable_wrapper').hide();
+            }
             
             // Initialize Select2
             $('.form-select').select2({

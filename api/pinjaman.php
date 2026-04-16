@@ -1,5 +1,6 @@
 <?php
-require_once '../includes/functions.php';
+require_once __DIR__ . '/../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 
 // Get current cabang from query parameter
 $cabang_id = $_GET['cabang_id'] ?? null;
@@ -108,7 +109,8 @@ switch ($_SERVER['REQUEST_METHOD']) {
         ]);
         
         if ($result) {
-            $new_pinjaman = query("SELECT * FROM pinjaman WHERE id = LAST_INSERT_ID()")[0];
+            $new_pinjaman_result = query("SELECT * FROM pinjaman WHERE id = LAST_INSERT_ID()");
+            $new_pinjaman = is_array($new_pinjaman_result) && isset($new_pinjaman_result[0]) ? $new_pinjaman_result[0] : null;
             echo json_encode([
                 'success' => true,
                 'message' => 'Pengajuan pinjaman berhasil dibuat',

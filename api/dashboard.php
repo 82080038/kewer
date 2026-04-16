@@ -1,5 +1,11 @@
 <?php
-require_once '../includes/functions.php';
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET');
+header('Access-Control-Allow-Headers: Content-Type');
+
+require_once __DIR__ . '/../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 
 // Get current cabang from query parameter
 $cabang_id = $_GET['cabang_id'] ?? null;
@@ -12,35 +18,38 @@ if (!$cabang_id) {
 switch ($_SERVER['REQUEST_METHOD']) {
     case 'GET':
         // Get dashboard statistics
-        $total_nasabah = query("SELECT COUNT(*) as total FROM nasabah WHERE cabang_id = ? AND status = 'aktif'", [$cabang_id])[0]['total'];
-        $total_pinjaman = query("SELECT COUNT(*) as total FROM pinjaman WHERE cabang_id = ? AND status = 'aktif'", [$cabang_id])[0]['total'];
-        $outstanding = query("SELECT SUM(plafon) as total FROM pinjaman WHERE cabang_id = ? AND status = 'aktif'", [$cabang_id])[0]['total'];
+        $nasabah_result = query("SELECT COUNT(*) as total FROM nasabah WHERE cabang_id = ? AND status = 'aktif'", [$cabang_id]);
+        $total_nasabah = is_array($nasabah_result) && isset($nasabah_result[0]) ? $nasabah_result[0]['total'] : 0;
+
+        $pinjaman_result = query("SELECT COUNT(*) as total FROM pinjaman WHERE cabang_id = ? AND status = 'aktif'", [$cabang_id]);
+        $total_pinjaman = is_array($pinjaman_result) && isset($pinjaman_result[0]) ? $pinjaman_result[0]['total'] : 0;
+
+        $outstanding_result = query("SELECT SUM(plafon) as total FROM pinjaman WHERE cabang_id = ? AND status = 'aktif'", [$cabang_id]);
+        $outstanding = is_array($outstanding_result) && isset($outstanding_result[0]) ? $outstanding_result[0]['total'] : 0;
+
         $late_payments = count(checkLatePayments());
         
         // Get recent activities
-        $recent_activities = query("
-            SELECT 
-                CASE 
-                    WHEN p.id IS NOT NULL THEN CONCAT('Pinjaman ', p.kode_pinjaman, ' untuk ', n.nama)
-                    WHEN pemb.id IS NOT NULL THEN CONCAT('Pembayaran ', pemb.jumlah, ' dari ', n.nama)
-                    ELSE 'Aktivitas lain'
-                END as activity,
-                created_at
-            FROM (
-                SELECT id, kode_pinjaman, nasabah_id, created_at FROM pinjaman WHERE cabang_id = ?
-                UNION ALL
-                SELECT id, NULL as kode_pinjaman, angsuran_id as nasabah_id, created_at FROM pembayaran WHERE cabang_id = ?
-            ) recent
-            LEFT JOIN pinjaman p ON recent.id = p.id AND recent.kode_pinjaman IS NOT NULL
-            LEFT JOIN pembayaran pemb ON recent.id = pemb.id AND pemb.kode_pinjaman IS NULL
-            LEFT JOIN nasabah n ON 
-                (p.nasabah_id = n.id OR pemb.angsuran_id IN (SELECT id FROM angsuran WHERE pinjaman_id = p.id))
-            ORDER BY created_at DESC
-            LIMIT 5
-        ", [$cabang_id, $cabang_id]);
+        $recent_activities = [];
+        try {
+            // Get recent pinjaman
+            $recent_pinjaman = query("SELECT CONCAT('Pinjaman ', kode_pinjaman, ' untuk ', n.nama) as activity, p.created_at FROM pinjaman p LEFT JOIN nasabah n ON p.nasabah_id = n.id WHERE p.cabang_id = ? ORDER BY p.created_at DESC LIMIT 3", [$cabang_id]);
+            
+            // Get recent pembayaran
+            $recent_pembayaran = query("SELECT CONCAT('Pembayaran ', jumlah_bayar, ' dari ', n.nama) as activity, pemb.created_at FROM pembayaran pemb LEFT JOIN angsuran a ON pemb.angsuran_id = a.id LEFT JOIN pinjaman p ON a.pinjaman_id = p.id LEFT JOIN nasabah n ON p.nasabah_id = n.id WHERE pemb.cabang_id = ? ORDER BY pemb.created_at DESC LIMIT 3", [$cabang_id]);
+            
+            // Merge and sort by date
+            $recent_activities = array_merge($recent_pinjaman, $recent_pembayaran);
+            usort($recent_activities, function($a, $b) {
+                return strtotime($b['created_at']) - strtotime($a['created_at']);
+            });
+            $recent_activities = array_slice($recent_activities, 0, 5);
+        } catch (Exception $e) {
+            $recent_activities = [];
+        }
         
         // Get loan statistics
-        $loan_stats = query("
+        $loan_stats_result = query("
             SELECT 
                 COUNT(*) as total_pinjaman,
                 SUM(CASE WHEN status = 'pengajuan' THEN 1 ELSE 0 END) as pengajuan,
@@ -50,10 +59,14 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 SUM(plafon) as total_plafon
             FROM pinjaman 
             WHERE cabang_id = ?
-        ", [$cabang_id])[0];
+        ", [$cabang_id]);
+        $loan_stats = is_array($loan_stats_result) && isset($loan_stats_result[0]) ? $loan_stats_result[0] : [
+            'total_pinjaman' => 0, 'pengajuan' => 0, 'disetujui' => 0, 
+            'aktif' => 0, 'lunas' => 0, 'total_plafon' => 0
+        ];
         
         // Get installment statistics
-        $installment_stats = query("
+        $installment_stats_result = query("
             SELECT 
                 COUNT(*) as total_angsuran,
                 SUM(CASE WHEN status = 'belum' THEN 1 ELSE 0 END) as belum,
@@ -64,7 +77,11 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 SUM(denda) as total_denda
             FROM angsuran 
             WHERE cabang_id = ?
-        ", [$cabang_id])[0];
+        ", [$cabang_id]);
+        $installment_stats = is_array($installment_stats_result) && isset($installment_stats_result[0]) ? $installment_stats_result[0] : [
+            'total_angsuran' => 0, 'belum' => 0, 'lunas' => 0, 
+            'telat' => 0, 'total_tagihan' => 0, 'total_dibayar' => 0, 'total_denda' => 0
+        ];
         
         echo json_encode([
             'success' => true,

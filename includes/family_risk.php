@@ -321,4 +321,3 @@ class FamilyRisk {
         return $this->db->update($sql, [$scoreIncrease, $nasabahId]);
     }
 }
-?>

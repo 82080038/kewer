@@ -1,20 +1,26 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
+require_once BASE_PATH . '/includes/alamat_helper.php';
 requireLogin();
 
-if (!hasRole('superadmin')) {
-    header('Location: ../../dashboard.php');
+// Only users with cabang management permission can access
+if (!hasPermission('manage_cabang') && !hasPermission('view_cabang')) {
+    header('Location: ' . baseUrl('dashboard.php'));
     exit();
 }
 
 $cabang = query("SELECT * FROM cabang ORDER BY created_at DESC");
+if (!is_array($cabang)) {
+    $cabang = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manajemen Cabang - Kewer</title>
+    <title>Manajemen Cabang - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
@@ -27,7 +33,7 @@ $cabang = query("SELECT * FROM cabang ORDER BY created_at DESC");
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php">Kewer</a>
+            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="../../dashboard.php">Dashboard</a>
                 <a class="nav-link" href="../../logout.php">Logout</a>
@@ -46,7 +52,36 @@ $cabang = query("SELECT * FROM cabang ORDER BY created_at DESC");
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="index.php">
+                            <a class="nav-link" href="../nasabah/index.php">
+                                <i class="bi bi-people"></i> Nasabah
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../pinjaman/index.php">
+                                <i class="bi bi-cash-stack"></i> Pinjaman
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../angsuran/index.php">
+                                <i class="bi bi-calendar-check"></i> Angsuran
+                            </a>
+                        </li>
+                        <?php if (hasPermission('manage_petugas') || hasPermission('view_petugas')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../petugas/index.php">
+                                <i class="bi bi-person-badge"></i> Petugas
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('manage_users') || hasPermission('view_users')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../users/index.php">
+                                <i class="bi bi-person-gear"></i> Users
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="index.php">
                                 <i class="bi bi-building"></i> Cabang
                             </a>
                         </li>
@@ -57,9 +92,9 @@ $cabang = query("SELECT * FROM cabang ORDER BY created_at DESC");
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Manajemen Cabang</h1>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
+                    <a href="tambah.php" class="btn btn-primary">
                         <i class="bi bi-plus"></i> Tambah Cabang
-                    </button>
+                    </a>
                 </div>
                 
                 <div class="card">
@@ -111,65 +146,6 @@ $cabang = query("SELECT * FROM cabang ORDER BY created_at DESC");
         </div>
     </div>
 
-    <!-- Add Modal -->
-    <div class="modal fade" id="addModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Tambah Cabang</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form method="POST" action="tambah.php">
-                        <div class="mb-3">
-                            <label>Kode Cabang *</label>
-                            <input type="text" name="kode_cabang" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label>Nama Cabang *</label>
-                            <input type="text" name="nama_cabang" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label>Alamat</label>
-                            <textarea name="alamat" class="form-control" rows="2"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label>Telp</label>
-                            <input type="text" name="telp" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label>Email</label>
-                            <input type="email" name="email" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label>Kota</label>
-                            <input type="text" name="kota" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label>Provinsi</label>
-                            <input type="text" name="provinsi" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label>Kode Pos</label>
-                            <input type="text" name="kode_pos" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label>Status</label>
-                            <select name="status" class="form-select">
-                                <option value="aktif">Aktif</option>
-                                <option value="nonaktif">Nonaktif</option>
-                            </select>
-                        </div>
-                        <div class="text-end">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                            <button type="submit" class="btn btn-primary">Simpan</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -179,17 +155,120 @@ $cabang = query("SELECT * FROM cabang ORDER BY created_at DESC");
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>
     <script>
+        // Load regencies when province changes
+        function loadRegencies(provinceId) {
+            const regencySelect = document.getElementById('regency_id');
+            const districtSelect = document.getElementById('district_id');
+            const villageSelect = document.getElementById('village_id');
+            
+            // Reset dependent dropdowns
+            regencySelect.innerHTML = '<option value="">Pilih Kabupaten/Kota</option>';
+            districtSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
+            villageSelect.innerHTML = '<option value="">Pilih Desa/Kelurahan</option>';
+            
+            if (!provinceId) return;
+            
+            fetch('/kewer/api/alamat.php?action=regencies&province_id=' + provinceId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        data.data.forEach(regency => {
+                            const option = document.createElement('option');
+                            option.value = regency.id;
+                            option.textContent = regency.name;
+                            regencySelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading regencies:', error));
+        }
+        
+        // Load districts when regency changes
+        function loadDistricts(regencyId) {
+            const districtSelect = document.getElementById('district_id');
+            const villageSelect = document.getElementById('village_id');
+            
+            // Reset dependent dropdowns
+            districtSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
+            villageSelect.innerHTML = '<option value="">Pilih Desa/Kelurahan</option>';
+            
+            if (!regencyId) return;
+            
+            fetch('/kewer/api/alamat.php?action=districts&regency_id=' + regencyId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        data.data.forEach(district => {
+                            const option = document.createElement('option');
+                            option.value = district.id;
+                            option.textContent = district.name;
+                            districtSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading districts:', error));
+        }
+        
+        // Load villages when district changes
+        function loadVillages(districtId) {
+            const villageSelect = document.getElementById('village_id');
+            
+            // Reset dependent dropdown
+            villageSelect.innerHTML = '<option value="">Pilih Desa/Kelurahan</option>';
+            
+            if (!districtId) return;
+            
+            fetch('/kewer/api/alamat.php?action=villages&district_id=' + districtId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        data.data.forEach(village => {
+                            const option = document.createElement('option');
+                            option.value = village.id;
+                            option.textContent = village.name;
+                            villageSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading villages:', error));
+        }
+        
         $(document).ready(function() {
-            // Initialize DataTable
-            $('#cabangTable').DataTable({
-                language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
-                },
-                pageLength: 25,
-                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-                responsive: true,
-                order: [[0, 'desc']]
-            });
+            // Only initialize DataTable if there's data
+            var hasData = <?php echo !empty($cabang) ? 'true' : 'false'; ?>;
+
+            if (hasData) {
+                try {
+                    var table = $('#cabangTable').DataTable({
+                        language: {
+                            search: "Cari:",
+                            lengthMenu: "Tampilkan _MENU_ data per halaman",
+                            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                            infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
+                            infoFiltered: "(difilter dari _MAX_ total data)",
+                            paginate: {
+                                first: "Pertama",
+                                last: "Terakhir",
+                                next: "Selanjutnya",
+                                previous: "Sebelumnya"
+                            },
+                            emptyTable: "Tidak ada data tersedia",
+                            zeroRecords: "Tidak ada data yang cocok"
+                        },
+                        pageLength: 25,
+                        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                        responsive: true,
+                        order: [[0, 'desc']]
+                    });
+                } catch (e) {
+                    console.error('DataTables initialization error:', e);
+                    $('#cabangTable').removeClass('table-striped table-hover');
+                }
+            } else {
+                // Hide DataTables controls when no data
+                $('#cabangTable').removeClass('table-striped table-hover');
+                $('#cabangTable_wrapper').hide();
+            }
             
             // Initialize Select2
             $('.form-select').select2({

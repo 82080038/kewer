@@ -10,8 +10,9 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-require_once '../includes/functions.php';
-require_once '../includes/bunga_calculator.php';
+require_once __DIR__ . '/../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
+require_once BASE_PATH . '/includes/bunga_calculator.php';
 
 // Authentication check
 $headers = getallheaders();

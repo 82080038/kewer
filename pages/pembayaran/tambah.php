@@ -1,6 +1,13 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
+
+// Permission check
+if (!hasPermission('manage_pembayaran')) {
+    header('Location: ' . baseUrl('dashboard.php'));
+    exit();
+}
 
 $cabang_id = getCurrentCabang();
 
@@ -36,8 +43,9 @@ if ($_POST) {
     
     if ($result) {
         // Update angsuran status
-        $angsuran = query("SELECT * FROM angsuran WHERE id = ?", [$angsuran_id])[0];
-        if ($jumlah_bayar >= $angsuran['total_angsuran']) {
+        $angsuran_result = query("SELECT * FROM angsuran WHERE id = ?", [$angsuran_id]);
+        $angsuran = is_array($angsuran_result) && isset($angsuran_result[0]) ? $angsuran_result[0] : null;
+        if ($angsuran && $jumlah_bayar >= $angsuran['total_angsuran']) {
             query("UPDATE angsuran SET status = 'lunas', tanggal_bayar = ?, total_bayar = ? WHERE id = ?", [$tanggal_bayar, $jumlah_bayar, $angsuran_id]);
         } else {
             query("UPDATE angsuran SET total_bayar = total_bayar + ?, status = 'telat' WHERE id = ?", [$jumlah_bayar, $angsuran_id]);

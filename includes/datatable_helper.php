@@ -13,7 +13,19 @@ function initDataTable($tableId, $options = []) {
         'pageLength' => 25,
         'lengthMenu' => [[10, 25, 50, 100], [10, 25, 50, 100]],
         'language' => [
-            'url' => '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
+            'search' => "Cari:",
+            'lengthMenu' => "Tampilkan _MENU_ data per halaman",
+            'info' => "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+            'infoEmpty' => "Menampilkan 0 sampai 0 dari 0 data",
+            'infoFiltered' => "(difilter dari _MAX_ total data)",
+            'paginate' => [
+                'first' => "Pertama",
+                'last' => "Terakhir",
+                'next' => "Selanjutnya",
+                'previous' => "Sebelumnya"
+            ],
+            'emptyTable' => "Tidak ada data tersedia",
+            'zeroRecords' => "Tidak ada data yang cocok"
         ],
         'responsive' => true,
         'dom' => '<"row"<"col-sm-6 col-md-6"l><"col-sm-6 col-md-6"f>>' .
@@ -42,7 +54,20 @@ function initDataTableServerSide($tableId, $ajaxUrl, $options = []) {
         'pageLength' => 25,
         'lengthMenu' => [[10, 25, 50, 100], [10, 25, 50, 100]],
         'language' => [
-            'url' => '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
+            'search' => "Cari:",
+            'lengthMenu' => "Tampilkan _MENU_ data per halaman",
+            'info' => "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+            'infoEmpty' => "Menampilkan 0 sampai 0 dari 0 data",
+            'infoFiltered' => "(difilter dari _MAX_ total data)",
+            'paginate' => [
+                'first' => "Pertama",
+                'last' => "Terakhir",
+                'next' => "Selanjutnya",
+                'previous' => "Sebelumnya"
+            ],
+            'emptyTable' => "Tidak ada data tersedia",
+            'zeroRecords' => "Tidak ada data yang cocok",
+            'processing' => "Sedang memproses..."
         ],
         'responsive' => true
     ];

@@ -1,22 +1,26 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
 
-// Only superadmin can access users management
-if (!hasRole('superadmin')) {
-    header('Location: ../../dashboard.php');
+// Only users with users management permission can access
+if (!hasPermission('users.create') && !hasPermission('users.read')) {
+    header('Location: ' . baseUrl('dashboard.php'));
     exit();
 }
 
 $cabang_id = getCurrentCabang();
 $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.cabang_id = c.id ORDER BY u.created_at DESC");
+if (!is_array($users)) {
+    $users = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manajemen Users - Kewer</title>
+    <title>Manajemen Users - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
@@ -29,7 +33,7 @@ $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.c
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php">Kewer</a>
+            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="../../dashboard.php">Dashboard</a>
                 <a class="nav-link" href="../../logout.php">Logout</a>
@@ -48,10 +52,39 @@ $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.c
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="index.php">
-                                <i class="bi bi-people"></i> Users
+                            <a class="nav-link" href="../nasabah/index.php">
+                                <i class="bi bi-people"></i> Nasabah
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../pinjaman/index.php">
+                                <i class="bi bi-cash-stack"></i> Pinjaman
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../angsuran/index.php">
+                                <i class="bi bi-calendar-check"></i> Angsuran
+                            </a>
+                        </li>
+                        <?php if (hasPermission('manage_petugas') || hasPermission('view_petugas')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../petugas/index.php">
+                                <i class="bi bi-person-badge"></i> Petugas
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="index.php">
+                                <i class="bi bi-person-gear"></i> Users
+                            </a>
+                        </li>
+                        <?php if (hasPermission('manage_cabang') || hasPermission('view_cabang')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../cabang/index.php">
+                                <i class="bi bi-building"></i> Cabang
+                            </a>
+                        </li>
+                        <?php endif; ?>
                     </ul>
                 </div>
             </nav>
@@ -89,8 +122,18 @@ $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.c
                                         <td><?= $u['nama'] ?></td>
                                         <td><?= $u['email'] ?? '-' ?></td>
                                         <td>
-                                            <span class="badge bg-<?= $u['role'] == 'superadmin' ? 'danger' : ($u['role'] == 'admin' ? 'warning' : 'info') ?>">
-                                                <?= $u['role'] ?>
+                                            <?php
+                                            $roleColors = [
+                                                'owner' => 'primary',
+                                                'superadmin' => 'danger',
+                                                'admin' => 'warning',
+                                                'manager' => 'success',
+                                                'petugas' => 'info',
+                                                'karyawan' => 'secondary'
+                                            ];
+                                            ?>
+                                            <span class="badge bg-<?= $roleColors[$u['role']] ?? 'secondary' ?>">
+                                                <?= ucfirst($u['role']) ?>
                                             </span>
                                         </td>
                                         <td><?= $u['nama_cabang'] ?? '-' ?></td>
@@ -106,6 +149,11 @@ $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.c
                                             <a href="edit.php?id=<?= $u['id'] ?>" class="btn btn-sm btn-warning">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
+                                            <?php if (hasPermission('assign_permissions') && canManageRole($u['role'])): ?>
+                                            <a href="permissions/index.php?user_id=<?= $u['id'] ?>" class="btn btn-sm btn-info">
+                                                <i class="bi bi-shield-lock"></i>
+                                            </a>
+                                            <?php endif; ?>
                                             <?php if ($u['id'] != getCurrentUser()['id']): ?>
                                             <a href="hapus.php?id=<?= $u['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus user ini?')">
                                                 <i class="bi bi-trash"></i>
@@ -133,6 +181,7 @@ $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.c
                 </div>
                 <div class="modal-body">
                     <form method="POST" action="tambah.php">
+                        <?= csrfField() ?>
                         <div class="mb-3">
                             <label>Username *</label>
                             <input type="text" name="username" class="form-control" required>
@@ -151,23 +200,35 @@ $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.c
                         </div>
                         <div class="mb-3">
                             <label>Role *</label>
-                            <select name="role" class="form-select" required>
-                                <option value="superadmin">Superadmin</option>
-                                <option value="admin">Admin</option>
-                                <option value="petugas">Petugas</option>
-                                <option value="karyawan">Karyawan</option>
+                            <select name="role" class="form-select" required id="roleSelect">
+                                <option value="">Pilih Role</option>
+                                <optgroup label="Pusat (Tanpa Cabang)">
+                                    <option value="owner">Owner</option>
+                                    <option value="superadmin">Superadmin</option>
+                                    <option value="admin">Admin</option>
+                                </optgroup>
+                                <optgroup label="Cabang">
+                                    <option value="manager">Manager Cabang</option>
+                                    <option value="petugas">Petugas Lapangan</option>
+                                    <option value="karyawan">Karyawan</option>
+                                </optgroup>
                             </select>
+                            <small class="text-muted" id="roleHint"></small>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-3" id="cabangField">
                             <label>Cabang</label>
                             <select name="cabang_id" class="form-select">
                                 <option value="">Tanpa Cabang</option>
                                 <?php
                                 $cabang = query("SELECT * FROM cabang");
+                                if (!is_array($cabang)) {
+                                    $cabang = [];
+                                }
                                 foreach ($cabang as $c): ?>
                                     <option value="<?= $c['id'] ?>"><?= $c['nama_cabang'] ?></option>
                                 <?php endforeach; ?>
                             </select>
+                            <small class="text-muted">Role pusat (owner, superadmin, admin) tidak memerlukan cabang</small>
                         </div>
                         <div class="mb-3">
                             <label>Gaji</label>
@@ -204,16 +265,63 @@ $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.c
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>
     <script>
         $(document).ready(function() {
-            // Initialize DataTable
-            $('#usersTable').DataTable({
-                language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
-                },
-                pageLength: 25,
-                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-                responsive: true,
-                order: [[0, 'desc']]
+            // Handle role selection to show/hide cabang field
+            $('#roleSelect').on('change', function() {
+                const role = $(this).val();
+                const pusatRoles = ['owner', 'superadmin', 'admin'];
+                const cabangRoles = ['manager', 'petugas', 'karyawan'];
+                
+                if (pusatRoles.includes(role)) {
+                    $('#cabangField').hide();
+                    $('select[name="cabang_id"]').val('');
+                    $('#roleHint').text('Role pusat tidak memerlukan cabang');
+                } else if (cabangRoles.includes(role)) {
+                    $('#cabangField').show();
+                    $('#roleHint').text('Role cabang harus memiliki cabang');
+                } else {
+                    $('#cabangField').show();
+                    $('#roleHint').text('');
+                }
             });
+            
+            // Initialize with current selection
+            $('#roleSelect').trigger('change');
+            
+            // Only initialize DataTable if there's data
+            var hasData = <?php echo !empty($users) ? 'true' : 'false'; ?>;
+
+            if (hasData) {
+                try {
+                    var table = $('#usersTable').DataTable({
+                        language: {
+                            search: "Cari:",
+                            lengthMenu: "Tampilkan _MENU_ data per halaman",
+                            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                            infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
+                            infoFiltered: "(difilter dari _MAX_ total data)",
+                            paginate: {
+                                first: "Pertama",
+                                last: "Terakhir",
+                                next: "Selanjutnya",
+                                previous: "Sebelumnya"
+                            },
+                            emptyTable: "Tidak ada data tersedia",
+                            zeroRecords: "Tidak ada data yang cocok"
+                        },
+                        pageLength: 25,
+                        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                        responsive: true,
+                        order: [[0, 'desc']]
+                    });
+                } catch (e) {
+                    console.error('DataTables initialization error:', e);
+                    $('#usersTable').removeClass('table-striped table-hover');
+                }
+            } else {
+                // Hide DataTables controls when no data
+                $('#usersTable').removeClass('table-striped table-hover');
+                $('#usersTable_wrapper').hide();
+            }
             
             // Initialize Select2
             $('.form-select').select2({

@@ -1,9 +1,9 @@
 <?php
-require_once '../../includes/functions.php';
-requireLogin();
-
-if (!hasRole('superadmin')) {
-    header('Location: ../../dashboard.php');
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
+// Only users with manage_users permission can edit users
+if (!hasPermission('manage_users')) {
+    header('Location: ' . baseUrl('dashboard.php'));
     exit();
 }
 
@@ -58,14 +58,14 @@ if ($_POST) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit User - Kewer</title>
+    <title>Edit User - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php">Kewer</a>
+            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="../../dashboard.php">Dashboard</a>
                 <a class="nav-link" href="../../logout.php">Logout</a>

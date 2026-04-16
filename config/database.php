@@ -1,9 +1,12 @@
 <?php
-// Database Configuration
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'kewer');
-define('DB_USER', 'root');
-define('DB_PASS', 'root');
+// Load path configuration first
+require_once __DIR__ . '/path.php';
+
+// Database Configuration (only define if not already defined by env.php)
+if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
+if (!defined('DB_NAME')) define('DB_NAME', 'kewer');
+if (!defined('DB_USER')) define('DB_USER', 'root');
+if (!defined('DB_PASS')) define('DB_PASS', 'root');
 
 // Create connection
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
@@ -40,4 +43,3 @@ function query($sql, $params = []) {
     
     return $stmt->affected_rows;
 }
-?>

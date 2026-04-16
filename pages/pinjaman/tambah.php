@@ -1,6 +1,13 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
+
+// Permission check
+if (!hasPermission('manage_pinjaman')) {
+    header('Location: ' . baseUrl('dashboard.php'));
+    exit();
+}
 
 $cabang_id = getCurrentCabang();
 $error = '';
@@ -8,6 +15,9 @@ $success = '';
 
 // Get active nasabah list
 $nasabah_list = query("SELECT id, kode_nasabah, nama FROM nasabah WHERE cabang_id = ? AND status = 'aktif' ORDER BY nama", [$cabang_id]);
+if (!is_array($nasabah_list)) {
+    $nasabah_list = [];
+}
 
 if ($_POST) {
     $nasabah_id = $_POST['nasabah_id'] ?? '';
@@ -70,14 +80,14 @@ if ($_POST) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ajukan Pinjaman - Kewer</title>
+    <title>Ajukan Pinjaman - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php">Kewer</a>
+            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="../../logout.php">Logout</a>
             </div>
@@ -132,6 +142,7 @@ if ($_POST) {
                 <div class="card">
                     <div class="card-body">
                         <form method="POST" id="loanForm">
+                            <?= csrfField() ?>
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">

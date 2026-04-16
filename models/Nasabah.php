@@ -19,9 +19,15 @@ class Nasabah {
      */
     public function getById($id) {
         return $this->db->selectOne("
-            SELECT n.*, c.nama_cabang 
+            SELECT n.*, c.nama_cabang,
+                   p.name as province_name, r.name as regency_name,
+                   d.name as district_name, v.name as village_name
             FROM nasabah n 
             LEFT JOIN cabang c ON n.cabang_id = c.id 
+            LEFT JOIN provinces p ON n.province_id = p.id
+            LEFT JOIN regencies r ON n.regency_id = r.id
+            LEFT JOIN districts d ON n.district_id = d.id
+            LEFT JOIN villages v ON n.village_id = v.id
             WHERE n.id = ?", [$id]);
     }
     
@@ -76,13 +82,17 @@ class Nasabah {
      * Create new nasabah
      */
     public function create($data) {
-        $sql = "INSERT INTO nasabah (cabang_id, kode_nasabah, nama, alamat, ktp, telp, email, jenis_usaha, lokasi_pasar, foto_ktp, foto_selfie, status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO nasabah (cabang_id, kode_nasabah, nama, alamat, province_id, regency_id, district_id, village_id, ktp, telp, email, jenis_usaha, lokasi_pasar, foto_ktp, foto_selfie, status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $params = [
             $data['cabang_id'],
             $data['kode_nasabah'],
             $data['nama'],
             $data['alamat'] ?? null,
+            $data['province_id'] ?? null,
+            $data['regency_id'] ?? null,
+            $data['district_id'] ?? null,
+            $data['village_id'] ?? null,
             $data['ktp'],
             $data['telp'],
             $data['email'] ?? null,
@@ -100,10 +110,14 @@ class Nasabah {
      * Update nasabah
      */
     public function update($id, $data) {
-        $sql = "UPDATE nasabah SET nama = ?, alamat = ?, telp = ?, email = ?, jenis_usaha = ?, lokasi_pasar = ?, status = ? WHERE id = ?";
+        $sql = "UPDATE nasabah SET nama = ?, alamat = ?, province_id = ?, regency_id = ?, district_id = ?, village_id = ?, telp = ?, email = ?, jenis_usaha = ?, lokasi_pasar = ?, status = ? WHERE id = ?";
         $params = [
             $data['nama'],
             $data['alamat'] ?? null,
+            $data['province_id'] ?? null,
+            $data['regency_id'] ?? null,
+            $data['district_id'] ?? null,
+            $data['village_id'] ?? null,
             $data['telp'],
             $data['email'] ?? null,
             $data['jenis_usaha'] ?? null,

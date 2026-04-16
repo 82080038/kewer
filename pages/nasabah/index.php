@@ -1,5 +1,6 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
 
 $cabang_id = getCurrentCabang();
@@ -27,15 +28,20 @@ $where_clause = "WHERE " . implode(" AND ", $where);
 
 // Get nasabah data
 $nasabah = query("
-    SELECT n.*, c.nama_cabang 
-    FROM nasabah n 
-    LEFT JOIN cabang c ON n.cabang_id = c.id 
-    $where_clause 
+    SELECT n.*, c.nama_cabang
+    FROM nasabah n
+    LEFT JOIN cabang c ON n.cabang_id = c.id
+    $where_clause
     ORDER BY n.created_at DESC
 ", $params);
 
+// Ensure nasabah is an array
+if (!is_array($nasabah)) {
+    $nasabah = [];
+}
+
 // Get statistics
-$stats = query("
+$stats_result = query("
     SELECT 
         COUNT(*) as total,
         SUM(CASE WHEN status = 'aktif' THEN 1 ELSE 0 END) as aktif,
@@ -43,7 +49,9 @@ $stats = query("
         SUM(CASE WHEN status = 'blacklist' THEN 1 ELSE 0 END) as blacklist
     FROM nasabah 
     WHERE cabang_id = ?
-", [$cabang_id])[0];
+", [$cabang_id]);
+
+$stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] : ['total' => 0, 'aktif' => 0, 'nonaktif' => 0, 'blacklist' => 0];
 ?>
 
 <!DOCTYPE html>
@@ -51,7 +59,7 @@ $stats = query("
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Nasabah - Kewer</title>
+    <title>Data Nasabah - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
@@ -64,8 +72,9 @@ $stats = query("
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php">Kewer</a>
+            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
             <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="../../dashboard.php">Dashboard</a>
                 <a class="nav-link" href="../../logout.php">Logout</a>
             </div>
         </div>
@@ -96,12 +105,21 @@ $stats = query("
                                 <i class="bi bi-calendar-check"></i> Angsuran
                             </a>
                         </li>
+                        <?php if (hasPermission('manage_petugas') || hasPermission('view_petugas')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="../petugas/index.php">
                                 <i class="bi bi-person-badge"></i> Petugas
                             </a>
                         </li>
-                        <?php if (getCurrentUser()['role'] === 'superadmin'): ?>
+                        <?php endif; ?>
+                        <?php if (hasPermission('manage_users') || hasPermission('view_users')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../users/index.php">
+                                <i class="bi bi-person-gear"></i> Users
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('manage_cabang') || hasPermission('view_cabang')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="../cabang/index.php">
                                 <i class="bi bi-building"></i> Cabang
@@ -203,7 +221,7 @@ $stats = query("
                                 </thead>
                                 <tbody>
                                     <?php if (empty($nasabah)): ?>
-                                        <tr>
+                                        <tr id="noDataRow">
                                             <td colspan="7" class="text-center text-muted">Tidak ada data nasabah</td>
                                         </tr>
                                     <?php else: ?>
@@ -231,9 +249,10 @@ $stats = query("
                                                         'nonaktif' => 'warning',
                                                         'blacklist' => 'danger'
                                                     ];
+                                                    $status = $n['status'] ?? 'aktif';
                                                     ?>
-                                                    <span class="badge bg-<?php echo $status_class[$n['status']]; ?>">
-                                                        <?php echo ucfirst($n['status']); ?>
+                                                    <span class="badge bg-<?php echo $status_class[$status] ?? 'secondary'; ?>">
+                                                        <?php echo ucfirst($status); ?>
                                                     </span>
                                                 </td>
                                                 <td>
@@ -271,16 +290,47 @@ $stats = query("
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>
     <script>
         $(document).ready(function() {
-            // Initialize DataTable
-            $('#nasabahTable').DataTable({
-                language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
-                },
-                pageLength: 25,
-                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-                responsive: true,
-                order: [[0, 'desc']]
-            });
+            // Only initialize DataTable if there's data
+            var hasData = <?php echo !empty($nasabah) ? 'true' : 'false'; ?>;
+            
+            if (hasData) {
+                try {
+                    var table = $('#nasabahTable').DataTable({
+                        language: {
+                            search: "Cari:",
+                            lengthMenu: "Tampilkan _MENU_ data per halaman",
+                            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                            infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
+                            infoFiltered: "(difilter dari _MAX_ total data)",
+                            paginate: {
+                                first: "Pertama",
+                                last: "Terakhir",
+                                next: "Selanjutnya",
+                                previous: "Sebelumnya"
+                            },
+                            emptyTable: "Tidak ada data tersedia",
+                            zeroRecords: "Tidak ada data yang cocok"
+                        },
+                        pageLength: 25,
+                        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                        responsive: true,
+                        order: [[0, 'desc']],
+                        columnDefs: [
+                            { targets: '_all', defaultContent: '' },
+                            { targets: [0, 1, 2, 3, 4, 5, 6], className: 'align-middle' }
+                        ],
+                        autoWidth: false
+                    });
+                } catch (e) {
+                    console.error('DataTables initialization error:', e);
+                    // Fallback: show table without DataTables functionality
+                    $('#nasabahTable').removeClass('table-striped table-hover');
+                }
+            } else {
+                // Hide DataTables controls when no data
+                $('#nasabahTable').removeClass('table-striped table-hover');
+                $('#nasabahTable_wrapper').hide();
+            }
             
             // Initialize Select2
             $('.form-select').select2({

@@ -1,6 +1,9 @@
 # Enable URL rewriting
 RewriteEngine On
 
+# Exclude API endpoints from rewrite
+RewriteCond %{REQUEST_URI} !^/kewer/api/
+
 # Redirect to index.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

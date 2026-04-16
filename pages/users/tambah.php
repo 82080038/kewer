@@ -1,9 +1,11 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
 
-if (!hasRole('superadmin')) {
-    header('Location: ../../dashboard.php');
+// Only users with manage_users permission can add users
+if (!hasPermission('manage_users')) {
+    header('Location: ' . baseUrl('dashboard.php'));
     exit();
 }
 

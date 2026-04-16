@@ -1,37 +1,67 @@
 <?php
-require_once 'includes/functions.php';
+require_once 'config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
 
 $user = getCurrentUser();
 $cabang_id = getCurrentCabang();
+$role = $user['role'];
 
-// Get dashboard stats
-$total_nasabah = query("SELECT COUNT(*) as total FROM nasabah WHERE cabang_id = ? AND status = 'aktif'", [$cabang_id])[0]['total'];
-$total_pinjaman = query("SELECT COUNT(*) as total FROM pinjaman WHERE cabang_id = ? AND status = 'aktif'", [$cabang_id])[0]['total'];
-$outstanding = query("SELECT SUM(plafon) as total FROM pinjaman WHERE cabang_id = ? AND status = 'aktif'", [$cabang_id])[0]['total'];
-$late_payments = count(checkLatePayments());
+// Pusat roles (owner, superadmin, admin) see consolidated data
+// Cabang roles (manager, petugas, karyawan) see only their branch data
+$pusat_roles = ['owner', 'superadmin', 'admin'];
+
+if (in_array($role, $pusat_roles)) {
+    // Get consolidated stats for all branches
+    $nasabah_result = query("SELECT COUNT(*) as total FROM nasabah WHERE status = 'aktif'");
+    $total_nasabah = is_array($nasabah_result) && isset($nasabah_result[0]) ? $nasabah_result[0]['total'] : 0;
+
+    $pinjaman_result = query("SELECT COUNT(*) as total FROM pinjaman WHERE status = 'aktif'");
+    $total_pinjaman = is_array($pinjaman_result) && isset($pinjaman_result[0]) ? $pinjaman_result[0]['total'] : 0;
+
+    $outstanding_result = query("SELECT SUM(plafon) as total FROM pinjaman WHERE status = 'aktif'");
+    $outstanding = is_array($outstanding_result) && isset($outstanding_result[0]) ? $outstanding_result[0]['total'] : 0;
+
+    $late_payments = 0; // Would need consolidated late payment logic
+} else {
+    // Get stats for specific branch
+    $nasabah_result = query("SELECT COUNT(*) as total FROM nasabah WHERE cabang_id = ? AND status = 'aktif'", [$cabang_id]);
+    $total_nasabah = is_array($nasabah_result) && isset($nasabah_result[0]) ? $nasabah_result[0]['total'] : 0;
+
+    $pinjaman_result = query("SELECT COUNT(*) as total FROM pinjaman WHERE cabang_id = ? AND status = 'aktif'", [$cabang_id]);
+    $total_pinjaman = is_array($pinjaman_result) && isset($pinjaman_result[0]) ? $pinjaman_result[0]['total'] : 0;
+
+    $outstanding_result = query("SELECT SUM(plafon) as total FROM pinjaman WHERE cabang_id = ? AND status = 'aktif'", [$cabang_id]);
+    $outstanding = is_array($outstanding_result) && isset($outstanding_result[0]) ? $outstanding_result[0]['total'] : 0;
+
+    $late_payments = count(checkLatePayments());
+}
 
 // Get recent activities
 $recent_activities = query("
     SELECT 
         CASE 
             WHEN p.id IS NOT NULL THEN CONCAT('Pinjaman ', p.kode_pinjaman, ' untuk ', n.nama)
-            WHEN pemb.id IS NOT NULL THEN CONCAT('Pembayaran ', pemb.jumlah, ' dari ', n.nama)
+            WHEN pemb.id IS NOT NULL THEN CONCAT('Pembayaran ', pemb.jumlah_bayar, ' dari ', n.nama)
             ELSE 'Aktivitas lain'
         END as activity,
-        created_at
+        COALESCE(p.created_at, pemb.created_at) as created_at
     FROM (
         SELECT id, kode_pinjaman, nasabah_id, created_at FROM pinjaman WHERE cabang_id = ?
         UNION ALL
         SELECT id, NULL as kode_pinjaman, angsuran_id as nasabah_id, created_at FROM pembayaran WHERE cabang_id = ?
     ) recent
     LEFT JOIN pinjaman p ON recent.id = p.id AND recent.kode_pinjaman IS NOT NULL
-    LEFT JOIN pembayaran pemb ON recent.id = pemb.id AND pemb.kode_pinjaman IS NULL
-    LEFT JOIN nasabah n ON 
-        (p.nasabah_id = n.id OR pemb.angsuran_id IN (SELECT id FROM angsuran WHERE pinjaman_id = p.id))
-    ORDER BY created_at DESC
+    LEFT JOIN pembayaran pemb ON recent.id = pemb.id AND recent.kode_pinjaman IS NULL
+    LEFT JOIN nasabah n ON p.nasabah_id = n.id
+    ORDER BY COALESCE(p.created_at, pemb.created_at) DESC
     LIMIT 5
 ", [$cabang_id, $cabang_id]);
+
+// Ensure recent_activities is an array
+if (!is_array($recent_activities)) {
+    $recent_activities = [];
+}
 ?>
 
 <!DOCTYPE html>
@@ -39,7 +69,7 @@ $recent_activities = query("
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Kewer</title>
+    <title>Dashboard - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -52,7 +82,7 @@ $recent_activities = query("
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">Kewer</a>
+            <a class="navbar-brand" href="#"><?php echo APP_NAME; ?></a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">
                     <i class="bi bi-person-circle"></i> <?php echo $user['nama']; ?>
@@ -72,27 +102,63 @@ $recent_activities = query("
                                 <i class="bi bi-speedometer2"></i> Dashboard
                             </a>
                         </li>
+                        <?php if (hasPermission('nasabah.read')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="pages/nasabah/index.php">
                                 <i class="bi bi-people"></i> Nasabah
                             </a>
                         </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('pinjaman.read')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="pages/pinjaman/index.php">
                                 <i class="bi bi-cash-stack"></i> Pinjaman
                             </a>
                         </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('angsuran.read')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="pages/angsuran/index.php">
                                 <i class="bi bi-calendar-check"></i> Angsuran
                             </a>
                         </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('angsuran.read') && $user['role'] === 'petugas'): ?>
                         <li class="nav-item">
-                            <a class="nav-link" href="pages/petugas/index.php">
-                                <i class="bi bi-person-badge"></i> Petugas
+                            <a class="nav-link" href="pages/field_activities/index.php">
+                                <i class="bi bi-clipboard-data"></i> Aktivitas Lapangan
                             </a>
                         </li>
-                        <?php if ($user['role'] === 'superadmin'): ?>
+                        <?php endif; ?>
+                        <?php if (hasPermission('kas_petugas.read')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pages/kas_petugas/index.php">
+                                <i class="bi bi-cash-coin"></i> Kas Petugas
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('kas.read') && ($user['role'] === 'manager' || $user['role'] === 'karyawan')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pages/cash_reconciliation/index.php">
+                                <i class="bi bi-calculator"></i> Rekonsiliasi Kas
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('pinjaman.auto_confirm')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pages/auto_confirm/index.php">
+                                <i class="bi bi-gear"></i> Auto-Confirm
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('users.create') || hasPermission('users.read')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="pages/users/index.php">
+                                <i class="bi bi-person-gear"></i> Users
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('cabang.read')): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="pages/cabang/index.php">
                                 <i class="bi bi-building"></i> Cabang

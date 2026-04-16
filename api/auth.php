@@ -10,8 +10,9 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-require_once '../includes/functions.php';
-require_once '../includes/database_class.php';
+require_once __DIR__ . '/../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
+require_once BASE_PATH . '/includes/database_class.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -38,8 +39,10 @@ switch ($method) {
                 $user = $db->selectOne($sql, [$username]);
                 
                 if ($user && password_verify($password, $user['password'])) {
-                    // Start session
-                    session_start();
+                    // Start session if not already active
+                    if (session_status() === PHP_SESSION_NONE) {
+                        session_start();
+                    }
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['username'] = $user['username'];
                     $_SESSION['role'] = $user['role'];
@@ -67,7 +70,9 @@ switch ($method) {
                 
             case 'logout':
                 // Logout user
-                session_start();
+                if (session_status() === PHP_SESSION_NONE) {
+                    session_start();
+                }
                 session_destroy();
                 
                 echo json_encode([
@@ -78,7 +83,9 @@ switch ($method) {
                 
             case 'check':
                 // Check if user is logged in
-                session_start();
+                if (session_status() === PHP_SESSION_NONE) {
+                    session_start();
+                }
                 
                 if (isset($_SESSION['user_id'])) {
                     echo json_encode([

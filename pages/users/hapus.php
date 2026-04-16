@@ -1,9 +1,11 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
 
-if (!hasRole('superadmin')) {
-    header('Location: ../../dashboard.php');
+// Only users with manage_users permission can delete users
+if (!hasPermission('manage_users')) {
+    header('Location: ' . baseUrl('dashboard.php'));
     exit();
 }
 
@@ -21,7 +23,8 @@ if (!$user) {
 $user = $user[0];
 
 // Check if user has active loans or other dependencies
-$active_loans = query("SELECT COUNT(*) as count FROM pinjaman WHERE petugas_id = ?", [$id])[0]['count'];
+$active_loans_result = query("SELECT COUNT(*) as count FROM pinjaman WHERE petugas_id = ?", [$id]);
+$active_loans = is_array($active_loans_result) && isset($active_loans_result[0]) ? $active_loans_result[0]['count'] : 0;
 
 if ($active_loans > 0) {
     $_SESSION['error'] = 'User tidak dapat dihapus karena memiliki pinjaman aktif';

@@ -10,6 +10,8 @@ description: Deployment workflow untuk aplikasi Kewer
 - [ ] Update configuration if needed
 - [ ] Check file permissions
 - [ ] Verify dependencies
+- [ ] Test API endpoints
+- [ ] Verify frontend libraries (DataTable.js, SweetAlert2, Select2, Flatpickr)
 
 ### 2. Backup Database Sebelum Deploy
 ```bash
@@ -27,6 +29,7 @@ nano config/database.php
 ```bash
 cd /opt/lampp/htdocs/kewer
 composer update
+npm install  # Untuk E2E tests dengan Puppeteer
 ```
 
 ### 5. Clear Cache (jika ada)
@@ -41,6 +44,8 @@ echo "8208" | sudo -S chmod -R 755 /opt/lampp/htdocs/kewer
 echo "8208" | sudo -S chmod 777 uploads
 echo "8208" | sudo -S chmod 644 config/*.php
 echo "8208" | sudo -S chmod 644 includes/*.php
+echo "8208" | sudo -S chmod 644 controllers/*.php
+echo "8208" | sudo -S chmod 644 models/*.php
 ```
 
 ### 7. Restart XAMPP Services
@@ -58,15 +63,21 @@ echo "8208" | sudo -S ./lampp status
 # Test database connection
 echo "8208" | sudo -S /opt/lampp/bin/mysql -u root -proot -e "USE kewer; SELECT COUNT(*) as count FROM users;"
 
+# Cek jumlah tabel (harus 28)
+echo "8208" | sudo -S /opt/lampp/bin/mysql -u root -proot -e "USE kewer; SELECT COUNT(*) as total_tables FROM information_schema.tables WHERE table_schema = 'kewer';"
+
 # Akses aplikasi di browser
 # http://localhost/kewer/login.php
 ```
 
 ### 9. Post-Deployment Testing
-- [ ] Test login functionality
+- [ ] Test login functionality (admin & petugas)
 - [ ] Test dashboard loading
-- [ ] Test CRUD operations
-- [ ] Test API endpoints
+- [ ] Test CRUD operations (nasabah, pinjaman, angsuran, users, cabang)
+- [ ] Test new features (family_risk, kas_bon, kas_petugas, pengeluaran)
+- [ ] Test API endpoints (12 endpoints)
+- [ ] Test frontend libraries (DataTable.js, SweetAlert2, Select2, Flatpickr)
+- [ ] Test OCR functionality
 - [ ] Check error logs
 
 ### 10. Monitor Error Logs
@@ -74,8 +85,8 @@ echo "8208" | sudo -S /opt/lampp/bin/mysql -u root -proot -e "USE kewer; SELECT 
 # Lihat server log
 tail -f /opt/lampp/logs/error_log
 
-# Lihat application log
-tail -f server.log
+# Lihat PHP error log
+tail -f /opt/lampp/logs/php_error_log
 ```
 
 ### Rollback Procedure (jika ada masalah)
@@ -87,3 +98,11 @@ echo "8208" | sudo -S /opt/lampp/bin/mysql -u root -proot kewer < pre_deploy_bac
 cd /opt/lampp
 echo "8208" | sudo -S ./lampp restart
 ```
+
+### Deployment Notes
+- Application uses 28 database tables including views
+- 12 API endpoints need to be functional
+- Frontend libraries: DataTable.js, SweetAlert2, Select2, Flatpickr
+- New features: family_risk, kas_bon, kas_petugas, pengeluaran
+- OCR integration for KTP processing
+- MVC pattern with controllers and models

@@ -1,23 +1,29 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
 
 $cabang_id = getCurrentCabang();
-$pembayaran = query("SELECT p.*, n.nama as nama_nasabah, u.nama as nama_petugas, pin.kode_pinjaman 
-                     FROM pembayaran p 
+$pembayaran = query("SELECT p.*, n.nama as nama_nasabah, u.nama as nama_petugas, pin.kode_pinjaman
+                     FROM pembayaran p
                      JOIN angsuran a ON p.angsuran_id = a.id
                      JOIN pinjaman pin ON a.pinjaman_id = pin.id
                      JOIN nasabah n ON pin.nasabah_id = n.id
                      JOIN users u ON p.petugas_id = u.id
-                     WHERE p.cabang_id = ? 
+                     WHERE p.cabang_id = ?
                      ORDER BY p.tanggal_bayar DESC", [$cabang_id]);
+
+// Ensure pembayaran is an array
+if (!is_array($pembayaran)) {
+    $pembayaran = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pembayaran - Kewer</title>
+    <title>Pembayaran - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
@@ -30,7 +36,7 @@ $pembayaran = query("SELECT p.*, n.nama as nama_nasabah, u.nama as nama_petugas,
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php">Kewer</a>
+            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="../../dashboard.php">Dashboard</a>
                 <a class="nav-link" href="../../logout.php">Logout</a>
@@ -49,10 +55,46 @@ $pembayaran = query("SELECT p.*, n.nama as nama_nasabah, u.nama as nama_petugas,
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="index.php">
+                            <a class="nav-link" href="../nasabah/index.php">
+                                <i class="bi bi-people"></i> Nasabah
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../pinjaman/index.php">
+                                <i class="bi bi-cash-stack"></i> Pinjaman
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../angsuran/index.php">
+                                <i class="bi bi-calendar-check"></i> Angsuran
+                            </a>
+                        </li>
+                        <?php if (hasPermission('manage_petugas') || hasPermission('view_petugas')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../petugas/index.php">
+                                <i class="bi bi-person-badge"></i> Petugas
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('manage_users') || hasPermission('view_users')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../users/index.php">
+                                <i class="bi bi-person-gear"></i> Users
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="index.php">
                                 <i class="bi bi-cash"></i> Pembayaran
                             </a>
                         </li>
+                        <?php if (hasPermission('manage_cabang') || hasPermission('view_cabang')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../cabang/index.php">
+                                <i class="bi bi-building"></i> Cabang
+                            </a>
+                        </li>
+                        <?php endif; ?>
                     </ul>
                 </div>
             </nav>
@@ -130,6 +172,9 @@ $pembayaran = query("SELECT p.*, n.nama as nama_nasabah, u.nama as nama_petugas,
                                 <option value="">Pilih Pinjaman</option>
                                 <?php
                                 $pinjaman = query("SELECT p.id, p.kode_pinjaman, n.nama FROM pinjaman p JOIN nasabah n ON p.nasabah_id = n.id WHERE p.cabang_id = ? AND p.status = 'aktif'", [$cabang_id]);
+                                if (!is_array($pinjaman)) {
+                                    $pinjaman = [];
+                                }
                                 foreach ($pinjaman as $p): ?>
                                     <option value="<?= $p['id'] ?>"><?= $p['kode_pinjaman'] ?> - <?= $p['nama'] ?></option>
                                 <?php endforeach; ?>
@@ -189,16 +234,41 @@ $pembayaran = query("SELECT p.*, n.nama as nama_nasabah, u.nama as nama_petugas,
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>
     <script>
         $(document).ready(function() {
-            // Initialize DataTable
-            $('#pembayaranTable').DataTable({
-                language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
-                },
-                pageLength: 25,
-                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-                responsive: true,
-                order: [[3, 'desc']]
-            });
+            // Only initialize DataTable if there's data
+            var hasData = <?php echo !empty($pembayaran) ? 'true' : 'false'; ?>;
+
+            if (hasData) {
+                try {
+                    var table = $('#pembayaranTable').DataTable({
+                        language: {
+                            search: "Cari:",
+                            lengthMenu: "Tampilkan _MENU_ data per halaman",
+                            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                            infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
+                            infoFiltered: "(difilter dari _MAX_ total data)",
+                            paginate: {
+                                first: "Pertama",
+                                last: "Terakhir",
+                                next: "Selanjutnya",
+                                previous: "Sebelumnya"
+                            },
+                            emptyTable: "Tidak ada data tersedia",
+                            zeroRecords: "Tidak ada data yang cocok"
+                        },
+                        pageLength: 25,
+                        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                        responsive: true,
+                        order: [[3, 'desc']]
+                    });
+                } catch (e) {
+                    console.error('DataTables initialization error:', e);
+                    $('#pembayaranTable').removeClass('table-striped table-hover');
+                }
+            } else {
+                // Hide DataTables controls when no data
+                $('#pembayaranTable').removeClass('table-striped table-hover');
+                $('#pembayaranTable_wrapper').hide();
+            }
             
             // Initialize Select2
             $('.form-select').select2({

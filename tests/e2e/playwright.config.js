@@ -9,7 +9,7 @@ module.exports = {
   reporter: 'html',
   timeout: 30000, // 30 seconds timeout
   use: {
-    baseURL: 'http://localhost:8000',
+    baseURL: 'http://localhost/kewer',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

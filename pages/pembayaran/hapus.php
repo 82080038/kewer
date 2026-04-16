@@ -1,6 +1,13 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
+
+// Permission check
+if (!hasPermission('manage_pembayaran')) {
+    header('Location: ' . baseUrl('dashboard.php'));
+    exit();
+}
 
 $cabang_id = getCurrentCabang();
 $id = $_GET['id'] ?? '';

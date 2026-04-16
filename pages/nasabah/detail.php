@@ -1,6 +1,13 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
+
+// Permission check
+if (!hasPermission('view_nasabah')) {
+    header('Location: ' . baseUrl('dashboard.php'));
+    exit();
+}
 
 $id = $_GET['id'];
 $cabang_id = getCurrentCabang();
@@ -22,19 +29,25 @@ $nasabah = $nasabah[0];
 
 // Get loan history
 $pinjaman = query("
-    SELECT * FROM pinjaman 
-    WHERE nasabah_id = ? 
+    SELECT * FROM pinjaman
+    WHERE nasabah_id = ?
     ORDER BY created_at DESC
 ", [$id]);
+if (!is_array($pinjaman)) {
+    $pinjaman = [];
+}
 
 // Get active loan
 $pinjaman_aktif = query("
-    SELECT *, 
+    SELECT *,
            (SELECT COUNT(*) FROM angsuran WHERE pinjaman_id = pinjaman.id AND status = 'lunas') as angsuran_lunas,
            (SELECT COUNT(*) FROM angsuran WHERE pinjaman_id = pinjaman.id) as total_angsuran
-    FROM pinjaman 
+    FROM pinjaman
     WHERE nasabah_id = ? AND status = 'aktif'
 ", [$id]);
+if (!is_array($pinjaman_aktif)) {
+    $pinjaman_aktif = [];
+}
 ?>
 
 <!DOCTYPE html>
@@ -42,7 +55,7 @@ $pinjaman_aktif = query("
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detail Nasabah - Kewer</title>
+    <title>Detail Nasabah - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -52,7 +65,7 @@ $pinjaman_aktif = query("
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php">Kewer</a>
+            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="../../logout.php">Logout</a>
             </div>

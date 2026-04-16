@@ -1,19 +1,29 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
+
+// Only users with manage_bunga permission can access settings
+if (!hasPermission('manage_bunga') && !hasPermission('view_settings')) {
+    header('Location: ' . baseUrl('dashboard.php'));
+    exit();
+}
 
 $cabang_id = getCurrentCabang();
 $calculator = new BungaCalculator($cabang_id);
 
 // Get all settings
 $settings = $calculator->getAllSettings();
+if (!is_array($settings)) {
+    $settings = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Setting Bunga - Kewer</title>
+    <title>Setting Bunga - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
@@ -24,8 +34,72 @@ $settings = $calculator->getAllSettings();
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="../../dashboard.php">Dashboard</a>
+                <a class="nav-link" href="../../logout.php">Logout</a>
+            </div>
+        </div>
+    </nav>
+
     <div class="container-fluid">
         <div class="row">
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="../../dashboard.php">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../nasabah/index.php">
+                                <i class="bi bi-people"></i> Nasabah
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../pinjaman/index.php">
+                                <i class="bi bi-cash-stack"></i> Pinjaman
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../angsuran/index.php">
+                                <i class="bi bi-calendar-check"></i> Angsuran
+                            </a>
+                        </li>
+                        <?php if (hasPermission('manage_petugas') || hasPermission('view_petugas')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../petugas/index.php">
+                                <i class="bi bi-person-badge"></i> Petugas
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <?php if (hasPermission('manage_users') || hasPermission('view_users')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../users/index.php">
+                                <i class="bi bi-person-gear"></i> Users
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="index.php">
+                                <i class="bi bi-percent"></i> Setting Bunga
+                            </a>
+                        </li>
+                        <?php if (hasPermission('manage_cabang') || hasPermission('view_cabang')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="../cabang/index.php">
+                                <i class="bi bi-building"></i> Cabang
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                    </ul>
+                </div>
+            </nav>
+
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
             <div class="col-md-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2><i class="bi bi-percent"></i> Setting Bunga Dinamis</h2>
@@ -257,16 +331,41 @@ $settings = $calculator->getAllSettings();
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>
     <script>
         $(document).ready(function() {
-            // Initialize DataTable
-            $('#settingBungaTable').DataTable({
-                language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
-                },
-                pageLength: 25,
-                lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-                responsive: true,
-                order: [[0, 'asc']]
-            });
+            // Only initialize DataTable if there's data
+            var hasData = <?php echo !empty($settings) ? 'true' : 'false'; ?>;
+
+            if (hasData) {
+                try {
+                    var table = $('#settingBungaTable').DataTable({
+                        language: {
+                            search: "Cari:",
+                            lengthMenu: "Tampilkan _MENU_ data per halaman",
+                            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                            infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
+                            infoFiltered: "(difilter dari _MAX_ total data)",
+                            paginate: {
+                                first: "Pertama",
+                                last: "Terakhir",
+                                next: "Selanjutnya",
+                                previous: "Sebelumnya"
+                            },
+                            emptyTable: "Tidak ada data tersedia",
+                            zeroRecords: "Tidak ada data yang cocok"
+                        },
+                        pageLength: 25,
+                        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+                        responsive: true,
+                        order: [[0, 'asc']]
+                    });
+                } catch (e) {
+                    console.error('DataTables initialization error:', e);
+                    $('#settingBungaTable').removeClass('table-striped table-hover');
+                }
+            } else {
+                // Hide DataTables controls when no data
+                $('#settingBungaTable').removeClass('table-striped table-hover');
+                $('#settingBungaTable_wrapper').hide();
+            }
             
             // Initialize Select2
             $('.form-select').select2({

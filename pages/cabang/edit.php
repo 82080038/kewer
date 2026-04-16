@@ -1,15 +1,16 @@
 <?php
-require_once '../../includes/functions.php';
-requireLogin();
-
-if (!hasRole('superadmin')) {
-    header('Location: ../../dashboard.php');
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
+require_once BASE_PATH . '/includes/alamat_helper.php';
+// Only users with manage_cabang permission can edit cabang
+if (!hasPermission('manage_cabang')) {
+    header('Location: ' . baseUrl('dashboard.php'));
     exit();
 }
 
 $id = $_GET['id'] ?? '';
 if (!$id) {
-    header('Location: index.php');
+    header('Location: ' . baseUrl('pages/cabang/index.php'));
     exit();
 }
 
@@ -25,19 +26,21 @@ if ($_POST) {
     $alamat = $_POST['alamat'] ?? '';
     $telp = $_POST['telp'] ?? '';
     $email = $_POST['email'] ?? '';
-    $kota = $_POST['kota'] ?? '';
-    $provinsi = $_POST['provinsi'] ?? '';
-    $kode_pos = $_POST['kode_pos'] ?? '';
+    $province_id = $_POST['province_id'] ?? '';
+    $regency_id = $_POST['regency_id'] ?? '';
+    $district_id = $_POST['district_id'] ?? '';
+    $village_id = $_POST['village_id'] ?? '';
     $status = $_POST['status'] ?? 'aktif';
     
-    $result = query("UPDATE cabang SET nama_cabang = ?, alamat = ?, telp = ?, email = ?, kota = ?, provinsi = ?, kode_pos = ?, status = ? WHERE id = ?", [
+    $result = query("UPDATE cabang SET nama_cabang = ?, alamat = ?, telp = ?, email = ?, province_id = ?, regency_id = ?, district_id = ?, village_id = ?, status = ? WHERE id = ?", [
         $nama_cabang,
         $alamat,
         $telp,
         $email,
-        $kota,
-        $provinsi,
-        $kode_pos,
+        $province_id ?: null,
+        $regency_id ?: null,
+        $district_id ?: null,
+        $village_id ?: null,
         $status,
         $id
     ]);
@@ -57,14 +60,14 @@ if ($_POST) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Cabang - Kewer</title>
+    <title>Edit Cabang - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php">Kewer</a>
+            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="../../dashboard.php">Dashboard</a>
                 <a class="nav-link" href="../../logout.php">Logout</a>
@@ -119,10 +122,6 @@ if ($_POST) {
                                 <input type="text" name="nama_cabang" class="form-control" value="<?= $cabang['nama_cabang'] ?>" required>
                             </div>
                             <div class="mb-3">
-                                <label>Alamat</label>
-                                <textarea name="alamat" class="form-control" rows="2"><?= $cabang['alamat'] ?? '' ?></textarea>
-                            </div>
-                            <div class="mb-3">
                                 <label>Telp</label>
                                 <input type="text" name="telp" class="form-control" value="<?= $cabang['telp'] ?? '' ?>">
                             </div>
@@ -131,16 +130,24 @@ if ($_POST) {
                                 <input type="email" name="email" class="form-control" value="<?= $cabang['email'] ?? '' ?>">
                             </div>
                             <div class="mb-3">
-                                <label>Kota</label>
-                                <input type="text" name="kota" class="form-control" value="<?= $cabang['kota'] ?? '' ?>">
-                            </div>
-                            <div class="mb-3">
                                 <label>Provinsi</label>
-                                <input type="text" name="provinsi" class="form-control" value="<?= $cabang['provinsi'] ?? '' ?>">
+                                <?php echo provinceDropdown('province_id', $cabang['province_id'] ?? '', 'onchange="loadRegencies(this.value)"'); ?>
                             </div>
                             <div class="mb-3">
-                                <label>Kode Pos</label>
-                                <input type="text" name="kode_pos" class="form-control" value="<?= $cabang['kode_pos'] ?? '' ?>">
+                                <label>Kabupaten/Kota</label>
+                                <?php echo regencyDropdown('regency_id', $cabang['regency_id'] ?? '', $cabang['province_id'] ?? '', 'onchange="loadDistricts(this.value)"'); ?>
+                            </div>
+                            <div class="mb-3">
+                                <label>Kecamatan</label>
+                                <?php echo districtDropdown('district_id', $cabang['district_id'] ?? '', $cabang['regency_id'] ?? '', 'onchange="loadVillages(this.value)"'); ?>
+                            </div>
+                            <div class="mb-3">
+                                <label>Desa/Kelurahan</label>
+                                <?php echo villageDropdown('village_id', $cabang['village_id'] ?? '', $cabang['district_id'] ?? ''); ?>
+                            </div>
+                            <div class="mb-3">
+                                <label>Keterangan Tambahan (Opsional)</label>
+                                <textarea name="alamat" class="form-control" rows="2" placeholder="Nama jalan, nomor rumah, RT/RW (opsional)"><?= $cabang['alamat'] ?? '' ?></textarea>
                             </div>
                             <div class="mb-3">
                                 <label>Status</label>
@@ -161,5 +168,84 @@ if ($_POST) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Load regencies when province changes
+        function loadRegencies(provinceId) {
+            const regencySelect = document.getElementById('regency_id');
+            const districtSelect = document.getElementById('district_id');
+            const villageSelect = document.getElementById('village_id');
+            
+            // Reset dependent dropdowns
+            regencySelect.innerHTML = '<option value="">Pilih Kabupaten/Kota</option>';
+            districtSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
+            villageSelect.innerHTML = '<option value="">Pilih Desa/Kelurahan</option>';
+            
+            if (!provinceId) return;
+            
+            fetch('/kewer/api/alamat.php?action=regencies&province_id=' + provinceId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        data.data.forEach(regency => {
+                            const option = document.createElement('option');
+                            option.value = regency.id;
+                            option.textContent = regency.name;
+                            regencySelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading regencies:', error));
+        }
+        
+        // Load districts when regency changes
+        function loadDistricts(regencyId) {
+            const districtSelect = document.getElementById('district_id');
+            const villageSelect = document.getElementById('village_id');
+            
+            // Reset dependent dropdown
+            districtSelect.innerHTML = '<option value="">Pilih Kecamatan</option>';
+            villageSelect.innerHTML = '<option value="">Pilih Desa/Kelurahan</option>';
+            
+            if (!regencyId) return;
+            
+            fetch('/kewer/api/alamat.php?action=districts&regency_id=' + regencyId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        data.data.forEach(district => {
+                            const option = document.createElement('option');
+                            option.value = district.id;
+                            option.textContent = district.name;
+                            districtSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading districts:', error));
+        }
+        
+        // Load villages when district changes
+        function loadVillages(districtId) {
+            const villageSelect = document.getElementById('village_id');
+            
+            // Reset dependent dropdown
+            villageSelect.innerHTML = '<option value="">Pilih Desa/Kelurahan</option>';
+            
+            if (!districtId) return;
+            
+            fetch('/kewer/api/alamat.php?action=villages&district_id=' + districtId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        data.data.forEach(village => {
+                            const option = document.createElement('option');
+                            option.value = village.id;
+                            option.textContent = village.name;
+                            villageSelect.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading villages:', error));
+        }
+    </script>
 </body>
 </html>

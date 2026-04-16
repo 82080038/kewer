@@ -1,12 +1,20 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
+require_once BASE_PATH . '/includes/auto_confirm.php';
 requireLogin();
+
+// Permission check
+if (!hasPermission('pinjaman.approve')) {
+    header('Location: ' . baseUrl('dashboard.php'));
+    exit();
+}
 
 $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? '';
 
 if (!$action || !$id) {
-    header('Location: index.php');
+    header('Location: ' . baseUrl('pages/pinjaman/index.php'));
     exit();
 }
 
@@ -14,7 +22,7 @@ if (!$action || !$id) {
 $pinjaman = query("SELECT * FROM pinjaman WHERE id = ? AND cabang_id = ?", [$id, getCurrentCabang()]);
 
 if (!$pinjaman) {
-    header('Location: index.php');
+    header('Location: ' . baseUrl('pages/pinjaman/index.php'));
     exit();
 }
 
@@ -35,24 +43,45 @@ switch ($action) {
             } elseif ($riskCheck['requires_verification']) {
                 $_SESSION['error'] = 'Pinjaman memerlukan verifikasi tambahan: ' . $riskCheck['message'];
             } else {
-                // Update status to disetujui
-                $result = query("UPDATE pinjaman SET status = 'disetujui' WHERE id = ?", [$id]);
+                // Check if auto-confirm should be applied
+                $currentUser = getCurrentUser();
+                $canAutoConfirm = hasPermission('pinjaman.auto_confirm');
                 
-                if ($result) {
-                    // Create loan schedule
-                    createLoanSchedule($id, $pinjaman['plafon'], $pinjaman['tenor'], $pinjaman['bunga_per_bulan'], $pinjaman['tanggal_akad']);
+                if ($canAutoConfirm) {
+                    $autoConfirmResult = applyAutoConfirm($id, $currentUser['id']);
+                    if ($autoConfirmResult['success']) {
+                        $_SESSION['success'] = 'Pinjaman berhasil di-auto-confirm dan diaktifkan';
+                    } else {
+                        // Auto-confirm failed, fall back to manual approval
+                        $_SESSION['warning'] = 'Auto-confirm tidak dapat diterapkan: ' . $autoConfirmResult['message'] . '. Melakukan approval manual.';
+                        // Continue to manual approval below
+                    }
+                }
+                
+                // Manual approval (if auto-confirm not applied or failed)
+                if (!isset($autoConfirmResult) || !$autoConfirmResult['success']) {
+                    // Update status to disetujui
+                    $result = query("UPDATE pinjaman SET status = 'disetujui' WHERE id = ?", [$id]);
                     
-                    // Update to aktif
-                    query("UPDATE pinjaman SET status = 'aktif' WHERE id = ?", [$id]);
-                    
-                    $_SESSION['success'] = 'Pinjaman berhasil disetujui dan diaktifkan';
-                    
-                    // Send notification
-                    $nasabah = query("SELECT telp FROM nasabah WHERE id = ?", [$pinjaman['nasabah_id']])[0];
-                    $message = "Pinjaman Anda dengan kode {$pinjaman['kode_pinjaman']} telah disetujui. Plafon: " . formatRupiah($pinjaman['plafon']);
-                    sendWhatsApp($nasabah['telp'], $message);
-                } else {
-                    $_SESSION['error'] = 'Gagal menyetujui pinjaman';
+                    if ($result) {
+                        // Create loan schedule
+                        createLoanSchedule($id, $pinjaman['plafon'], $pinjaman['tenor'], $pinjaman['bunga_per_bulan'], $pinjaman['tanggal_akad']);
+                        
+                        // Update to aktif
+                        query("UPDATE pinjaman SET status = 'aktif' WHERE id = ?", [$id]);
+                        
+                        $_SESSION['success'] = 'Pinjaman berhasil disetujui dan diaktifkan';
+
+                        // Send notification
+                        $nasabah_result = query("SELECT telp FROM nasabah WHERE id = ?", [$pinjaman['nasabah_id']]);
+                        $nasabah = is_array($nasabah_result) && isset($nasabah_result[0]) ? $nasabah_result[0] : ['telp' => null];
+                        $message = "Pinjaman Anda dengan kode {$pinjaman['kode_pinjaman']} telah disetujui. Plafon: " . formatRupiah($pinjaman['plafon']);
+                        if ($nasabah['telp']) {
+                            sendWhatsApp($nasabah['telp'], $message);
+                        }
+                    } else {
+                        $_SESSION['error'] = 'Gagal menyetujui pinjaman';
+                    }
                 }
             }
         }
@@ -82,7 +111,8 @@ switch ($action) {
             $_SESSION['error'] = 'Hanya dapat melunasi pinjaman dengan status aktif';
         } else {
             // Check if all installments are paid
-            $angsuran = query("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'lunas' THEN 1 ELSE 0 END) as lunas FROM angsuran WHERE pinjaman_id = ?", [$id])[0];
+            $angsuran_result = query("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'lunas' THEN 1 ELSE 0 END) as lunas FROM angsuran WHERE pinjaman_id = ?", [$id]);
+            $angsuran = is_array($angsuran_result) && isset($angsuran_result[0]) ? $angsuran_result[0] : ['total' => 0, 'lunas' => 0];
             
             if ($angsuran['total'] == $angsuran['lunas']) {
                 $result = query("UPDATE pinjaman SET status = 'lunas' WHERE id = ?", [$id]);

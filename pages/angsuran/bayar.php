@@ -1,6 +1,13 @@
 <?php
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
+
+// Permission check
+if (!hasPermission('manage_pembayaran')) {
+    header('Location: ' . baseUrl('dashboard.php'));
+    exit();
+}
 
 $cabang_id = getCurrentCabang();
 $angsuran_id = $_GET['id'] ?? '';
@@ -89,7 +96,8 @@ if ($_POST) {
             ]);
             
             // Check if all installments are paid
-            $angsuran_count = query("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'lunas' THEN 1 ELSE 0 END) as lunas FROM angsuran WHERE pinjaman_id = ?", [$angsuran['pinjaman_id']])[0];
+            $angsuran_count_result = query("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'lunas' THEN 1 ELSE 0 END) as lunas FROM angsuran WHERE pinjaman_id = ?", [$angsuran['pinjaman_id']]);
+            $angsuran_count = is_array($angsuran_count_result) && isset($angsuran_count_result[0]) ? $angsuran_count_result[0] : ['total' => 0, 'lunas' => 0];
             
             if ($angsuran_count['total'] == $angsuran_count['lunas']) {
                 query("UPDATE pinjaman SET status = 'lunas' WHERE id = ?", [$angsuran['pinjaman_id']]);
@@ -118,14 +126,14 @@ if ($_POST) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bayar Angsuran - Kewer</title>
+    <title>Bayar Angsuran - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php">Kewer</a>
+            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="../../logout.php">Logout</a>
             </div>

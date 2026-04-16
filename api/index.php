@@ -9,7 +9,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-require_once '../includes/functions.php';
+require_once __DIR__ . '/../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 
 // API Authentication (simple token-based)
 function authenticateAPI() {
