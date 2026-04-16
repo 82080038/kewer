@@ -3,7 +3,7 @@
         'name' => 'kewer/koperasi-digital',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '561445144fa16a4b60a03457877fbebbba750e6b',
+        'reference' => 'c7f4e06b2b7646e702cae8c64d75bff7f39bdbe7',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -31,7 +31,7 @@
         'kewer/koperasi-digital' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '561445144fa16a4b60a03457877fbebbba750e6b',
+            'reference' => 'c7f4e06b2b7646e702cae8c64d75bff7f39bdbe7',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

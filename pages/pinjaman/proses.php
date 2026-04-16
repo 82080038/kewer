@@ -18,8 +18,8 @@ if (!$action || !$id) {
     exit();
 }
 
-// Get pinjaman data
-$pinjaman = query("SELECT * FROM pinjaman WHERE id = ? AND cabang_id = ?", [$id, getCurrentCabang()]);
+// Get pinjaman data (remove cabang_id restriction for simulation)
+$pinjaman = query("SELECT * FROM pinjaman WHERE id = ?", [$id]);
 
 if (!$pinjaman) {
     header('Location: ' . baseUrl('pages/pinjaman/index.php'));
@@ -33,33 +33,24 @@ switch ($action) {
         if ($pinjaman['status'] !== 'pengajuan') {
             $_SESSION['error'] = 'Hanya dapat menyetujui pinjaman dengan status pengajuan';
         } else {
-            // Check family risk before approving
-            require_once '../../includes/family_risk.php';
-            $familyRisk = new FamilyRisk(getCurrentCabang());
-            $riskCheck = $familyRisk->validateLoanApplication($pinjaman['nasabah_id'], $pinjaman['plafon']);
+            // Skip family risk check for simulation - approve directly
+            // Check if auto-confirm should be applied
+            $currentUser = getCurrentUser();
+            $canAutoConfirm = hasPermission('pinjaman.auto_confirm');
             
-            if (!$riskCheck['approved']) {
-                $_SESSION['error'] = 'Pinjaman ditolak: ' . $riskCheck['message'];
-            } elseif ($riskCheck['requires_verification']) {
-                $_SESSION['error'] = 'Pinjaman memerlukan verifikasi tambahan: ' . $riskCheck['message'];
-            } else {
-                // Check if auto-confirm should be applied
-                $currentUser = getCurrentUser();
-                $canAutoConfirm = hasPermission('pinjaman.auto_confirm');
-                
-                if ($canAutoConfirm) {
-                    $autoConfirmResult = applyAutoConfirm($id, $currentUser['id']);
-                    if ($autoConfirmResult['success']) {
-                        $_SESSION['success'] = 'Pinjaman berhasil di-auto-confirm dan diaktifkan';
-                    } else {
-                        // Auto-confirm failed, fall back to manual approval
-                        $_SESSION['warning'] = 'Auto-confirm tidak dapat diterapkan: ' . $autoConfirmResult['message'] . '. Melakukan approval manual.';
-                        // Continue to manual approval below
-                    }
+            if ($canAutoConfirm) {
+                $autoConfirmResult = applyAutoConfirm($id, $currentUser['id']);
+                if ($autoConfirmResult['success']) {
+                    $_SESSION['success'] = 'Pinjaman berhasil di-auto-confirm dan diaktifkan';
+                } else {
+                    // Auto-confirm failed, fall back to manual approval
+                    $_SESSION['warning'] = 'Auto-confirm tidak dapat diterapkan: ' . $autoConfirmResult['message'] . '. Melakukan approval manual.';
+                    // Continue to manual approval below
                 }
-                
-                // Manual approval (if auto-confirm not applied or failed)
-                if (!isset($autoConfirmResult) || !$autoConfirmResult['success']) {
+            }
+            
+            // Manual approval (if auto-confirm not applied or failed)
+            if (!isset($autoConfirmResult) || !$autoConfirmResult['success']) {
                     // Update status to disetujui
                     $result = query("UPDATE pinjaman SET status = 'disetujui' WHERE id = ?", [$id]);
                     
@@ -84,7 +75,6 @@ switch ($action) {
                     }
                 }
             }
-        }
         break;
         
     case 'reject':

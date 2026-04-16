@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
 require_once BASE_PATH . '/config/session.php';
 requireLogin();
 

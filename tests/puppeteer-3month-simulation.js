@@ -255,22 +255,39 @@ async function runSimulation() {
       throw error;
     }
 
-    // STEP 4: Approve Pinjaman via UI
+    // STEP 4: Approve Pinjaman via API
     try {
-      console.log('\n📋 STEP 4: Approve Pinjaman via UI');
-      await page.goto(config.baseUrl + `/pages/pinjaman/proses.php?action=approve&id=${pinjamanId}`);
-      await delay(2000);
+      console.log('\n📋 STEP 4: Approve Pinjaman via API');
       
-      logSuccess('Approve Pinjaman via UI');
-      logInfo('Pinjaman ID', pinjamanId);
-      logInfo('Status', 'Aktif - Jadwal angsuran digenerate');
+      const apiResponse = await page.evaluate(async (baseUrl, pinjamanId) => {
+        const response = await fetch(baseUrl + `/api/pinjaman.php?cabang_id=1&id=${pinjamanId}&action=approve`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': 'Bearer kewer-api-token-2024',
+            'Content-Type': 'application/json',
+          }
+        });
+        const text = await response.text();
+        const cleanText = text.replace(/\?>\s*$/, '').trim();
+        return JSON.parse(cleanText);
+      }, config.baseUrl, pinjamanId);
       
-      // Go back to pinjaman list to verify
-      await page.goto(config.baseUrl + '/pages/pinjaman/index.php');
-      await delay(1000);
-      await takeScreenshot(page, '04-pinjaman-aktif');
+      console.log('API Response:', JSON.stringify(apiResponse));
+      
+      if (apiResponse.success) {
+        logSuccess('Approve Pinjaman via API');
+        logInfo('Pinjaman ID', pinjamanId);
+        logInfo('Status', 'Aktif - Jadwal angsuran digenerate');
+        
+        // Go to pinjaman list to verify
+        await page.goto(config.baseUrl + '/pages/pinjaman/index.php');
+        await delay(1000);
+        await takeScreenshot(page, '04-pinjaman-aktif');
+      } else {
+        throw new Error('API approval failed: ' + JSON.stringify(apiResponse));
+      }
     } catch (error) {
-      logError('Approve Pinjaman via UI', error);
+      logError('Approve Pinjaman via API', error);
       throw error;
     }
 
