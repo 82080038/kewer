@@ -1,0 +1,250 @@
+{
+  "role": {
+    "name": "Admin Cabang",
+    "code": "admin_cabang",
+    "hierarchy_level": 4,
+    "description": "Branch administrator with limited branch-specific administrative functions",
+    "status": "aktif"
+  },
+  "access_scope": {
+    "type": "cabang",
+    "branches": "single",
+    "data_visibility": "branch_specific"
+  },
+  "application_standards": {
+    "language": {
+      "ui_language": "Bahasa Indonesia",
+      "labels": "Indonesian",
+      "messages": "Indonesian",
+      "notifications": "Indonesian"
+    },
+    "formatting": {
+      "currency": {
+        "symbol": "Rp",
+        "format": "Rp1.000.000",
+        "thousands_separator": ".",
+        "decimal_separator": ",",
+        "php_function": "number_format($value, 0, ',', '.')"
+      },
+      "date": {
+        "display_format": "d F Y",
+        "example": "16 April 2026",
+        "database_format": "Y-m-d",
+        "example_db": "2026-04-16",
+        "library": "Flatpickr",
+        "altFormat": "d F Y"
+      },
+      "number": {
+        "thousands_separator": ".",
+        "decimal_separator": ",",
+        "example": "1.000,50"
+      }
+    }
+  },
+  "permissions": {
+    "automatic_grant": false,
+    "can_manage": [
+      "petugas_cabang",
+      "karyawan"
+    ]
+  },
+  "modules": {
+    "dashboard": {
+      "access": true,
+      "features": [
+        "View branch statistics",
+        "View total nasabah count in branch",
+        "View total pinjaman count in branch",
+        "View outstanding balance in branch",
+        "View recent activities in branch"
+      ]
+    },
+    "nasabah": {
+      "access": true,
+      "permissions": ["nasabah.read", "manage_nasabah", "manage_blacklist"],
+      "features": [
+        "View nasabah in branch",
+        "Add new nasabah",
+        "Edit nasabah information",
+        "Delete nasabah",
+        "View nasabah details",
+        "Blacklist/unblacklist nasabah",
+        "View blacklist history log"
+      ]
+    },
+    "pinjaman": {
+      "access": true,
+      "permissions": ["pinjaman.read", "manage_pinjaman"],
+      "features": [
+        "View pinjaman in branch",
+        "Create new pinjaman applications (harian/mingguan/bulanan)",
+        "View pinjaman details",
+        "View pinjaman schedules (harian/mingguan/bulanan)",
+        "Cetak kartu angsuran",
+        "Cetak kwitansi pembayaran"
+      ]
+    },
+    "angsuran": {
+      "access": true,
+      "permissions": ["angsuran.read", "manage_pembayaran"],
+      "features": [
+        "View angsuran in branch",
+        "Record payments",
+        "Edit payment records",
+        "Delete payment records",
+        "View payment history",
+        "View auto-calculated denda (penalty)",
+        "Cetak kwitansi pembayaran"
+      ]
+    },
+    "users": {
+      "access": true,
+      "permissions": ["users.create", "users.read", "manage_users"],
+      "features": [
+        "View users in branch",
+        "Create new users",
+        "Edit user information",
+        "Delete users"
+      ]
+    },
+    "cabang": {
+      "access": true,
+      "permissions": ["cabang.read"],
+      "features": [
+        "View branch information",
+        "View branch statistics"
+      ]
+    },
+    "field_activities": {
+      "access": true,
+      "permissions": ["angsuran.read"],
+      "features": [
+        "View field activities in branch",
+        "View activity reports"
+      ]
+    },
+    "kas_petugas": {
+      "access": true,
+      "permissions": ["kas_petugas.read", "kas_petugas.update"],
+      "features": [
+        "Lihat kas petugas di cabang",
+        "Kelola alokasi kas",
+        "Lihat pelacakan setoran",
+        "Lihat riwayat transaksi"
+      ]
+    },
+    "setting_bunga": {
+      "access": true,
+      "permissions": ["view_settings"],
+      "features": [
+        "Lihat pengaturan suku bunga (hanya baca)"
+      ]
+    },
+    "pengeluaran": {
+      "access": true,
+      "permissions": ["manage_pengeluaran", "view_pengeluaran"],
+      "features": [
+        "Lihat pengeluaran cabang",
+        "Catat pengeluaran",
+        "Kategorisasi pengeluaran",
+        "Lihat laporan pengeluaran"
+      ]
+    },
+    "kas_bon": {
+      "access": true,
+      "permissions": ["manage_kas_bon", "view_kas_bon"],
+      "features": [
+        "Lihat kas bon cabang",
+        "Proses permintaan kas bon",
+        "Pantau potongan",
+        "Hitung saldo"
+      ]
+    }
+  },
+  "tasks_and_responsibilities": {
+    "administrative": [
+      "Branch administrative functions",
+      "Branch user management",
+      "Branch reporting",
+      "Branch coordination",
+      "Support branch operations"
+    ],
+    "user_management": [
+      "Create and manage branch user accounts",
+      "Assign roles to branch staff",
+      "Monitor user activity",
+      "Provide user support"
+    ],
+    "reporting": [
+      "Generate branch reports",
+      "Analyze branch data",
+      "Prepare management reports",
+      "Track key metrics"
+    ],
+    "support": [
+      "Support branch staff",
+      "Facilitate communication",
+      "Ensure policy compliance",
+      "Provide technical support"
+    ]
+  },
+  "rights": {
+    "branch_access": [
+      "Access to branch features",
+      "View branch data",
+      "View branch reports"
+    ],
+    "user_management": [
+      "Create and manage branch user accounts (limited)",
+      "Assign roles to branch staff (limited)"
+    ],
+    "reporting": [
+      "Generate branch reports",
+      "Access branch data",
+      "Create custom reports"
+    ]
+  },
+  "obligations": {
+    "administration": [
+      "Maintain branch data accuracy",
+      "Implement policies",
+      "Provide user support",
+      "Monitor branch performance"
+    ],
+    "compliance": [
+      "Ensure regulatory compliance",
+      "Maintain audit trails",
+      "Follow organizational policies",
+      "Report on issues"
+    ],
+    "support": [
+      "Support branch operations",
+      "Facilitate communication",
+      "Ensure consistent practices",
+      "Provide training"
+    ]
+  },
+  "simulation_parameters": {
+    "login": {
+      "username": "admin",
+      "password": "password",
+      "test_login_url": "/login.php?test_login=true&username=admin&password=password"
+    },
+    "daily_activities": [
+      "Review branch dashboard",
+      "Monitor branch performance",
+      "Handle administrative requests",
+      "Support branch staff"
+    ],
+    "weekly_activities": [
+      "Review weekly branch reports",
+      "Analyze branch performance",
+      "Plan administrative activities"
+    ],
+    "monthly_activities": [
+      "Review monthly branch reports",
+      "Analyze branch performance",
+      "Report to branch manager"
+    ]
+  }
+}

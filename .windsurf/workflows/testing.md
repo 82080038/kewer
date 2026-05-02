@@ -1,0 +1,96 @@
+---
+description: Testing workflow untuk aplikasi Kewer
+---
+
+## Testing Workflow
+
+### 1. Quick Full Test (semua halaman + API)
+```bash
+# Test semua halaman koperasi (5 users × 11 pages = 55 tests)
+total=0; fail=0
+PAGES="dashboard.php pages/nasabah/index.php pages/nasabah/tambah.php pages/pinjaman/index.php pages/angsuran/index.php pages/petugas/index.php pages/petugas/tambah.php pages/cabang/index.php pages/cabang/tambah.php pages/pembayaran/index.php pages/users/index.php"
+for user in patri mgr_pusat adm_pusat ptr_pngr1 krw_pngr; do
+  C=$(curl -s -D - -X POST "http://localhost/kewer/login.php" -d "username=$user" -d "password=Kewer2024!" | grep -i "Set-Cookie.*PHPSESSID" | head -1 | sed "s/.*PHPSESSID=/PHPSESSID=/" | sed "s/;.*//")
+  for page in $PAGES; do
+    total=$((total+1))
+    body=$(curl -s -b "$C" "http://localhost/kewer/$page")
+    echo "$body" | grep -qi "Fatal error\|Parse error\|Uncaught" && { fail=$((fail+1)); echo "✗ $user/$page"; }
+  done
+done
+echo "Koperasi: $((total-fail))/$total OK"
+
+# Test appOwner pages (7 pages)
+OC=$(curl -s -D - -X POST "http://localhost/kewer/login.php" -d "username=appowner" -d "password=AppOwner2024!" | grep -i "Set-Cookie.*PHPSESSID" | head -1 | sed "s/.*PHPSESSID=/PHPSESSID=/" | sed "s/;.*//")
+ok=0
+for page in dashboard.php approvals.php koperasi.php billing.php usage.php ai_advisor.php settings.php; do
+  body=$(curl -s -b "$OC" "http://localhost/kewer/pages/app_owner/$page")
+  echo "$body" | grep -qi "Fatal error\|Parse error\|Uncaught" || ok=$((ok+1))
+done
+echo "appOwner: $ok/7 OK"
+```
+
+### 2. Database Integrity Test
+```bash
+/opt/lampp/bin/mysql -u root -proot -e "
+-- Tabel counts
+SELECT 'kewer' as db, COUNT(*) as tables FROM information_schema.TABLES WHERE TABLE_SCHEMA='kewer'
+UNION ALL SELECT 'db_alamat_simple', COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='db_alamat_simple'
+UNION ALL SELECT 'db_orang', COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='db_orang';
+
+-- Cross-DB links
+SELECT 'users linked' as item, COUNT(*) as cnt FROM kewer.users WHERE db_orang_person_id IS NOT NULL
+UNION ALL SELECT 'nasabah linked', COUNT(*) FROM kewer.nasabah WHERE db_orang_user_id IS NOT NULL
+UNION ALL SELECT 'cabang linked', COUNT(*) FROM kewer.cabang WHERE db_orang_person_id IS NOT NULL
+UNION ALL SELECT 'people records', COUNT(*) FROM db_orang.people
+UNION ALL SELECT 'addresses', COUNT(*) FROM db_orang.addresses;
+
+-- Data integrity
+SELECT 'Orphan angsuran' as chk, COUNT(*) FROM kewer.angsuran a LEFT JOIN kewer.pinjaman p ON a.pinjaman_id=p.id WHERE p.id IS NULL
+UNION ALL SELECT 'Orphan pembayaran', COUNT(*) FROM kewer.pembayaran pb LEFT JOIN kewer.angsuran a ON pb.angsuran_id=a.id WHERE a.id IS NULL
+UNION ALL SELECT 'Invalid roles', COUNT(*) FROM kewer.users u LEFT JOIN kewer.ref_roles r ON u.role=r.role_kode WHERE r.role_kode IS NULL;
+"
+```
+
+### 3. Alamat API Test
+```bash
+# Test cascade: provinces → regencies → districts → villages
+curl -s "http://localhost/kewer/api/alamat.php?action=provinces" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Provinces: {len(d.get(\"data\",d))}')"
+curl -s "http://localhost/kewer/api/alamat.php?action=regencies&province_id=3" | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Regencies: {len(d.get(\"data\",d))}')"
+```
+
+### 4. db_orang Integration Test
+```bash
+/opt/lampp/bin/php -r "
+require_once '/opt/lampp/htdocs/kewer/config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
+require_once BASE_PATH . '/includes/people_helper.php';
+\$pid = createPersonWithAddress(
+    ['nama' => 'Test Person', 'telp' => '08123'],
+    ['label' => 'test', 'street_address' => 'Test St', 'province_id' => 3]
+);
+echo 'Create: ' . (\$pid ? 'OK' : 'FAIL') . \"\n\";
+if (\$pid) {
+    \$addr = getPersonAddresses(\$pid);
+    echo 'Province: ' . (\$addr[0]['province_name'] ?? 'NULL') . \"\n\";
+    query_orang('DELETE FROM addresses WHERE person_id = ?', [\$pid]);
+    query_orang('DELETE FROM people WHERE id = ?', [\$pid]);
+    echo \"Cleanup OK\n\";
+}
+"
+```
+
+### 5. Error Log Check
+```bash
+cat /opt/lampp/htdocs/kewer/logs/error.log | wc -l
+# Harus 0 lines setelah fresh test
+```
+
+### 6. Manual Testing Checklist
+- [ ] Login semua role (appowner, patri, mgr_pusat, adm_pusat, ptr_pngr1, krw_pngr)
+- [ ] CRUD nasabah (tambah, edit, hapus)
+- [ ] CRUD pinjaman (pengajuan, approve, angsuran)
+- [ ] Pembayaran angsuran
+- [ ] Alamat dropdown cascade (provinsi → kabupaten → kecamatan → desa)
+- [ ] appOwner: approvals, billing, usage, AI advisor
+- [ ] Field officer activities
+- [ ] Cek cross-DB: nasabah detail menampilkan nama provinsi/kabupaten

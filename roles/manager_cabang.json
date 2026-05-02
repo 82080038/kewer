@@ -1,0 +1,59 @@
+{
+  "role": {
+    "name": "Manager Cabang",
+    "code": "manager_cabang",
+    "hierarchy_level": 4,
+    "description": "Manager cabang dengan kontrol operasional pada cabang tertentu",
+    "status": "aktif"
+  },
+  "access_scope": {
+    "type": "cabang",
+    "branches": "single",
+    "data_visibility": "branch_specific"
+  },
+  "application_standards": {
+    "language": {
+      "ui_language": "Bahasa Indonesia",
+      "labels": "Indonesian",
+      "messages": "Indonesian",
+      "notifications": "Indonesian"
+    },
+    "formatting": {
+      "currency": {
+        "symbol": "Rp",
+        "format": "Rp1.000.000",
+        "thousands_separator": ".",
+        "decimal_separator": ",",
+        "php_function": "number_format($value, 0, ',', '.')"
+      },
+      "date": {
+        "display_format": "d F Y",
+        "example": "16 April 2026",
+        "database_format": "Y-m-d",
+        "example_db": "2026-04-16",
+        "library": "Flatpickr",
+        "altFormat": "d F Y"
+      },
+      "number": {
+        "thousands_separator": ".",
+        "decimal_separator": ",",
+        "example": "1.000,50"
+      }
+    }
+  },
+  "permissions": {
+    "automatic_grant": false,
+    "can_manage": [
+      "admin_cabang",
+      "petugas_cabang",
+      "karyawan"
+    ]
+  },
+  "modules": {
+    "login": {
+      "username": "manager_cabang",
+      "password": "password",
+      "test_login_url": "/login.php?test_login=true&username=manager_cabang&password=password"
+    }
+  }
+}
