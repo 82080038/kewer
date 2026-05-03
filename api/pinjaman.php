@@ -41,8 +41,19 @@ if (!$user) {
     exit();
 }
 
-// Get current kantor from query parameter or use single office (id = 1)
-$kantor_id = $_GET['kantor_id'] ?? 1;
+// Validasi kantor_id: harus milik bos yang sedang login
+$kantor_id = $_GET['kantor_id'] ?? null;
+
+if ($kantor_id) {
+    if (!validateCabangOwnership($kantor_id)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden - Kantor ini bukan milik koperasi Anda']);
+        exit();
+    }
+} else {
+    $owned = getBosOwnedCabangIds();
+    $kantor_id = $owned[0] ?? 1;
+}
 
 // Get kantor info
 $kantor = query("SELECT * FROM cabang WHERE id = ?", [$kantor_id]);
@@ -73,6 +84,13 @@ switch ($_SERVER['REQUEST_METHOD']) {
             $params[] = $status;
         }
         
+        // Isolasi data: hanya tampilkan pinjaman dari cabang milik bos yang login
+        $cabang_filter = buildCabangFilter('p.cabang_id');
+        if ($cabang_filter) {
+            $where[] = ltrim($cabang_filter['clause'], 'AND ');
+            $params  = array_merge($params, $cabang_filter['params']);
+        }
+
         $where_clause = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
         
         $pinjaman = query("
@@ -137,12 +155,35 @@ switch ($_SERVER['REQUEST_METHOD']) {
             break;
         }
         
-        // Check if nasabah has active loan
-        $active_loan = query("SELECT id FROM pinjaman WHERE nasabah_id = ? AND status IN ('disetujui', 'aktif')", [$nasabah_id]);
-        if ($active_loan) {
+        // Validasi kelayakan nasabah (blacklist, meninggal, skor kredit)
+        require_once BASE_PATH . '/includes/business_logic.php';
+        $owner_bos_id_check = getOwnerBosId();
+        $layak = cekKelayakanNasabah($nasabah_id, $owner_bos_id_check);
+        if (!$layak['allowed']) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'Nasabah masih memiliki pinjaman aktif']);
+            echo json_encode(['success' => false, 'error' => $layak['reason'], 'warnings' => $layak['warnings'] ?? []]);
             break;
+        }
+
+        // Check if nasabah has active loan
+        $active_loan = query("SELECT id FROM pinjaman WHERE nasabah_id = ? AND status IN ('disetujui', 'aktif') AND override_pinjaman_aktif = 0", [$nasabah_id]);
+        $override_aktif = (int)($input['override_pinjaman_aktif'] ?? 0);
+        if ($active_loan && !$override_aktif) {
+            http_response_code(400);
+            echo json_encode([
+                'success'  => false,
+                'error'    => 'Nasabah masih memiliki pinjaman aktif. Jika ingin tetap proses, sertakan override_pinjaman_aktif=1 dengan alasan (hanya bos/manager).',
+                'warnings' => $layak['warnings'] ?? [],
+            ]);
+            break;
+        }
+        if ($active_loan && $override_aktif) {
+            // Hanya bos/manager_pusat yang boleh override
+            if (!in_array(getCurrentUser()['role'] ?? '', ['bos', 'manager_pusat'])) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'error' => 'Hanya bos/manager_pusat yang bisa override pinjaman ganda']);
+                break;
+            }
         }
         
         // Calculate loan
@@ -164,25 +205,41 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 break;
         }
         
-        // Insert pinjaman
+        // Tentukan cabang_id untuk insert
+        $nasabah_data = query("SELECT cabang_id, owner_bos_id FROM nasabah WHERE id = ?", [$nasabah_id]);
+        $cabang_id_insert = $nasabah_data[0]['cabang_id'] ?? $user['cabang_id'] ?? 1;
+
+        // Override pinjaman ganda?
+        $override_aktif  = (int)($input['override_pinjaman_aktif'] ?? 0);
+        $override_alasan = $input['override_alasan'] ?? null;
+        $override_oleh   = $override_aktif ? $user['id'] : null;
+
+        // Insert pinjaman dengan field v2.2.0
         $result = query("INSERT INTO pinjaman (
-            kode_pinjaman, nasabah_id, plafon, tenor, frekuensi, bunga_per_bulan, 
+            cabang_id, kode_pinjaman, nasabah_id, plafon, tenor, frekuensi, bunga_per_bulan,
             total_bunga, total_pembayaran, angsuran_pokok, angsuran_bunga, angsuran_total,
-            tanggal_akad, tanggal_jatuh_tempo, tujuan_pinjaman, jaminan, status, petugas_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pengajuan', ?)", [
-            $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi, $bunga_per_bulan, 
-            $calc['total_bunga'], $calc['total_pembayaran'], $calc['angsuran_pokok'], 
+            tanggal_akad, tanggal_jatuh_tempo, tujuan_pinjaman, jaminan,
+            sisa_pokok_berjalan, override_pinjaman_aktif, override_oleh, override_alasan,
+            status, petugas_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pengajuan', ?)", [
+            $cabang_id_insert, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi, $bunga_per_bulan,
+            $calc['total_bunga'], $calc['total_pembayaran'], $calc['angsuran_pokok'],
             $calc['angsuran_bunga'], $calc['angsuran_total'],
-            $tanggal_akad, $tanggal_jatuh_tempo, $tujuan_pinjaman, $jaminan, $user['id']
+            $tanggal_akad, $tanggal_jatuh_tempo, $tujuan_pinjaman, $jaminan,
+            $plafon, $override_aktif, $override_oleh, $override_alasan,
+            $user['id']
         ]);
-        
+
         if ($result) {
-            $new_pinjaman_result = query("SELECT * FROM pinjaman WHERE id = LAST_INSERT_ID()");
-            $new_pinjaman = is_array($new_pinjaman_result) && isset($new_pinjaman_result[0]) ? $new_pinjaman_result[0] : null;
+            $new_id = query("SELECT LAST_INSERT_ID() as id")[0]['id'];
+            // Update cache total_pinjaman_aktif di nasabah
+            query("UPDATE nasabah SET total_pinjaman_aktif = (SELECT COUNT(*) FROM pinjaman WHERE nasabah_id = ? AND status IN ('aktif','disetujui','pengajuan')) WHERE id = ?", [$nasabah_id, $nasabah_id]);
+            $new_pinjaman = query("SELECT * FROM pinjaman WHERE id = ?", [$new_id])[0] ?? null;
             echo json_encode([
                 'success' => true,
                 'message' => 'Pengajuan pinjaman berhasil dibuat',
-                'data' => $new_pinjaman
+                'data' => $new_pinjaman,
+                'warnings' => $layak['warnings'] ?? []
             ]);
         } else {
             http_response_code(500);
@@ -256,24 +313,33 @@ switch ($_SERVER['REQUEST_METHOD']) {
                     break;
                 }
                 
-                // Update status to disetujui
-                $result = query("UPDATE pinjaman SET status = 'disetujui' WHERE id = ?", [$pinjaman_id]);
-                
+                // Update status + catat approved_by
+                $result = query("UPDATE pinjaman SET status = 'disetujui', approved_by = ?, approved_at = NOW() WHERE id = ?", [$user['id'], $pinjaman_id]);
+
                 if ($result) {
                     // Create loan schedule
                     $frek = $pinjaman['frekuensi'] ?? 'bulanan';
                     createLoanSchedule($pinjaman_id, $pinjaman['plafon'], $pinjaman['tenor'], $pinjaman['bunga_per_bulan'], $pinjaman['tanggal_akad'], $frek);
-                    
-                    // Update to aktif
-                    query("UPDATE pinjaman SET status = 'aktif' WHERE id = ?", [$pinjaman_id]);
-                    
-                    // Post accounting journal entry
+
+                    // Update to aktif + set sisa_pokok_berjalan + tanggal_lunas_awal
+                    query("UPDATE pinjaman SET status = 'aktif', sisa_pokok_berjalan = ?, tanggal_lunas_awal = ? WHERE id = ?",
+                        [$pinjaman['plafon'], $pinjaman['tanggal_jatuh_tempo'], $pinjaman_id]);
+
+                    // Update cache total_pinjaman_aktif nasabah
+                    query("UPDATE nasabah SET total_pinjaman_aktif = (SELECT COUNT(*) FROM pinjaman WHERE nasabah_id = ? AND status IN ('aktif','disetujui','pengajuan')) WHERE id = ?",
+                        [$pinjaman['nasabah_id'], $pinjaman['nasabah_id']]);
+
+                    // Post accounting journal entry (pencairan)
                     postJurnalPinjaman($pinjaman_id, $kantor_id);
-                    
-                    echo json_encode([
-                        'success' => true,
-                        'message' => 'Pinjaman berhasil disetujui dan diaktifkan'
-                    ]);
+
+                    // Jurnal kas keluar untuk pencairan
+                    catatJurnalKas(
+                        $pinjaman['cabang_id'] ?? 1, 'keluar', 'pencairan',
+                        'pinjaman', $pinjaman_id, $pinjaman['plafon'],
+                        "Pencairan pinjaman {$pinjaman['kode_pinjaman']}", $user['id']
+                    );
+
+                    echo json_encode(['success' => true, 'message' => 'Pinjaman berhasil disetujui dan diaktifkan']);
                 } else {
                     http_response_code(500);
                     echo json_encode(['success' => false, 'error' => 'Gagal menyetujui pinjaman']);
@@ -286,9 +352,12 @@ switch ($_SERVER['REQUEST_METHOD']) {
                     echo json_encode(['success' => false, 'error' => 'Hanya dapat menolak pinjaman dengan status pengajuan']);
                     break;
                 }
-                
-                $result = query("UPDATE pinjaman SET status = 'ditolak' WHERE id = ?", [$pinjaman_id]);
-                
+                $rejection_reason = $input['reason'] ?? $input['rejection_reason'] ?? null;
+                $result = query("UPDATE pinjaman SET status = 'ditolak', rejected_by = ?, rejected_at = NOW(), rejection_reason = ? WHERE id = ?",
+                    [$user['id'], $rejection_reason, $pinjaman_id]);
+                // Update cache nasabah
+                query("UPDATE nasabah SET total_pinjaman_aktif = (SELECT COUNT(*) FROM pinjaman WHERE nasabah_id = ? AND status IN ('aktif','disetujui','pengajuan')) WHERE id = ?",
+                    [$pinjaman['nasabah_id'], $pinjaman['nasabah_id']]);
                 echo json_encode(['success' => true, 'message' => 'Pinjaman ditolak']);
                 break;
                 

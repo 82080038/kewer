@@ -1,6 +1,7 @@
 # Kewer Application Analysis
 
-> **Terakhir diperbarui**: 2 Mei 2026
+> **Terakhir diperbarui**: 3 Mei 2026
+> **Versi Aplikasi**: v2.0.0
 
 ## Overview
 **Project Name**: Kewer - Koperasi Warga Ekonomi Rakyat

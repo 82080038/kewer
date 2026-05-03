@@ -79,9 +79,21 @@ if (in_array($role, $pusat_roles)) {
         <main class="content-area">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2"><i class="bi bi-file-earmark-bar-graph"></i> Laporan</h1>
-                    <button class="btn btn-outline-secondary" onclick="window.print()">
-                        <i class="bi bi-printer"></i> Cetak
-                    </button>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-secondary" onclick="window.print()">
+                            <i class="bi bi-printer"></i> Cetak
+                        </button>
+                        <?php
+                        require_once BASE_PATH . '/includes/feature_flags.php';
+                        if (isFeatureEnabled('export_laporan')): ?>
+                        <a id="btnExportCsv" href="#" class="btn btn-outline-success">
+                            <i class="bi bi-filetype-csv"></i> Export CSV
+                        </a>
+                        <a id="btnExportPdf" href="#" class="btn btn-outline-danger">
+                            <i class="bi bi-filetype-pdf"></i> Export PDF
+                        </a>
+                        <?php endif; ?>
+                    </div>
                 </div>
 
                 <!-- Filter -->
@@ -307,16 +319,19 @@ if (in_array($role, $pusat_roles)) {
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>
     <script>
-        $(document).ready(function() {
-            flatpickr('.flatpickr-date', {
-                locale: 'id',
-                dateFormat: 'Y-m-d',
-                allowInput: true,
-                altInput: true,
-                altFormat: 'd F Y',
-                theme: 'light'
-            });
+        flatpickr('.flatpickr-date', {
+            locale: 'id', dateFormat: 'Y-m-d',
+            allowInput: true, altInput: true, altFormat: 'd F Y'
         });
+
+        function updateExportLinks() {
+            const params = new URLSearchParams(window.location.search);
+            const base = '../../api/export.php';
+            const q = `jenis=${params.get('jenis_laporan') || 'comprehensive'}&tanggal_mulai=${params.get('tanggal_mulai') || ''}&tanggal_selesai=${params.get('tanggal_selesai') || ''}`;
+            document.getElementById('btnExportCsv').href = `${base}?format=csv&${q}`;
+            document.getElementById('btnExportPdf').href = `${base}?format=pdf&${q}`;
+        }
+        updateExportLinks();
     </script>
 </body>
 </html>

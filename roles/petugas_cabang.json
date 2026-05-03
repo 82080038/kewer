@@ -2,14 +2,14 @@
   "role": {
     "name": "Petugas Cabang",
     "code": "petugas_cabang",
-    "hierarchy_level": 6,
-    "description": "Branch field officer with branch-specific field activities and payment collection",
+    "hierarchy_level": 8,
+    "description": "Branch field officer with field activities and payment collection",
     "status": "aktif"
   },
   "access_scope": {
-    "type": "cabang",
+    "type": "single_office",
     "branches": "single",
-    "data_visibility": "branch_specific"
+    "data_visibility": "all"
   },
   "application_standards": {
     "language": {
@@ -50,7 +50,7 @@
       "access": true,
       "permissions": ["dashboard.read"],
       "features": [
-        "View statistics for assigned branch",
+        "View statistics",
         "View nasabah count",
         "View pinjaman count",
         "View outstanding balance",
@@ -61,7 +61,7 @@
       "access": true,
       "permissions": ["nasabah.read"],
       "features": [
-        "View nasabah in assigned branch",
+        "View nasabah",
         "View nasabah details",
         "View nasabah history"
       ]
@@ -70,7 +70,7 @@
       "access": true,
       "permissions": ["pinjaman.read"],
       "features": [
-        "View pinjaman in assigned branch",
+        "View pinjaman",
         "View pinjaman details",
         "View pinjaman history"
       ]
@@ -79,7 +79,7 @@
       "access": true,
       "permissions": ["angsuran.read", "manage_pembayaran"],
       "features": [
-        "View angsuran in assigned branch",
+        "View angsuran",
         "Record payments",
         "View payment history",
         "View outstanding angsuran",
@@ -167,113 +167,11 @@
       "features": []
     }
   },
-  "tasks_and_responsibilities": {
-    "field_activities": [
-      "Conduct branch field surveys",
-      "Customer relationship management",
-      "Branch market research",
-      "Promotional activities in branch area",
-      "Customer follow-up"
-    ],
-    "payment_collection": [
-      "Collect loan payments in branch area",
-      "Record payments in system",
-      "Handle customer inquiries",
-      "Provide payment receipts",
-      "Follow up on late payments"
-    ],
-    "customer_service": [
-      "Assist customers with applications",
-      "Provide product information",
-      "Handle customer complaints",
-      "Maintain customer relationships",
-      "Identify customer needs"
-    ],
-    "reporting": [
-      "Submit daily activity reports",
-      "Report collection status",
-      "Report customer feedback",
-      "Report field observations",
-      "Track performance metrics"
-    ]
-  },
-  "rights": {
-    "field_access": [
-      "Access to field activities module",
-      "Log field activities",
-      "GPS tracking access",
-      "Photo documentation access"
-    ],
-    "payment_access": [
-      "Record payments",
-      "View payment history",
-      "Access customer payment information"
-    ],
-    "cash_management": [
-      "Manage kas petugas",
-      "Record setoran",
-      "View kas history"
-    ],
-    "customer_access": [
-      "View customer information",
-      "Access customer contact details",
-      "View customer loan information"
-    ]
-  },
-  "obligations": {
-    "field_work": [
-      "Complete assigned field activities",
-      "Maintain accurate activity logs",
-      "Provide timely reports",
-      "Follow standard procedures",
-      "Maintain professional conduct"
-    ],
-    "collection": [
-      "Collect payments as scheduled",
-      "Record payments accurately",
-      "Provide receipts to customers",
-      "Follow up on late payments",
-      "Handle cash securely"
-    ],
-    "customer_service": [
-      "Provide excellent customer service",
-      "Maintain professional relationships",
-      "Handle customer inquiries promptly",
-      "Resolve customer issues",
-      "Maintain customer confidentiality"
-    ],
-    "reporting": [
-      "Submit accurate daily reports",
-      "Report issues promptly",
-      "Maintain activity documentation",
-      "Track performance metrics",
-      "Provide feedback on market conditions"
-    ]
-  },
   "simulation_parameters": {
     "login": {
-      "username": "petugas1",
-      "password": "password",
-      "test_login_url": "/login.php?test_login=true&username=petugas1&password=password"
-    },
-    "daily_activities": [
-      "Review daily collection targets",
-      "Conduct field activities",
-      "Collect payments from customers",
-      "Record payments in system",
-      "Submit daily activity report"
-    ],
-    "weekly_activities": [
-      "Review weekly collection performance",
-      "Plan field activities for the week",
-      "Follow up on late payments",
-      "Submit weekly activity report"
-    ],
-    "monthly_activities": [
-      "Review monthly collection performance",
-      "Analyze field activity data",
-      "Plan monthly field activities",
-      "Submit monthly performance report"
-    ]
+      "username": "ptr_pngr2",
+      "password": "Kewer2024!",
+      "test_login_url": "/login.php?test_login=true&username=ptr_pngr2&password=Kewer2024!"
+    }
   }
 }

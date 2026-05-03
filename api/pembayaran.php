@@ -17,6 +17,7 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization');
 try {
     require_once __DIR__ . '/../config/path.php';
     require_once BASE_PATH . '/includes/functions.php';
+    require_once BASE_PATH . '/includes/business_logic.php';
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['error' => 'Configuration error: ' . $e->getMessage()]);
@@ -27,7 +28,6 @@ try {
 requireLogin();
 
 $method = $_SERVER['REQUEST_METHOD'];
-// No longer using cabangId - single office structure
 
 switch ($method) {
     case 'GET':
@@ -62,6 +62,13 @@ switch ($method) {
             $params[] = $tanggal_selesai;
         }
         
+        // Isolasi data: hanya tampilkan pembayaran dari cabang milik bos yang login
+        $cabang_filter = buildCabangFilter('p.cabang_id');
+        if ($cabang_filter) {
+            $where[] = ltrim($cabang_filter['clause'], 'AND ');
+            $params  = array_merge($params, $cabang_filter['params']);
+        }
+
         $where_clause = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
         
         $pembayaran = query("
@@ -186,12 +193,16 @@ switch ($method) {
         
         try {
             // Insert pembayaran
+            $lat = isset($input['lat']) && is_numeric($input['lat']) ? floatval($input['lat']) : null;
+            $lng = isset($input['lng']) && is_numeric($input['lng']) ? floatval($input['lng']) : null;
+            $akurasi_gps = isset($input['akurasi_gps']) ? (int)$input['akurasi_gps'] : null;
+
             $result = query("
                 INSERT INTO pembayaran (
-                    pinjaman_id, angsuran_id, kode_pembayaran, tanggal_bayar, 
-                    jumlah_bayar, denda, denda_dibayar, denda_waived, total_bayar, total_pembayaran, 
-                    keterangan, petugas_id, cara_bayar, cabang_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+                    pinjaman_id, angsuran_id, kode_pembayaran, tanggal_bayar,
+                    jumlah_bayar, denda, denda_dibayar, denda_waived, total_bayar, total_pembayaran,
+                    keterangan, petugas_id, cara_bayar, cabang_id, lat, lng, akurasi_gps
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
                 $angsuran['pinjaman_id'],
                 $input['angsuran_id'],
                 $kode_pembayaran,
@@ -205,7 +216,8 @@ switch ($method) {
                 $input['keterangan'] ?? '',
                 getCurrentUser()['id'],
                 $input['cara_bayar'] ?? 'tunai',
-                $angsuran['cabang_id'] ?? 1
+                1, // Single office structure
+                $lat, $lng, $akurasi_gps
             ]);
             
             if (!$result) {
@@ -254,9 +266,42 @@ switch ($method) {
             
             // Post accounting journal entry
             if (function_exists('postJurnalPembayaran')) {
-                postJurnalPembayaran($pembayaran_id, $cabangId);
+                postJurnalPembayaran($pembayaran_id, 1);
             }
-            
+
+            // ── Business logic hooks ──────────────────────────────
+            // 1. Jurnal kas otomatis
+            catatJurnalKas(
+                $angsuran['cabang_id'] ?? 1, 'masuk', 'angsuran',
+                'pembayaran', $pembayaran_id, $total_pembayaran,
+                "Angsuran pinjaman {$angsuran['pinjaman_id']}",
+                getCurrentUser()['id']
+            );
+
+            // 2. Update skor kredit nasabah
+            $nasabah_id_for_score = query("SELECT nasabah_id FROM pinjaman WHERE id = ?", [$angsuran['pinjaman_id']]);
+            if ($nasabah_id_for_score) {
+                $delta_skor = $hari_telat > 0 ? max(-5, -1 * (int)ceil($hari_telat / 7)) : +1;
+                $alasan_skor = $hari_telat > 0 ? 'bayar_telat' : 'bayar_tepat_waktu';
+                updateSkorKredit($nasabah_id_for_score[0]['nasabah_id'], $delta_skor, $alasan_skor, $pembayaran_id);
+            }
+
+            // 3. Deteksi kelebihan bayar
+            $kelebihan = $jumlah_diterima - $total_pembayaran;
+            if ($kelebihan > 0 && $nasabah_id_for_score) {
+                prosesKelebihanBayar($nasabah_id_for_score[0]['nasabah_id'], $angsuran['pinjaman_id'], $pembayaran_id, $kelebihan, getCurrentUser()['id']);
+            }
+
+            // 4. Update sisa pokok berjalan di pinjaman
+            $sisa_query = query("SELECT SUM(pokok) as sp FROM angsuran WHERE pinjaman_id = ? AND status = 'lunas'", [$angsuran['pinjaman_id']]);
+            $pokok_lunas = floatval($sisa_query[0]['sp'] ?? 0);
+            $plafon_query = query("SELECT plafon FROM pinjaman WHERE id = ?", [$angsuran['pinjaman_id']]);
+            if ($plafon_query) {
+                $sisa_pokok_berjalan = floatval($plafon_query[0]['plafon']) - $pokok_lunas;
+                query("UPDATE pinjaman SET sisa_pokok_berjalan = ? WHERE id = ?", [$sisa_pokok_berjalan, $angsuran['pinjaman_id']]);
+            }
+            // ─────────────────────────────────────────────────────
+
             query("COMMIT");
             
             $new_pembayaran = query("
@@ -351,7 +396,8 @@ switch ($method) {
             // Recalculate angsuran status
             $angsuran_id = $existing['angsuran_id'];
             $total_paid = query("SELECT COALESCE(SUM(jumlah_bayar), 0) as total FROM pembayaran WHERE angsuran_id = ?", [$angsuran_id])[0]['total'];
-            $angsuran_nominal = query("SELECT nominal FROM angsuran WHERE id = ?", [$angsuran_id])[0]['nominal'];
+            $angsuran_data = query("SELECT total_angsuran FROM angsuran WHERE id = ?", [$angsuran_id]);
+            $angsuran_nominal = $angsuran_data ? $angsuran_data[0]['total_angsuran'] : 0;
             if ($total_paid >= $angsuran_nominal) {
                 query("UPDATE angsuran SET status = 'lunas' WHERE id = ?", [$angsuran_id]);
             } else {

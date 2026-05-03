@@ -110,8 +110,9 @@ async function newBrowser(x, y, w=900, h=700) {
   });
 }
 
-async function loginUser(page, username) {
-  await page.goto(`${BASE}/login.php?test_login=true&username=${username}&password=password`, {
+async function loginUser(page, username, password = null) {
+  const pwd = password || 'Kewer2024!';
+  await page.goto(`${BASE}/login.php?test_login=true&username=${username}&password=${pwd}`, {
     waitUntil: 'networkidle2', timeout: 15000
   });
   await sleep(600);

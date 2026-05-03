@@ -2,14 +2,14 @@
   "role": {
     "name": "Karyawan",
     "code": "karyawan",
-    "hierarchy_level": 7,
+    "hierarchy_level": 9,
     "description": "Employee with basic administrative support and cash handling responsibilities",
     "status": "aktif"
   },
   "access_scope": {
-    "type": "cabang",
+    "type": "single_office",
     "branches": "single",
-    "data_visibility": "branch_specific"
+    "data_visibility": "all"
   },
   "application_standards": {
     "language": {
@@ -50,7 +50,7 @@
       "access": true,
       "permissions": ["dashboard.read"],
       "features": [
-        "View statistics for assigned branch",
+        "View statistics",
         "View nasabah count",
         "View pinjaman count",
         "View outstanding balance",
@@ -61,7 +61,7 @@
       "access": true,
       "permissions": ["nasabah.read"],
       "features": [
-        "View nasabah in assigned branch",
+        "View nasabah",
         "View nasabah details",
         "View nasabah history"
       ]
@@ -70,7 +70,7 @@
       "access": true,
       "permissions": ["pinjaman.read"],
       "features": [
-        "View pinjaman in assigned branch",
+        "View pinjaman",
         "View pinjaman details",
         "View pinjaman history"
       ]
@@ -79,7 +79,7 @@
       "access": true,
       "permissions": ["angsuran.read"],
       "features": [
-        "View angsuran in assigned branch",
+        "View angsuran",
         "View payment history",
         "View outstanding angsuran"
       ]
@@ -98,7 +98,7 @@
       "access": true,
       "permissions": ["kas.read", "kas.update"],
       "features": [
-        "View cash reconciliation for assigned branch",
+        "View cash reconciliation",
         "Create reconciliation",
         "Edit reconciliation",
         "View reconciliation history"
@@ -128,7 +128,7 @@
       "access": true,
       "permissions": ["view_pengeluaran"],
       "features": [
-        "View pengeluaran in assigned branch",
+        "View pengeluaran",
         "Filter by date"
       ]
     },
@@ -163,112 +163,11 @@
       "features": []
     }
   },
-  "tasks_and_responsibilities": {
-    "administrative": [
-      "Data entry",
-      "Document management",
-      "Record keeping",
-      "Filing and organization",
-      "Basic reporting"
-    ],
-    "cash_handling": [
-      "Cash reconciliation",
-      "Payment processing",
-      "Cash counting",
-      "Receipt generation",
-      "Cash security"
-    ],
-    "customer_service": [
-      "Basic customer assistance",
-      "Payment receipt handling",
-      "Customer inquiry response",
-      "Document verification",
-      "Basic problem resolution"
-    ],
-    "support": [
-      "Support staff operations",
-      "Assist with administrative tasks",
-      "Maintain office supplies",
-      "Handle phone calls",
-      "Schedule appointments"
-    ]
-  },
-  "rights": {
-    "system_access": [
-      "Access to basic system features",
-      "View branch data",
-      "View branch reports"
-    ],
-    "payment_access": [
-      "Record payments",
-      "View payment history",
-      "Generate payment receipts"
-    ],
-    "cash_access": [
-      "View cash balance",
-      "Perform cash reconciliation",
-      "View cash reports"
-    ],
-    "reporting": [
-      "View basic reports",
-      "Access branch data",
-      "Generate simple reports"
-    ]
-  },
-  "obligations": {
-    "administrative": [
-      "Maintain accurate records",
-      "Complete data entry tasks",
-      "Organize documents properly",
-      "Follow procedures",
-      "Maintain confidentiality"
-    ],
-    "cash_handling": [
-      "Handle cash securely",
-      "Reconcile cash daily",
-      "Report discrepancies",
-      "Follow cash handling procedures",
-      "Maintain cash security"
-    ],
-    "customer_service": [
-      "Provide courteous service",
-      "Maintain professionalism",
-      "Respond to inquiries promptly",
-      "Maintain customer confidentiality",
-      "Follow service standards"
-    ],
-    "reporting": [
-      "Submit accurate reports",
-      "Report issues promptly",
-      "Maintain documentation",
-      "Follow reporting procedures",
-      "Track performance"
-    ]
-  },
   "simulation_parameters": {
     "login": {
-      "username": "petugas1",
-      "password": "password",
-      "test_login_url": "/login.php?test_login=true&username=petugas1&password=password"
-    },
-    "daily_activities": [
-      "Review daily dashboard",
-      "Perform data entry tasks",
-      "Process payments",
-      "Perform cash reconciliation",
-      "Assist customers"
-    ],
-    "weekly_activities": [
-      "Review weekly activities",
-      "Organize documents",
-      "Assist with reports",
-      "Support staff operations"
-    ],
-    "monthly_activities": [
-      "Review monthly activities",
-      "Organize monthly records",
-      "Assist with monthly reports",
-      "Support administrative tasks"
-    ]
+      "username": "krw_pngr",
+      "password": "Kewer2024!",
+      "test_login_url": "/login.php?test_login=true&username=krw_pngr&password=Kewer2024!"
+    }
   }
 }

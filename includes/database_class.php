@@ -15,20 +15,28 @@ class Database {
     
     /**
      * Constructor - Initialize database connection
+     * Uses existing global connection if available to avoid multiple connections
      */
     public function __construct($host = DB_HOST, $username = DB_USER, $password = DB_PASS, $database = DB_NAME) {
         $this->host = $host;
         $this->username = $username;
         $this->password = $password;
         $this->database = $database;
-        $this->connect();
+        
+        // Use existing global connection if available
+        global $conn;
+        if (isset($conn) && $conn instanceof mysqli && $conn->ping()) {
+            $this->conn = $conn;
+        } else {
+            $this->connect();
+        }
     }
     
     /**
      * Establish database connection
      */
     private function connect() {
-        $this->conn = new mysqli($this->host, $this->username, $this->password, $this->database);
+        $this->conn = new mysqli($this->host, $this->username, $this->password, $this->database, 3306, '/opt/lampp/var/mysql/mysql.sock');
         
         if ($this->conn->connect_error) {
             throw new Exception("Connection failed: " . $this->conn->connect_error);

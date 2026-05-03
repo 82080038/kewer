@@ -2,14 +2,14 @@
   "role": {
     "name": "Admin Pusat",
     "code": "admin_pusat",
-    "hierarchy_level": 3,
-    "description": "Central administrator with cross-branch access for administrative functions",
+    "hierarchy_level": 5,
+    "description": "Central administrator with administrative functions",
     "status": "aktif"
   },
   "access_scope": {
-    "type": "pusat",
-    "branches": "all",
-    "data_visibility": "consolidated"
+    "type": "single_office",
+    "branches": "single",
+    "data_visibility": "all"
   },
   "application_standards": {
     "language": {
@@ -64,7 +64,7 @@
       "access": true,
       "permissions": ["nasabah.read", "manage_nasabah", "manage_blacklist"],
       "features": [
-        "View nasabah across all branches",
+        "View nasabah",
         "Add new nasabah",
         "Edit nasabah information",
         "Delete nasabah",
@@ -78,7 +78,7 @@
       "access": true,
       "permissions": ["pinjaman.read", "manage_pinjaman"],
       "features": [
-        "View pinjaman across all branches",
+        "View pinjaman",
         "Create new pinjaman applications (harian/mingguan/bulanan)",
         "View pinjaman details",
         "View pinjaman schedules (harian/mingguan/bulanan)",
@@ -90,7 +90,7 @@
       "access": true,
       "permissions": ["angsuran.read", "manage_pembayaran", "manage_denda"],
       "features": [
-        "View angsuran across all branches",
+        "View angsuran",
         "Record payments",
         "Edit payment records",
         "Delete payment records",
@@ -103,7 +103,7 @@
       "access": true,
       "permissions": ["users.create", "users.read", "manage_users", "assign_permissions"],
       "features": [
-        "View users across all branches",
+        "View users",
         "Create new users",
         "Edit user information",
         "Delete users",
@@ -115,7 +115,7 @@
       "access": true,
       "permissions": ["cabang.read"],
       "features": [
-        "View all branches",
+        "View branch information",
         "View branch statistics",
         "View branch performance"
       ]
@@ -124,7 +124,7 @@
       "access": true,
       "permissions": ["angsuran.read"],
       "features": [
-        "View field activities across all branches",
+        "View field activities",
         "View activity reports"
       ]
     },
@@ -132,7 +132,7 @@
       "access": true,
       "permissions": ["kas_petugas.read", "kas_petugas.update"],
       "features": [
-        "Lihat kas petugas semua cabang",
+        "Lihat kas petugas",
         "Kelola alokasi kas",
         "Lihat pelacakan setoran",
         "Lihat riwayat transaksi"
@@ -151,7 +151,7 @@
       "access": true,
       "permissions": ["manage_pengeluaran", "view_pengeluaran"],
       "features": [
-        "Lihat pengeluaran semua cabang",
+        "Lihat pengeluaran",
         "Catat pengeluaran",
         "Kategorisasi pengeluaran",
         "Lihat laporan pengeluaran"
@@ -161,7 +161,7 @@
       "access": true,
       "permissions": ["manage_kas_bon", "view_kas_bon"],
       "features": [
-        "Lihat kas bon semua cabang",
+        "Lihat kas bon",
         "Proses permintaan kas bon",
         "Pantau potongan",
         "Hitung saldo"
@@ -180,7 +180,7 @@
       "access": true,
       "permissions": ["manage_petugas", "view_petugas"],
       "features": [
-        "Lihat petugas semua cabang",
+        "Lihat petugas",
         "Kelola profil petugas",
         "Pantau kinerja petugas"
       ]
@@ -202,108 +202,15 @@
         "Lihat laporan kinerja pinjaman",
         "Lihat laporan nasabah",
         "Lihat laporan komprehensif",
-        "Filter berdasarkan cabang dan periode",
         "Cetak laporan"
       ]
     }
   },
-  "tasks_and_responsibilities": {
-    "administrative": [
-      "Central administrative functions",
-      "Cross-branch oversight",
-      "System configuration",
-      "User management across branches",
-      "Policy implementation"
-    ],
-    "user_management": [
-      "Create and manage user accounts",
-      "Assign roles and permissions",
-      "Monitor user activity",
-      "Manage user access",
-      "Conduct user training"
-    ],
-    "reporting": [
-      "Generate consolidated reports",
-      "Analyze cross-branch data",
-      "Prepare management reports",
-      "Monitor system performance",
-      "Track key metrics"
-    ],
-    "coordination": [
-      "Coordinate branch activities",
-      "Facilitate communication",
-      "Support branch operations",
-      "Ensure policy compliance",
-      "Provide technical support"
-    ]
-  },
-  "rights": {
-    "system_access": [
-      "Access to all branches' data",
-      "View consolidated reports",
-      "Modify system configuration",
-      "Access administrative functions"
-    ],
-    "user_management": [
-      "Create and manage user accounts (lower-level)",
-      "Assign roles to staff",
-      "Grant permissions to staff",
-      "Deactivate user accounts"
-    ],
-    "reporting": [
-      "Generate consolidated reports",
-      "Access all system data",
-      "Create custom reports",
-      "Export data"
-    ]
-  },
-  "obligations": {
-    "administration": [
-      "Maintain system integrity",
-      "Ensure data accuracy",
-      "Implement policies consistently",
-      "Provide user support",
-      "Monitor system performance"
-    ],
-    "compliance": [
-      "Ensure regulatory compliance",
-      "Maintain audit trails",
-      "Follow organizational policies",
-      "Report on system issues",
-      "Implement security measures"
-    ],
-    "coordination": [
-      "Support branch operations",
-      "Facilitate communication",
-      "Ensure consistent practices",
-      "Provide training",
-      "Share best practices"
-    ]
-  },
   "simulation_parameters": {
     "login": {
-      "username": "admin",
-      "password": "password",
-      "test_login_url": "/login.php?test_login=true&username=admin&password=password"
-    },
-    "daily_activities": [
-      "Review consolidated dashboard",
-      "Monitor system performance",
-      "Review user activities",
-      "Handle administrative requests",
-      "Generate reports"
-    ],
-    "weekly_activities": [
-      "Review consolidated weekly reports",
-      "Analyze cross-branch performance",
-      "Plan administrative activities",
-      "Coordinate with branches"
-    ],
-    "monthly_activities": [
-      "Review monthly consolidated reports",
-      "Analyze system performance",
-      "Plan system improvements",
-      "Report to management"
-    ]
+      "username": "adm_pusat",
+      "password": "Kewer2024!",
+      "test_login_url": "/login.php?test_login=true&username=adm_pusat&password=Kewer2024!"
+    }
   }
 }

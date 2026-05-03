@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "test:puppeteer": "node tests/puppeteer-runner.js"
+    "test:puppeteer": "node tests/puppeteer-runner.js",
+    "test:v23": "node tests/puppeteer-v23-features.test.js"
   },
   "dependencies": {
     "puppeteer": "^24.40.0"

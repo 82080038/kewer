@@ -1,6 +1,7 @@
 <?php
 require_once 'config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
+require_once BASE_PATH . '/includes/feature_flags.php';
 requireLogin();
 
 $user = getCurrentUser();
@@ -25,7 +26,7 @@ $outstanding = is_array($outstanding_result) && isset($outstanding_result[0]) ? 
 $late_payments = count(checkLatePayments());
 
 // Get recent activities from audit_log
-$recent_activities_result = mysqli_query($conn, "
+$recent_activities = query("
     SELECT 
         a.action as activity,
         a.created_at
@@ -34,14 +35,6 @@ $recent_activities_result = mysqli_query($conn, "
     LIMIT 5
 ");
 
-$recent_activities = [];
-if ($recent_activities_result) {
-    while ($row = mysqli_fetch_assoc($recent_activities_result)) {
-        $recent_activities[] = $row;
-    }
-}
-
-// Ensure recent_activities is an array
 if (!is_array($recent_activities)) {
     $recent_activities = [];
 }
@@ -53,6 +46,13 @@ if (!is_array($recent_activities)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - <?php echo APP_NAME; ?></title>
+    <?php if (isFeatureEnabled('pwa')): ?>
+    <link rel="manifest" href="/kewer/manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <?php endif; ?>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -93,7 +93,7 @@ if (!is_array($recent_activities)) {
                             $cabangs = query("SELECT * FROM cabang WHERE status = 'aktif'");
                             foreach ($cabangs as $cabang):
                             ?>
-                                <option value="<?php echo $cabang['id']; ?>" <?php echo $cabang_id == $cabang['id'] ? 'selected' : ''; ?>>
+                                <option value="<?php echo $cabang['id']; ?>">
                                     <?php echo $cabang['nama_cabang']; ?>
                                 </option>
                             <?php endforeach; ?>
@@ -258,11 +258,7 @@ if (!is_array($recent_activities)) {
                 $month = date('Y-m', strtotime("-$i months"));
                 $month_name = formatDate(strtotime("-$i months"), 'M Y');
                 
-                if ($cabang_id) {
-                    $count = query("SELECT COUNT(*) as total FROM pinjaman WHERE DATE_FORMAT(created_at, '%Y-%m') = ? AND cabang_id = ?", [$month, $cabang_id]);
-                } else {
-                    $count = query("SELECT COUNT(*) as total FROM pinjaman WHERE DATE_FORMAT(created_at, '%Y-%m') = ?", [$month]);
-                }
+                $count = query("SELECT COUNT(*) as total FROM pinjaman WHERE DATE_FORMAT(created_at, '%Y-%m') = ?", [$month]);
                 
                 $monthly_loans[] = [
                     'month' => $month_name,
@@ -271,11 +267,7 @@ if (!is_array($recent_activities)) {
             }
 
             // Loan status distribution
-            if ($cabang_id) {
-                $status_data = query("SELECT status, COUNT(*) as total FROM pinjaman WHERE cabang_id = ? GROUP BY status", [$cabang_id]);
-            } else {
-                $status_data = query("SELECT status, COUNT(*) as total FROM pinjaman GROUP BY status");
-            }
+            $status_data = query("SELECT status, COUNT(*) as total FROM pinjaman GROUP BY status");
 
             $status_labels = [];
             $status_counts = [];
@@ -363,6 +355,17 @@ if (!is_array($recent_activities)) {
                 }
             }
         });
+
+        <?php if (isFeatureEnabled('pwa')): ?>
+        // PWA: Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/kewer/service-worker.js')
+                    .then(reg => console.log('SW registered:', reg.scope))
+                    .catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+        <?php endif; ?>
     </script>
 </body>
 </html>

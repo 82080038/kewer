@@ -43,18 +43,23 @@ switch ($method) {
         $where = [];
         $params = [];
         
-        // Filter by role
-        if ($user['role'] === 'bos') {
-            // Bos sees all cabang
-            $where[] = "1=1";
-        } else {
-            // Other roles see based on their cabang
-            $cabangId = getCurrentCabang();
-            if ($cabangId) {
-                $where[] = "c.id = ?";
-                $params[] = $cabangId;
+        // Filter by bos_id (untuk dropdown transfer karyawan)
+        $filter_bos_id = $_GET['bos_id'] ?? null;
+        if ($filter_bos_id) {
+            $where[] = "c.owner_bos_id = ?";
+            $params[] = (int)$filter_bos_id;
+        } elseif ($user['role'] === 'bos') {
+            // Isolasi: bos hanya lihat cabang miliknya sendiri
+            $where[] = "c.owner_bos_id = ?";
+            $params[] = (int)$user['id'];
+        } elseif ($user['role'] !== 'appOwner') {
+            // Staff: filter cabang berdasarkan owner_bos_id mereka
+            $bos_id = getOwnerBosId();
+            if ($bos_id) {
+                $where[] = "c.owner_bos_id = ?";
+                $params[] = $bos_id;
             } else {
-                $where[] = "1=0"; // No access
+                $where[] = "1=0";
             }
         }
         

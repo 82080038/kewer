@@ -11,6 +11,7 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization');
 try {
     require_once __DIR__ . '/../config/path.php';
     require_once BASE_PATH . '/includes/functions.php';
+    require_once BASE_PATH . '/includes/business_logic.php';
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['error' => 'Configuration error: ' . $e->getMessage()]);
@@ -40,8 +41,21 @@ if (!$user) {
     exit();
 }
 
-// Get current kantor from query parameter or use single office (id = 1)
-$kantor_id = $_GET['kantor_id'] ?? 1;
+// Validasi kantor_id: harus milik bos yang sedang login
+$kantor_id = $_GET['kantor_id'] ?? null;
+
+if ($kantor_id) {
+    // Jika kantor_id eksplisit disertakan, validasi kepemilikan
+    if (!validateCabangOwnership($kantor_id)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden - Kantor ini bukan milik koperasi Anda']);
+        exit();
+    }
+} else {
+    // Default ke cabang pertama milik bos yang login
+    $owned = getBosOwnedCabangIds();
+    $kantor_id = $owned[0] ?? 1;
+}
 
 // Get kantor info
 $kantor = query("SELECT * FROM cabang WHERE id = ?", [$kantor_id]);
@@ -73,6 +87,13 @@ switch ($_SERVER['REQUEST_METHOD']) {
             $params[] = $status;
         }
         
+        // Isolasi data: hanya tampilkan nasabah dari cabang milik bos yang login
+        $cabang_filter = buildCabangFilter('n.cabang_id');
+        if ($cabang_filter) {
+            $where[] = ltrim($cabang_filter['clause'], 'AND ');
+            $params  = array_merge($params, $cabang_filter['params']);
+        }
+
         $where_clause = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
         
         $nasabah = query("
@@ -125,20 +146,40 @@ switch ($_SERVER['REQUEST_METHOD']) {
             break;
         }
         
-        // Check duplicate KTP
-        $check = query("SELECT id FROM nasabah WHERE ktp = ?", [$ktp]);
+        // Check duplicate KTP per koperasi (v2.2.0: satu nasabah bisa di banyak koperasi)
+        $owner_bos = getOwnerBosId();
+        $check = query("SELECT id FROM nasabah WHERE ktp = ? AND owner_bos_id = ?", [$ktp, $owner_bos]);
         if ($check) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'KTP sudah terdaftar']);
+            echo json_encode(['success' => false, 'error' => 'KTP sudah terdaftar di koperasi ini']);
+            break;
+        }
+
+        // Cek apakah nasabah ini pernah pinjam di koperasi lain (platform blacklist)
+        $platform_bl = query("SELECT id, platform_blacklist FROM nasabah WHERE ktp = ? AND platform_blacklist = 1 LIMIT 1", [$ktp]);
+        if ($platform_bl) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'KTP ini diblacklist secara platform-wide. Tidak bisa didaftarkan di koperasi manapun.']);
             break;
         }
         
         // Generate kode nasabah
         $kode_nasabah = generateKode('NSB', 'nasabah', 'kode_nasabah');
         
-        // Insert nasabah
-        $result = query("INSERT INTO nasabah (kode_nasabah, nama, alamat, province_id, regency_id, district_id, village_id, ktp, telp, jenis_usaha, lokasi_pasar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
-            $kode_nasabah, $nama, $alamat, $province_id ?: null, $regency_id ?: null, $district_id ?: null, $village_id ?: null, $ktp, $telp, $jenis_usaha, $lokasi_pasar
+        // Tentukan cabang_id dari request atau default
+        $req_cabang = (int)($input['cabang_id'] ?? 0);
+        if ($req_cabang && !validateCabangOwnership($req_cabang)) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Cabang bukan milik koperasi Anda']);
+            break;
+        }
+        $cabang_id_insert = $req_cabang ?: $kantor_id;
+
+        // Insert nasabah dengan owner_bos_id dan skor_kredit default
+        $result = query("INSERT INTO nasabah (cabang_id, owner_bos_id, kode_nasabah, nama, alamat, province_id, regency_id, district_id, village_id, ktp, telp, jenis_usaha, lokasi_pasar, skor_kredit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+            $cabang_id_insert, $owner_bos, $kode_nasabah, $nama, $alamat,
+            $province_id ?: null, $regency_id ?: null, $district_id ?: null, $village_id ?: null,
+            $ktp, $telp, $jenis_usaha, $lokasi_pasar, 100
         ]);
         
         if ($result) {
@@ -177,7 +218,16 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $fields = [];
         $params = [];
         
-        $updatable_fields = ['nama', 'alamat', 'province_id', 'regency_id', 'district_id', 'village_id', 'telp', 'jenis_usaha', 'lokasi_pasar', 'status'];
+        // Pastikan nasabah milik koperasi yang login
+        $nasabah_existing = $nasabah[0];
+        $owner_bos_upd = getOwnerBosId();
+        if ($nasabah_existing['owner_bos_id'] && $nasabah_existing['owner_bos_id'] != $owner_bos_upd && getCurrentUser()['role'] !== 'appOwner') {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'Nasabah bukan milik koperasi Anda']);
+            break;
+        }
+
+        $updatable_fields = ['nama', 'alamat', 'province_id', 'regency_id', 'district_id', 'village_id', 'telp', 'jenis_usaha', 'lokasi_pasar', 'status', 'catatan_risiko', 'alamat_rumah'];
         
         foreach ($updatable_fields as $field) {
             if (isset($input[$field])) {

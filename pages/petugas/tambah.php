@@ -11,74 +11,106 @@ $role = $_POST['role'] ?? '';
 $cabang_list = query("SELECT id, nama_cabang FROM cabang WHERE status = 'aktif' ORDER BY is_headquarters DESC, nama_cabang ASC");
 if (!is_array($cabang_list)) $cabang_list = [];
 
+// Tentukan owner_bos_id dari user yang sedang login
+$current_user = getCurrentUser();
+$owner_bos_id = null;
+if ($current_user && $current_user['role'] === 'bos') {
+    $owner_bos_id = $current_user['id'];
+} elseif ($current_user && $current_user['owner_bos_id']) {
+    $owner_bos_id = $current_user['owner_bos_id'];
+}
+
+// Endpoint AJAX: lookup NIK ke db_orang
+if (isset($_GET['lookup_ktp'])) {
+    header('Content-Type: application/json');
+    $ktp = trim($_GET['lookup_ktp'] ?? '');
+    $person = findPersonByKtp($ktp);
+    if ($person) {
+        echo json_encode(['found' => true, 'nama' => $person['nama'], 'telp' => $person['telp'], 'email' => $person['email'], 'tanggal_lahir' => $person['tanggal_lahir']]);
+    } else {
+        echo json_encode(['found' => false]);
+    }
+    exit();
+}
+
 if ($_POST) {
-    $username = $_POST['username'] ?? '';
-    $password = $_POST['password'] ?? '';
-    $nama = $_POST['nama'] ?? '';
-    $email = $_POST['email'] ?? '';
-    $telp = $_POST['telp'] ?? '';
-    $role = $_POST['role'] ?? '';
+    $username      = trim($_POST['username'] ?? '');
+    $password      = $_POST['password'] ?? '';
+    $ktp           = trim($_POST['ktp'] ?? '');
+    $nama          = trim($_POST['nama'] ?? '');
+    $email         = trim($_POST['email'] ?? '');
+    $telp          = trim($_POST['telp'] ?? '');
+    $role          = $_POST['role'] ?? '';
     $cabang_id_post = $_POST['cabang_id'] ?? '';
-    $kantor_id = 1; // Single office
-    $gaji = $_POST['gaji'] ?? 0;
-    $limit_kasbon = $_POST['limit_kasbon'] ?? 0;
+    $gaji          = $_POST['gaji'] ?? 0;
+    $limit_kasbon  = $_POST['limit_kasbon'] ?? 0;
     $tanggal_lahir = $_POST['tanggal_lahir'] ?? '';
     $tanggal_masuk = $_POST['tanggal_masuk'] ?? '';
-    
-    // Get current user to set owner_bos_id
-    $current_user = getCurrentUser();
-    $owner_bos_id = null;
-    
-    // If current user is bos, set owner_bos_id to current user's id
-    if ($current_user && $current_user['role'] === 'bos') {
-        $owner_bos_id = $current_user['id'];
-    } 
-    // If current user is employee, use their owner_bos_id
-    elseif ($current_user && $current_user['owner_bos_id']) {
-        $owner_bos_id = $current_user['owner_bos_id'];
-    }
-    
-    // Validation
-    if (empty($username) || empty($password) || empty($nama) || empty($role)) {
-        $error = 'Username, password, nama, dan role wajib diisi';
+
+    // Validasi wajib
+    if (empty($username) || empty($password) || empty($ktp) || empty($nama) || empty($role)) {
+        $error = 'Username, password, NIK/KTP, nama, dan role wajib diisi';
+    } elseif (strlen($ktp) !== 16 || !ctype_digit($ktp)) {
+        $error = 'NIK/KTP harus 16 digit angka';
     } else {
-        // Check duplicate username
-        $check = query("SELECT id FROM users WHERE username = ?", [$username]);
-        if ($check) {
-            $error = 'Username sudah digunakan';
+        // Cek apakah NIK sudah AKTIF di koperasi ini (bos yang sama)
+        $aktif_di_koperasi = isKtpActiveInKoperasi($ktp, $owner_bos_id);
+        if ($aktif_di_koperasi) {
+            $error = "NIK ini sudah terdaftar aktif sebagai \"{$aktif_di_koperasi['nama']}\" ({$aktif_di_koperasi['username']}) di koperasi Anda. Tidak boleh duplikat.";
         } else {
-            // Hash password
-            $password_hash = password_hash($password, PASSWORD_DEFAULT);
-            
-            // Insert user
-            $result = query("INSERT INTO users (username, password, nama, email, telp, role, cabang_id, status, owner_bos_id, gaji, limit_kasbon, tanggal_lahir, tanggal_masuk) VALUES (?, ?, ?, ?, ?, ?, ?, 'aktif', ?, ?, ?, ?, ?)", [
-                $username, $password_hash, $nama, $email, $telp, $role, $cabang_id_post ?: $kantor_id, $owner_bos_id, $gaji, $limit_kasbon, $tanggal_lahir ?: null, $tanggal_masuk ?: null
-            ]);
-            
-            if ($result) {
-                $user_id = query("SELECT LAST_INSERT_ID() as id")[0]['id'];
-                
-                // Create person record in db_orang for address management
-                try {
-                    createPerson([
-                        'user_id' => 'user_' . $user_id,
-                        'street_address' => '',
-                        'house_number' => '',
-                        'province_id' => null,
-                        'regency_id' => null,
-                        'district_id' => null,
-                        'village_id' => null,
-                        'postal_code' => ''
-                    ]);
-                } catch (Exception $e) {
-                    // Log error but don't fail the petugas creation
-                    error_log("Failed to create person record: " . $e->getMessage());
-                }
-                
-                $success = 'Petugas berhasil ditambahkan';
-                $_POST = [];
+            // Cek duplikat username
+            $check_username = query("SELECT id FROM users WHERE username = ?", [$username]);
+            if ($check_username) {
+                $error = 'Username sudah digunakan';
             } else {
-                $error = 'Gagal menambahkan petugas';
+                $password_hash = password_hash($password, PASSWORD_DEFAULT);
+                $cabang_tujuan = $cabang_id_post ?: 1;
+
+                // Simpan user ke kewer.users (termasuk kolom ktp baru)
+                $result = query(
+                    "INSERT INTO users (username, password, ktp, nama, email, telp, role, cabang_id, status, owner_bos_id, gaji, limit_kasbon, tanggal_lahir, tanggal_masuk)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'aktif', ?, ?, ?, ?, ?)",
+                    [$username, $password_hash, $ktp, $nama, $email, $telp, $role, $cabang_tujuan, $owner_bos_id, $gaji, $limit_kasbon, $tanggal_lahir ?: null, $tanggal_masuk ?: null]
+                );
+
+                if ($result) {
+                    $new_user_id = query("SELECT LAST_INSERT_ID() as id")[0]['id'];
+
+                    // Buat/update record di db_orang.people
+                    try {
+                        $existing_person = findPersonByKtp($ktp);
+                        if ($existing_person) {
+                            // NIK dikenal (pernah bekerja di koperasi lain) — buat record baru dengan kewer_user_id baru
+                            createPersonForReturningStaff($new_user_id, $ktp, $nama, [
+                                'telp' => $telp, 'email' => $email, 'tanggal_lahir' => $tanggal_lahir ?: null,
+                            ]);
+                        } else {
+                            // NIK baru di platform — buat record pertama kali
+                            createPerson([
+                                'kewer_user_id' => $new_user_id,
+                                'nama'          => $nama,
+                                'ktp'           => $ktp,
+                                'telp'          => $telp,
+                                'email'         => $email,
+                                'tanggal_lahir' => $tanggal_lahir ?: null,
+                                'pekerjaan'     => $role,
+                            ]);
+                        }
+
+                        // Update db_orang_person_id di users
+                        $person_row = query_orang("SELECT id FROM people WHERE kewer_user_id = ? ORDER BY id DESC LIMIT 1", [$new_user_id]);
+                        if ($person_row && isset($person_row[0])) {
+                            query("UPDATE users SET db_orang_person_id = ? WHERE id = ?", [$person_row[0]['id'], $new_user_id]);
+                        }
+                    } catch (Exception $e) {
+                        error_log("people_helper error saat tambah petugas: " . $e->getMessage());
+                    }
+
+                    $success = 'Petugas berhasil ditambahkan';
+                    $_POST = [];
+                } else {
+                    $error = 'Gagal menambahkan petugas';
+                }
             }
         }
     }
@@ -161,30 +193,56 @@ if ($_POST) {
                 
                 <div class="card">
                     <div class="card-body">
-                        <form method="POST">
+                        <form method="POST" id="formTambahPetugas">
                             <?= csrfField() ?>
+
+                            <!-- NIK / KTP — wajib, lookup pertama -->
+                            <div class="card border-primary mb-4">
+                                <div class="card-header bg-primary text-white fw-semibold">
+                                    <i class="bi bi-person-vcard"></i> Identitas KTP (Wajib)
+                                </div>
+                                <div class="card-body">
+                                    <div class="row align-items-end">
+                                        <div class="col-md-8">
+                                            <label class="form-label fw-semibold">NIK / No. KTP <span class="text-danger">*</span></label>
+                                            <input type="text" name="ktp" id="inputKtp" class="form-control form-control-lg font-monospace"
+                                                   maxlength="16" inputmode="numeric" pattern="[0-9]{16}"
+                                                   placeholder="16 digit angka"
+                                                   value="<?= htmlspecialchars($_POST['ktp'] ?? '') ?>" required>
+                                            <div class="form-text">NIK digunakan sebagai identitas global. Jika pernah terdaftar di koperasi lain, data akan diketahui otomatis.</div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <button type="button" class="btn btn-outline-primary w-100" id="btnLookupKtp">
+                                                <i class="bi bi-search"></i> Cek NIK
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="ktpInfo" class="mt-3 d-none"></div>
+                                </div>
+                            </div>
+
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label class="form-label">Username *</label>
-                                        <input type="text" name="username" class="form-control" value="<?php echo $_POST['username'] ?? ''; ?>" required>
-                                        <small class="form-text">Unik, tidak boleh sama dengan petugas lain</small>
+                                        <label class="form-label">Username <span class="text-danger">*</span></label>
+                                        <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>" required>
+                                        <small class="form-text">Unik di seluruh platform</small>
                                     </div>
                                     
                                     <div class="mb-3">
-                                        <label class="form-label">Password *</label>
+                                        <label class="form-label">Password <span class="text-danger">*</span></label>
                                         <input type="password" name="password" class="form-control" required>
                                         <small class="form-text">Minimal 6 karakter</small>
                                     </div>
                                     
                                     <div class="mb-3">
-                                        <label class="form-label">Konfirmasi Password *</label>
+                                        <label class="form-label">Konfirmasi Password <span class="text-danger">*</span></label>
                                         <input type="password" name="confirm_password" class="form-control" required>
                                     </div>
                                     
                                     <div class="mb-3">
-                                        <label class="form-label">Nama Lengkap *</label>
-                                        <input type="text" name="nama" class="form-control" value="<?php echo $_POST['nama'] ?? ''; ?>" required>
+                                        <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
+                                        <input type="text" name="nama" id="inputNama" class="form-control" value="<?= htmlspecialchars($_POST['nama'] ?? '') ?>" required>
                                     </div>
                                 </div>
                                 
@@ -253,12 +311,10 @@ if ($_POST) {
     <script>
         // Toggle cabang field based on role
         document.getElementById('roleSelect').addEventListener('change', function() {
-            const role = this.value;
             const cabangField = document.getElementById('cabangField');
             const cabangSelect = document.getElementById('cabangSelect');
-            
             const pusatRoles = ['bos', 'manager_pusat', 'admin_pusat', 'petugas_pusat'];
-            if (pusatRoles.includes(role)) {
+            if (pusatRoles.includes(this.value)) {
                 cabangField.style.display = 'none';
                 cabangSelect.required = false;
             } else {
@@ -266,9 +322,62 @@ if ($_POST) {
                 cabangSelect.required = true;
             }
         });
-        
-        // Initialize
         document.getElementById('roleSelect').dispatchEvent(new Event('change'));
+
+        // Lookup NIK ke db_orang
+        document.getElementById('btnLookupKtp').addEventListener('click', async function() {
+            const ktp = document.getElementById('inputKtp').value.trim();
+            const infoDiv = document.getElementById('ktpInfo');
+
+            if (ktp.length !== 16 || !/^[0-9]{16}$/.test(ktp)) {
+                infoDiv.className = 'mt-3 alert alert-warning';
+                infoDiv.innerHTML = '<i class="bi bi-exclamation-triangle"></i> NIK harus 16 digit angka.';
+                return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Mencari...';
+
+            try {
+                const res  = await fetch(`?lookup_ktp=${ktp}`);
+                const data = await res.json();
+
+                if (data.found) {
+                    // Auto-fill data dari db_orang
+                    if (data.nama)          document.getElementById('inputNama').value = data.nama;
+                    if (data.telp)          document.querySelector('[name="telp"]').value = data.telp;
+                    if (data.email)         document.querySelector('[name="email"]').value = data.email;
+                    if (data.tanggal_lahir) document.querySelector('[name="tanggal_lahir"]')?.setAttribute('value', data.tanggal_lahir);
+
+                    infoDiv.className = 'mt-3 alert alert-info';
+                    infoDiv.innerHTML = `<i class="bi bi-info-circle"></i>
+                        <strong>NIK dikenal di platform.</strong> Data identitas diisi otomatis.
+                        Karyawan ini pernah terdaftar di koperasi lain — setelah disimpan,
+                        ia <strong>tidak bisa melihat data koperasi lama</strong>.
+                        Verifikasi data sebelum menyimpan.`;
+                } else {
+                    infoDiv.className = 'mt-3 alert alert-success';
+                    infoDiv.innerHTML = '<i class="bi bi-check-circle"></i> NIK baru di platform. Silakan isi data lengkap.';
+                }
+            } catch(e) {
+                infoDiv.className = 'mt-3 alert alert-danger';
+                infoDiv.innerHTML = '<i class="bi bi-x-circle"></i> Gagal memeriksa NIK: ' + e.message;
+            } finally {
+                infoDiv.classList.remove('d-none');
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-search"></i> Cek NIK';
+            }
+        });
+
+        // Validasi password match sebelum submit
+        document.getElementById('formTambahPetugas').addEventListener('submit', function(e) {
+            const p1 = this.querySelector('[name="password"]').value;
+            const p2 = this.querySelector('[name="confirm_password"]').value;
+            if (p1 !== p2) {
+                e.preventDefault();
+                alert('Password dan konfirmasi password tidak sama.');
+            }
+        });
     </script>
 </body>
 </html>

@@ -27,7 +27,6 @@ try {
 requireLogin();
 
 $method = $_SERVER['REQUEST_METHOD'];
-// No longer using cabangId - single office structure
 
 switch ($method) {
     case 'GET':
@@ -60,6 +59,13 @@ switch ($method) {
             $params[] = $tanggal_selesai;
         }
         
+        // Isolasi data: hanya tampilkan angsuran dari cabang milik bos yang login
+        $cabang_filter = buildCabangFilter('p.cabang_id');
+        if ($cabang_filter) {
+            $where[] = ltrim($cabang_filter['clause'], 'AND ');
+            $params  = array_merge($params, $cabang_filter['params']);
+        }
+
         $where_clause = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
         
         $sql = "SELECT a.*, n.nama as nama_nasabah, p.kode_pinjaman, u.nama as nama_petugas

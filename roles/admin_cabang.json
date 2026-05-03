@@ -2,14 +2,14 @@
   "role": {
     "name": "Admin Cabang",
     "code": "admin_cabang",
-    "hierarchy_level": 4,
-    "description": "Branch administrator with limited branch-specific administrative functions",
+    "hierarchy_level": 6,
+    "description": "Branch administrator with administrative functions",
     "status": "aktif"
   },
   "access_scope": {
-    "type": "cabang",
+    "type": "single_office",
     "branches": "single",
-    "data_visibility": "branch_specific"
+    "data_visibility": "all"
   },
   "application_standards": {
     "language": {
@@ -52,18 +52,18 @@
     "dashboard": {
       "access": true,
       "features": [
-        "View branch statistics",
-        "View total nasabah count in branch",
-        "View total pinjaman count in branch",
-        "View outstanding balance in branch",
-        "View recent activities in branch"
+        "View statistics",
+        "View total nasabah count",
+        "View total pinjaman count",
+        "View outstanding balance",
+        "View recent activities"
       ]
     },
     "nasabah": {
       "access": true,
       "permissions": ["nasabah.read", "manage_nasabah", "manage_blacklist"],
       "features": [
-        "View nasabah in branch",
+        "View nasabah",
         "Add new nasabah",
         "Edit nasabah information",
         "Delete nasabah",
@@ -76,7 +76,7 @@
       "access": true,
       "permissions": ["pinjaman.read", "manage_pinjaman"],
       "features": [
-        "View pinjaman in branch",
+        "View pinjaman",
         "Create new pinjaman applications (harian/mingguan/bulanan)",
         "View pinjaman details",
         "View pinjaman schedules (harian/mingguan/bulanan)",
@@ -88,7 +88,7 @@
       "access": true,
       "permissions": ["angsuran.read", "manage_pembayaran"],
       "features": [
-        "View angsuran in branch",
+        "View angsuran",
         "Record payments",
         "Edit payment records",
         "Delete payment records",
@@ -101,7 +101,7 @@
       "access": true,
       "permissions": ["users.create", "users.read", "manage_users"],
       "features": [
-        "View users in branch",
+        "View users",
         "Create new users",
         "Edit user information",
         "Delete users"
@@ -119,7 +119,7 @@
       "access": true,
       "permissions": ["angsuran.read"],
       "features": [
-        "View field activities in branch",
+        "View field activities",
         "View activity reports"
       ]
     },
@@ -127,7 +127,7 @@
       "access": true,
       "permissions": ["kas_petugas.read", "kas_petugas.update"],
       "features": [
-        "Lihat kas petugas di cabang",
+        "Lihat kas petugas",
         "Kelola alokasi kas",
         "Lihat pelacakan setoran",
         "Lihat riwayat transaksi"
@@ -144,7 +144,7 @@
       "access": true,
       "permissions": ["manage_pengeluaran", "view_pengeluaran"],
       "features": [
-        "Lihat pengeluaran cabang",
+        "Lihat pengeluaran",
         "Catat pengeluaran",
         "Kategorisasi pengeluaran",
         "Lihat laporan pengeluaran"
@@ -154,97 +154,52 @@
       "access": true,
       "permissions": ["manage_kas_bon", "view_kas_bon"],
       "features": [
-        "Lihat kas bon cabang",
+        "Lihat kas bon",
         "Proses permintaan kas bon",
         "Pantau potongan",
         "Hitung saldo"
       ]
+    },
+    "laporan": {
+      "access": true,
+      "permissions": ["view_laporan"],
+      "features": [
+        "Lihat laporan keuangan",
+        "Lihat laporan kinerja pinjaman",
+        "Lihat laporan nasabah",
+        "Cetak laporan"
+      ]
+    },
+    "family_risk": {
+      "access": false,
+      "permissions": [],
+      "features": []
+    },
+    "petugas": {
+      "access": true,
+      "permissions": ["manage_petugas", "view_petugas"],
+      "features": [
+        "Lihat petugas",
+        "Kelola profil petugas",
+        "Pantau kinerja petugas"
+      ]
+    },
+    "audit": {
+      "access": false,
+      "permissions": [],
+      "features": []
+    },
+    "permissions": {
+      "access": false,
+      "permissions": [],
+      "features": []
     }
-  },
-  "tasks_and_responsibilities": {
-    "administrative": [
-      "Branch administrative functions",
-      "Branch user management",
-      "Branch reporting",
-      "Branch coordination",
-      "Support branch operations"
-    ],
-    "user_management": [
-      "Create and manage branch user accounts",
-      "Assign roles to branch staff",
-      "Monitor user activity",
-      "Provide user support"
-    ],
-    "reporting": [
-      "Generate branch reports",
-      "Analyze branch data",
-      "Prepare management reports",
-      "Track key metrics"
-    ],
-    "support": [
-      "Support branch staff",
-      "Facilitate communication",
-      "Ensure policy compliance",
-      "Provide technical support"
-    ]
-  },
-  "rights": {
-    "branch_access": [
-      "Access to branch features",
-      "View branch data",
-      "View branch reports"
-    ],
-    "user_management": [
-      "Create and manage branch user accounts (limited)",
-      "Assign roles to branch staff (limited)"
-    ],
-    "reporting": [
-      "Generate branch reports",
-      "Access branch data",
-      "Create custom reports"
-    ]
-  },
-  "obligations": {
-    "administration": [
-      "Maintain branch data accuracy",
-      "Implement policies",
-      "Provide user support",
-      "Monitor branch performance"
-    ],
-    "compliance": [
-      "Ensure regulatory compliance",
-      "Maintain audit trails",
-      "Follow organizational policies",
-      "Report on issues"
-    ],
-    "support": [
-      "Support branch operations",
-      "Facilitate communication",
-      "Ensure consistent practices",
-      "Provide training"
-    ]
   },
   "simulation_parameters": {
     "login": {
-      "username": "admin",
-      "password": "password",
-      "test_login_url": "/login.php?test_login=true&username=admin&password=password"
-    },
-    "daily_activities": [
-      "Review branch dashboard",
-      "Monitor branch performance",
-      "Handle administrative requests",
-      "Support branch staff"
-    ],
-    "weekly_activities": [
-      "Review weekly branch reports",
-      "Analyze branch performance",
-      "Plan administrative activities"
-    ],
-    "monthly_activities": [
-      "Review monthly branch reports",
-      "Analyze branch performance",
-      "Report to branch manager"
-    ]
+      "username": "adm_balige",
+      "password": "Kewer2024!",
+      "test_login_url": "/login.php?test_login=true&username=adm_balige&password=Kewer2024!"
+    }
   }
 }

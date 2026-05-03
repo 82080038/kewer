@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
+require_once BASE_PATH . '/includes/business_logic.php';
 require_once BASE_PATH . '/config/session.php';
 requireLogin();
 
@@ -40,6 +41,26 @@ if (!in_array($role, ['petugas_pusat', 'petugas_cabang']) && $cabang_id) {
 
 // Get tanggal filter parameter or default to today
 $tanggal = $_GET['tanggal'] ?? date('Y-m-d');
+
+// Ambil data kas_petugas langsung (lebih akurat dari API setoran)
+$kas_harian = query("
+    SELECT kp.*, u.nama as petugas_nama, v.nama as verified_nama
+    FROM kas_petugas kp
+    JOIN users u ON kp.petugas_id = u.id
+    LEFT JOIN users v ON kp.verified_by = v.id
+    WHERE kp.cabang_id = ? AND kp.tanggal = ?
+    ORDER BY kp.created_at DESC
+", [$cabang_id, $tanggal]) ?: [];
+
+// Pengganti petugas hari ini
+$pengganti_hari = query("
+    SELECT pp.*, u.nama as petugas_nama, pg.nama as pengganti_nama
+    FROM pengganti_petugas pp
+    JOIN users u ON pp.petugas_id = u.id
+    JOIN users pg ON pp.pengganti_id = pg.id
+    WHERE pp.cabang_id = ? AND pp.tanggal_mulai <= ? AND pp.tanggal_selesai >= ?
+    ORDER BY pp.created_at DESC LIMIT 10
+", [$cabang_id, $tanggal, $tanggal]) ?: [];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -102,20 +123,17 @@ $tanggal = $_GET['tanggal'] ?? date('Y-m-d');
                 </div>
 
                 <!-- Summary Cards -->
+                <?php
+                $total_selisih = array_sum(array_column($kas_harian, 'selisih'));
+                $ada_selisih   = count(array_filter($kas_harian, fn($k) => abs($k['selisih'] ?? 0) > 10000));
+                $belum_verify  = count(array_filter($kas_harian, fn($k) => !$k['verified_by']));
+                ?>
                 <div class="row mb-4">
                     <div class="col-md-3">
                         <div class="card bg-primary text-white">
                             <div class="card-body">
-                                <h6>Total Setoran</h6>
-                                <h3><?php echo count($setoranList); ?></h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-info text-white">
-                            <div class="card-body">
-                                <h6>Total Kas Petugas</h6>
-                                <h3><?php echo 'Rp' . number_format(array_sum(array_column($setoranList, 'total_kas_petugas')), 0, ',', '.'); ?></h3>
+                                <h6>Petugas Hari Ini</h6>
+                                <h3><?= count($kas_harian) ?></h3>
                             </div>
                         </div>
                     </div>
@@ -123,15 +141,25 @@ $tanggal = $_GET['tanggal'] ?? date('Y-m-d');
                         <div class="card bg-success text-white">
                             <div class="card-body">
                                 <h6>Total Disetor</h6>
-                                <h3><?php echo 'Rp' . number_format(array_sum(array_column($setoranList, 'total_setoran')), 0, ',', '.'); ?></h3>
+                                <h3>Rp <?= number_format(array_sum(array_column($kas_harian, 'total_disetor')), 0, ',', '.') ?></h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card <?= $ada_selisih ? 'bg-danger' : 'bg-secondary' ?> text-white">
+                            <div class="card-body">
+                                <h6>Petugas Selisih</h6>
+                                <h3><?= $ada_selisih ?>
+                                    <?php if ($ada_selisih): ?><small style="font-size:12px">(Rp <?= number_format(abs($total_selisih), 0, ',', '.') ?>)</small><?php endif; ?>
+                                </h3>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="card bg-warning text-dark">
                             <div class="card-body">
-                                <h6>Pending Approval</h6>
-                                <h3><?php echo count(array_filter($setoranList, fn($s) => $s['status'] === 'pending')); ?></h3>
+                                <h6>Belum Diverifikasi</h6>
+                                <h3><?= $belum_verify ?></h3>
                             </div>
                         </div>
                     </div>
@@ -173,51 +201,100 @@ $tanggal = $_GET['tanggal'] ?? date('Y-m-d');
                             <table class="table table-striped table-hover" id="kasPetugasTable">
                                 <thead>
                                     <tr>
-                                        <th>Tanggal</th>
                                         <th>Petugas</th>
-                                        <th>Total Kas</th>
-                                        <th>Total Setoran</th>
+                                        <th>Saldo Awal</th>
+                                        <th>Total Terima</th>
+                                        <th>Total Disetor</th>
+                                        <th>Saldo Akhir</th>
                                         <th>Selisih</th>
-                                        <th>Status</th>
-                                        <th>Catatan</th>
-                                        <?php if (in_array($role, ['bos', 'manager_cabang'])): ?>
-                                        <th>Aksi</th>
-                                        <?php endif; ?>
+                                        <th>Terverifikasi</th>
+                                        <th>Dikunci</th>
+                                        <?php if (hasPermission('manage_kas')): ?><th>Aksi</th><?php endif; ?>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($setoranList as $setoran): ?>
-                                    <tr data-petugas="<?php echo $setoran['petugas_id']; ?>" data-status="<?php echo $setoran['status']; ?>">
-                                        <td><?php echo date('d/m/Y', strtotime($setoran['tanggal'])); ?></td>
-                                        <td><?php echo htmlspecialchars($setoran['petugas_nama']); ?></td>
-                                        <td><?php echo 'Rp' . number_format($setoran['total_kas_petugas'], 0, ',', '.'); ?></td>
-                                        <td><?php echo 'Rp' . number_format($setoran['total_setoran'], 0, ',', '.'); ?></td>
-                                        <td><?php echo 'Rp' . number_format($setoran['selisih'], 0, ',', '.'); ?></td>
-                                        <td>
-                                            <span class="badge <?php echo $setoran['status'] === 'approved' ? 'bg-success' : ($setoran['status'] === 'pending' ? 'bg-warning' : 'bg-danger'); ?>">
-                                                <?php echo ucfirst($setoran['status']); ?>
-                                            </span>
+                                    <?php foreach ($kas_harian as $kp):
+                                        $selisih_abs = abs($kp['selisih'] ?? 0);
+                                        $ada_masalah = $selisih_abs > 10000;
+                                    ?>
+                                    <tr class="<?= $ada_masalah && !$kp['verified_by'] ? 'table-danger' : '' ?>" data-petugas="<?= $kp['petugas_id'] ?>" data-status="<?= $kp['status'] ?>">
+                                        <td><strong><?= htmlspecialchars($kp['petugas_nama']) ?></strong></td>
+                                        <td>Rp <?= number_format($kp['saldo_awal'], 0, ',', '.') ?></td>
+                                        <td>Rp <?= number_format($kp['total_terima'], 0, ',', '.') ?></td>
+                                        <td>Rp <?= number_format($kp['total_disetor'], 0, ',', '.') ?></td>
+                                        <td>Rp <?= number_format($kp['saldo_akhir'], 0, ',', '.') ?></td>
+                                        <td class="<?= $ada_masalah ? 'text-danger fw-bold' : 'text-success' ?>">
+                                            <?= $ada_masalah ? '⚠ ' : '' ?>Rp <?= number_format($kp['selisih'], 0, ',', '.') ?>
+                                            <?php if ($kp['selisih_keterangan']): ?>
+                                            <br><small class="text-muted"><?= htmlspecialchars($kp['selisih_keterangan']) ?></small>
+                                            <?php endif; ?>
                                         </td>
-                                        <td><?php echo htmlspecialchars($setoran['keterangan'] ?? '-'); ?></td>
-                                        <?php if (in_array($role, ['bos', 'manager_cabang'])): ?>
                                         <td>
-                                            <?php if ($setoran['status'] === 'pending'): ?>
-                                            <button class="btn btn-sm btn-success" onclick="approveSetoran(<?php echo $setoran['id']; ?>)">
-                                                <i class="bi bi-check"></i> Approve
+                                            <?php if ($kp['verified_by']): ?>
+                                                <span class="badge bg-success"><i class="bi bi-check2"></i> <?= htmlspecialchars($kp['verified_nama'] ?? '-') ?></span>
+                                                <br><small class="text-muted"><?= date('d/m H:i', strtotime($kp['verified_at'])) ?></small>
+                                            <?php else: ?>
+                                                <span class="badge bg-warning text-dark">Belum</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?= $kp['is_locked'] ? '<span class="badge bg-secondary"><i class="bi bi-lock"></i> Terkunci</span>' : '<span class="badge bg-light text-dark">Terbuka</span>' ?></td>
+                                        <?php if (hasPermission('manage_kas')): ?>
+                                        <td>
+                                            <?php if (!$kp['verified_by'] && !$kp['is_locked']): ?>
+                                            <button class="btn btn-sm btn-success" onclick="verifikasiKas(<?= $kp['id'] ?>, '<?= htmlspecialchars($kp['petugas_nama']) ?>', <?= $kp['selisih'] ?>)">
+                                                <i class="bi bi-shield-check"></i> Verifikasi
                                             </button>
-                                            <button class="btn btn-sm btn-danger" onclick="rejectSetoran(<?php echo $setoran['id']; ?>)">
-                                                <i class="bi bi-x"></i> Reject
+                                            <?php elseif ($kp['verified_by'] && !$kp['is_locked']): ?>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="kunciKas(<?= $kp['id'] ?>)">
+                                                <i class="bi bi-lock"></i> Kunci
                                             </button>
                                             <?php endif; ?>
                                         </td>
                                         <?php endif; ?>
                                     </tr>
                                     <?php endforeach; ?>
+                                    <?php if (empty($kas_harian)): ?>
+                                    <tr><td colspan="9" class="text-center text-muted py-3">Belum ada data kas untuk tanggal ini</td></tr>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+
+                <!-- Panel Pengganti Petugas -->
+                <?php if (hasPermission('manage_kas') || hasPermission('manage_users')): ?>
+                <div class="card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-person-badge"></i> Pengganti Petugas Hari Ini</h5>
+                        <button class="btn btn-sm btn-outline-primary" onclick="modalPengganti()">
+                            <i class="bi bi-plus"></i> Assign Pengganti
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <?php if (empty($pengganti_hari)): ?>
+                            <p class="text-muted mb-0">Tidak ada pengganti petugas hari ini</p>
+                        <?php else: ?>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead><tr><th>Petugas Asli</th><th>Pengganti</th><th>Alasan</th><th>Periode</th></tr></thead>
+                                <tbody>
+                                <?php foreach ($pengganti_hari as $pp): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($pp['petugas_nama']) ?></td>
+                                    <td><?= htmlspecialchars($pp['pengganti_nama']) ?></td>
+                                    <td><?= htmlspecialchars($pp['alasan_ketidakhadiran']) ?></td>
+                                    <td><?= date('d/m', strtotime($pp['tanggal_mulai'])) ?> — <?= date('d/m', strtotime($pp['tanggal_selesai'])) ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
             </div>
         </div>
     </div>
@@ -256,6 +333,71 @@ $tanggal = $_GET['tanggal'] ?? date('Y-m-d');
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="button" class="btn btn-primary" onclick="saveSetoran()">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Modal Pengganti Petugas -->
+    <?php if (hasPermission('manage_kas') || hasPermission('manage_users')): ?>
+    <?php
+    $semua_petugas = query("SELECT id, nama FROM users WHERE cabang_id = ? AND role IN ('petugas_pusat','petugas_cabang') AND status = 'aktif' ORDER BY nama", [$cabang_id]) ?: [];
+    ?>
+    <div class="modal fade" id="penggantiModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person-badge"></i> Assign Pengganti Petugas</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Petugas yang Absen *</label>
+                        <select class="form-select" id="pg_petugas_id" required>
+                            <option value="">Pilih Petugas</option>
+                            <?php foreach ($semua_petugas as $sp): ?>
+                            <option value="<?= $sp['id'] ?>"><?= htmlspecialchars($sp['nama']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Pengganti *</label>
+                        <select class="form-select" id="pg_pengganti_id" required>
+                            <option value="">Pilih Pengganti</option>
+                            <?php foreach ($semua_petugas as $sp): ?>
+                            <option value="<?= $sp['id'] ?>"><?= htmlspecialchars($sp['nama']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Alasan Ketidakhadiran</label>
+                        <select class="form-select" id="pg_alasan">
+                            <option value="sakit">Sakit</option>
+                            <option value="izin">Izin</option>
+                            <option value="cuti">Cuti</option>
+                            <option value="darurat">Keperluan Darurat</option>
+                            <option value="lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col mb-3">
+                            <label class="form-label">Tanggal Mulai</label>
+                            <input type="date" class="form-control" id="pg_mulai" value="<?= $tanggal ?>">
+                        </div>
+                        <div class="col mb-3">
+                            <label class="form-label">Tanggal Selesai</label>
+                            <input type="date" class="form-control" id="pg_selesai" value="<?= $tanggal ?>">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Catatan</label>
+                        <textarea class="form-control" id="pg_catatan" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" onclick="savePengganti()">Simpan</button>
                 </div>
             </div>
         </div>
@@ -330,6 +472,73 @@ $tanggal = $_GET['tanggal'] ?? date('Y-m-d');
             });
         });
         
+        const API_BUSINESS = '<?= baseUrl('api/business.php') ?>';
+
+        function filterByDate() {
+            window.location.href = '?tanggal=' + document.getElementById('tanggal').value;
+        }
+
+        async function verifikasiKas(kas_id, nama_petugas, selisih) {
+            const ada_selisih = Math.abs(selisih) > 10000;
+            const { value: keterangan } = await Swal.fire({
+                title: 'Verifikasi Kas ' + nama_petugas,
+                icon: ada_selisih ? 'warning' : 'question',
+                html: ada_selisih
+                    ? `<div class="alert alert-warning">Ditemukan selisih <strong>Rp ${Math.abs(selisih).toLocaleString('id-ID')}</strong>. Wajib beri keterangan.</div>
+                       <textarea class="form-control" id="ket_selisih" rows="3" placeholder="Keterangan selisih (wajib jika ada selisih)..."></textarea>`
+                    : `<p>Kas petugas tidak ada selisih. Konfirmasi verifikasi?</p>
+                       <textarea class="form-control" id="ket_selisih" rows="2" placeholder="Catatan opsional..."></textarea>`,
+                showCancelButton: true, confirmButtonText: 'Verifikasi', cancelButtonText: 'Batal',
+                confirmButtonColor: '#198754',
+                preConfirm: () => {
+                    const ket = document.getElementById('ket_selisih').value.trim();
+                    if (ada_selisih && !ket) { Swal.showValidationMessage('Keterangan wajib diisi jika ada selisih'); return false; }
+                    return ket;
+                }
+            });
+            if (keterangan === undefined) return;
+            const resp = await fetch(API_BUSINESS, { method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ action: 'verifikasi_kas', kas_id, keterangan_selisih: keterangan || null }) });
+            const r = await resp.json();
+            if (r.success) { Swal.fire('Terverifikasi', 'Kas berhasil diverifikasi.', 'success').then(() => location.reload()); }
+            else { Swal.fire('Gagal', r.error || 'Terjadi kesalahan', 'error'); }
+        }
+
+        async function kunciKas(kas_id) {
+            const ok = await Swal.fire({ title: 'Kunci Kas?', text: 'Kas yang terkunci tidak bisa diedit lagi.', icon: 'warning',
+                showCancelButton: true, confirmButtonText: 'Kunci', confirmButtonColor: '#6c757d' });
+            if (!ok.isConfirmed) return;
+            const resp = await fetch(API_BUSINESS, { method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ action: 'kunci_kas', kas_id }) });
+            const r = await resp.json();
+            if (r.success) { Swal.fire('Terkunci', 'Kas berhasil dikunci.', 'success').then(() => location.reload()); }
+            else { Swal.fire('Gagal', r.error || 'Terjadi kesalahan', 'error'); }
+        }
+
+        function modalPengganti() {
+            new bootstrap.Modal(document.getElementById('penggantiModal')).show();
+        }
+
+        async function savePengganti() {
+            const petugas_id  = document.getElementById('pg_petugas_id').value;
+            const pengganti_id = document.getElementById('pg_pengganti_id').value;
+            if (!petugas_id || !pengganti_id) { Swal.fire('Lengkapi Data', 'Petugas dan pengganti wajib dipilih', 'warning'); return; }
+            if (petugas_id === pengganti_id) { Swal.fire('Tidak Valid', 'Petugas dan pengganti tidak boleh sama', 'warning'); return; }
+            const resp = await fetch(API_BUSINESS, { method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({
+                    action: 'assign_pengganti',
+                    petugas_id, pengganti_id,
+                    alasan_ketidakhadiran: document.getElementById('pg_alasan').value,
+                    tanggal_mulai: document.getElementById('pg_mulai').value,
+                    tanggal_selesai: document.getElementById('pg_selesai').value,
+                    catatan: document.getElementById('pg_catatan').value || null,
+                    cabang_id: <?= $cabang_id ?>
+                }) });
+            const r = await resp.json();
+            if (r.success) { Swal.fire('Berhasil', 'Pengganti berhasil di-assign.', 'success').then(() => location.reload()); }
+            else { Swal.fire('Gagal', r.error || 'Terjadi kesalahan', 'error'); }
+        }
+
         function saveSetoran() {
             const form = document.getElementById('setoranForm');
             const formData = new FormData(form);

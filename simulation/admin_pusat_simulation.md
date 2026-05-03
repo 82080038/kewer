@@ -1,105 +1,51 @@
-# Admin Pusat Simulation
+# Simulasi Role: Admin Pusat
 
-## Overview
-Admin Pusat adalah role opsional yang menangani administrasi lintas cabang untuk bos. Jika tidak ada, bos dapat delegate permissions ke manager_pusat.
+## Identitas
+- **Username**: adm_pusat
+- **Password**: Kewer2024!
+- **Role**: admin_pusat
+- **Hierarchy Level**: 5
 
-## Login Credentials
-- **Username**: admin_pusat (ditambahkan oleh bos)
-- **Password**: password (diset saat pembuatan user)
+## Akses & Scope
+- Single office structure
+- Full data visibility
+- Input nasabah, pinjaman, angsuran
 
-## Access Scope
-- Akses: Kantor pusat dan semua cabang (data konsolidasi)
-- Izin: Administrasi lintas cabang
-- Data Visibility: Data dari seluruh cabang milik bos
+## Aktivitas Harian
 
-## Daily Activities
+### Pagi
+1. Login ke sistem
+2. Cek dashboard statistik
+3. Input nasabah baru (sesuai antrian)
+4. Input pengajuan pinjaman untuk nasabah
 
-### Morning Routine
-1. **Dashboard Review**
-   - Lihat statistik konsolidasi dari seluruh cabang
-   - Total nasabah, pinjaman aktif, outstanding
-   - Aktivitas terbaru di seluruh cabang
+### Siang
+5. Verifikasi data nasabah & dokumen
+6. Update status angsuran
+7. Input pengeluaran operasional
 
-2. **User Management**
-   - Navigasi ke `pages/users/index.php`
-   - Lihat user di seluruh cabang
-   - Tambah user baru (jika memiliki permission)
-   - Edit data user
-   - Review role assignment
+### Sore
+8. Rekap laporan harian
+9. Kelola data petugas jika diperlukan
+10. Input permintaan kas bon
 
-### Mid-Day Activities
+## Permissions
+- `nasabah.read`, `manage_nasabah`, `manage_blacklist`
+- `pinjaman.read`, `manage_pinjaman`
+- `angsuran.read`, `manage_pembayaran`, `manage_denda`
+- `users.read`, `users.create`, `manage_users`, `assign_permissions`
+- `view_laporan`
+- `manage_pengeluaran`, `view_pengeluaran`
+- `manage_kas_bon`, `view_kas_bon`
+- `manage_bunga`, `view_settings`
+- `kas_petugas.read`, `kas_petugas.update`
+- `manage_petugas`, `view_petugas`
+- `assign_permissions`
 
-1. **Cabang Administration**
-   - Navigasi ke `pages/cabang/index.php`
-   - Lihat status semua cabang
-   - Edit data cabang (jika memiliki permission)
-   - Review karyawan per cabang
+## Dapat Mengelola Role
+petugas_pusat, petugas_cabang, karyawan
 
-2. **Nasabah Administration**
-   - Navigasi ke `pages/nasabah/index.php`
-   - Lihat nasabah dari seluruh cabang
-   - Edit data nasabah
-   - Update status nasabah
-   - Review blacklist status
-
-3. **Pengeluaran Management**
-   - Navigasi ke `pages/pengeluaran/index.php`
-   - Lihat pengeluaran dari seluruh cabang
-   - Tambah pengeluaran baru
-   - Edit pengeluaran
-   - Review kategori pengeluaran
-
-### Afternoon Activities
-1. **Kas Bon Administration**
-   - Navigasi ke `pages/kas_bon/index.php`
-   - Lihat kas bon karyawan dari seluruh cabang
-   - Setujui kas bon (jika memiliki permission)
-   - Review potongan kas bon
-
-2. **Laporan Administration**
-   - Navigasi ke `pages/laporan/index.php`
-   - Lihat laporan pengeluaran
-   - Review laporan kas
-   - Cetak laporan jika diperlukan
-
-## Weekly Activities
-1. **Administrative Review**
-   - Review aktivitas administratif di seluruh cabang
-   - Identifikasi area yang butuh perhatian
-   - Buat rekomendasi improvement
-
-2. **User Audit**
-   - Review user account di seluruh cabang
-   - Identifikasi user tidak aktif
-   - Rekomendasikan deaktivasi
-
-## Monthly Activities
-1. **Administrative Reporting**
-   - Buat laporan administratif bulanan
-   - Review pengeluaran per cabang
-   - Identifikasi tren pengeluaran
-
-2. **Compliance Check**
-   - Verifikasi kepatuhan cabang terhadap SOP administratif
-   - Review dokumen dan data
-   - Identifikasi area risiko
-
-## Key Permissions
-- Dapat melihat data konsolidasi dari seluruh cabang
-- Dapat mengelola user di seluruh cabang (tergantung permission)
-- Dapat mengelola pengeluaran
-- Dapat mengelola kas bon
-- Dapat melihat laporan administratif
-
-## Important Notes
-- Admin Pusat adalah role OPSIONAL
-- Jika tidak ada, bos dapat delegate admin_pusat permissions ke manager_pusat
-- Admin Pusat memiliki `cabang_id` = kantor pusat
-- Admin Pusat memiliki `owner_bos_id` = ID bos
-- Admin Pusat hanya dapat melihat data milik bosnya
-
-## Fallback Scenario
-Jika Admin Pusat tidak ada:
-- Bos dapat delegate admin_pusat permissions ke Manager Pusat
-- Manager Pusat dapat melakukan tugas administratif lintas cabang
-- System tetap berfungsi tanpa Admin Pusat
+## Quick Login (Development)
+```
+/login.php?test_login=true&username=adm_pusat&password=Kewer2024!
+```

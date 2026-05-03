@@ -15,8 +15,9 @@ $ao_nav = [
     'koperasi.php' => ['icon' => 'building', 'label' => 'Koperasi'],
     'billing.php' => ['icon' => 'receipt', 'label' => 'Billing'],
     'usage.php' => ['icon' => 'bar-chart-line', 'label' => 'Usage'],
-    'ai_advisor.php' => ['icon' => 'robot', 'label' => 'AI Advisor'],
-    'settings.php' => ['icon' => 'gear', 'label' => 'Settings'],
+    'ai_advisor.php' => ['icon' => 'robot',       'label' => 'AI Advisor'],
+    'features.php'  => ['icon' => 'toggles',      'label' => 'Feature Flags'],
+    'settings.php'  => ['icon' => 'gear',          'label' => 'Settings'],
 ];
 ?>
 <!DOCTYPE html>

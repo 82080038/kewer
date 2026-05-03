@@ -44,55 +44,58 @@ switch ($method) {
                     exit();
                 }
                 
-                // Development mode quick login
-                $dev_credentials = [
-                    'patri'           => 'password',
-                    'mgr_pusat'       => 'password',
-                    'mgr_pangururan'  => 'password',
-                    'mgr_balige'      => 'password',
-                    'adm_pusat'       => 'password',
-                    'adm_pangururan'  => 'password',
-                    'adm_balige'      => 'password',
-                    'ptr_pngr1'       => 'password',
-                    'ptr_pngr2'       => 'password',
-                    'ptr_blg1'        => 'password',
-                    'krw_pngr'        => 'password',
-                    'krw_blg'         => 'password',
-                ];
-                
-                if (isset($dev_credentials[$username]) && $password === $dev_credentials[$username]) {
-                    // Get user from database for session
-                    require_once BASE_PATH . '/config/database.php';
-                    $user = query("SELECT * FROM users WHERE username = ? AND status = 'aktif'", [$username]);
+                // Development mode quick login - ONLY in development environment
+                if (APP_ENV === 'development') {
+                    $dev_credentials = [
+                        'patri'           => 'Kewer2024!',
+                        'mgr_pusat'       => 'Kewer2024!',
+                        'mgr_pangururan'  => 'Kewer2024!',
+                        'mgr_balige'      => 'Kewer2024!',
+                        'adm_pusat'       => 'Kewer2024!',
+                        'adm_pangururan'  => 'Kewer2024!',
+                        'adm_balige'      => 'Kewer2024!',
+                        'ptr_pngr1'       => 'Kewer2024!',
+                        'ptr_pngr2'       => 'Kewer2024!',
+                        'ptr_blg1'        => 'Kewer2024!',
+                        'krw_pngr'        => 'Kewer2024!',
+                        'krw_blg'         => 'Kewer2024!',
+                    ];
                     
-                    if ($user) {
-                        // Start session if not already active
-                        if (session_status() === PHP_SESSION_NONE) {
-                            session_start();
-                        }
-                        $_SESSION['user_id'] = $user[0]['id'];
-                        $_SESSION['username'] = $user[0]['username'];
-                        $_SESSION['role'] = $user[0]['role'];
-                        $_SESSION['kantor_id'] = 1; // Single office
+                    if (isset($dev_credentials[$username]) && $password === $dev_credentials[$username]) {
+                        // Get user from database for session
+                        require_once BASE_PATH . '/config/database.php';
+                        $user = query("SELECT * FROM users WHERE username = ? AND status = 'aktif'", [$username]);
                         
-                        echo json_encode([
-                            'success' => true,
-                            'message' => 'Login berhasil (development mode)',
-                            'user' => [
-                                'id' => $user[0]['id'],
-                                'username' => $user[0]['username'],
-                                'nama' => $user[0]['nama'],
-                                'role' => $user[0]['role'],
-                                'kantor_id' => 1
-                            ]
-                        ]);
-                        exit();
+                        if ($user) {
+                            // Start session if not already active
+                            if (session_status() === PHP_SESSION_NONE) {
+                                session_start();
+                            }
+                            $_SESSION['user_id'] = $user[0]['id'];
+                            $_SESSION['username'] = $user[0]['username'];
+                            $_SESSION['role'] = $user[0]['role'];
+                            $_SESSION['kantor_id'] = 1; // Single office
+                            
+                            echo json_encode([
+                                'success' => true,
+                                'message' => 'Login berhasil (development mode)',
+                                'user' => [
+                                    'id' => $user[0]['id'],
+                                    'username' => $user[0]['username'],
+                                    'nama' => $user[0]['nama'],
+                                    'role' => $user[0]['role'],
+                                    'kantor_id' => 1
+                                ]
+                            ]);
+                            exit();
+                        }
                     }
                 }
                 
-                $db = db();
-                $sql = "SELECT * FROM users WHERE username = ? AND status = 'aktif'";
-                $user = $db->selectOne($sql, [$username]);
+                // Use existing query() function instead of db() class for consistency
+                require_once BASE_PATH . '/config/database.php';
+                $user_result = query("SELECT * FROM users WHERE username = ? AND status = 'aktif'", [$username]);
+                $user = $user_result ? $user_result[0] : null;
                 
                 if ($user && password_verify($password, $user['password'])) {
                     // Start session if not already active
@@ -105,7 +108,7 @@ switch ($method) {
                     $_SESSION['kantor_id'] = 1; // Single office
                     
                     // Update last login
-                    $db->update("UPDATE users SET updated_at = NOW() WHERE id = ?", [$user['id']]);
+                    query("UPDATE users SET updated_at = NOW() WHERE id = ?", [$user['id']]);
                     
                     echo json_encode([
                         'success' => true,
@@ -151,7 +154,7 @@ switch ($method) {
                             'id' => $_SESSION['user_id'],
                             'username' => $_SESSION['username'],
                             'role' => $_SESSION['role'],
-                            'cabang_id' => $_SESSION['cabang_id']
+                            'kantor_id' => $_SESSION['kantor_id'] ?? 1
                         ]
                     ]);
                 } else {

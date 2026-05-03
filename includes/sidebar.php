@@ -18,6 +18,24 @@ $role = $user['role'] ?? '';
 $cabang_id = getCurrentCabang();
 $current_page = $_SERVER['PHP_SELF'];
 
+// Hitung notifikasi belum dibaca (hanya jika bukan appOwner)
+if (function_exists('isFeatureEnabled') === false && file_exists(BASE_PATH . '/includes/feature_flags.php')) {
+    require_once BASE_PATH . '/includes/feature_flags.php';
+}
+
+$notif_count = 0;
+if ($role !== 'appOwner' && function_exists('query')) {
+    try {
+        $notif_rows = query(
+            "SELECT COUNT(*) as jml FROM notifikasi
+             WHERE is_read = 0
+               AND (user_id = ? OR (target_role = ? AND (cabang_id = ? OR cabang_id IS NULL)))",
+            [$user['id'], $role, $cabang_id]
+        );
+        $notif_count = (int)($notif_rows[0]['jml'] ?? 0);
+    } catch (Exception $e) { $notif_count = 0; }
+}
+
 // Helper function to check if current page matches a specific path
 function isCurrentPage($current, $path) {
     // Normalize paths for Windows
@@ -179,6 +197,16 @@ function safeHasPermission($permission_code) {
 </style>
 <nav class="sidebar">
     <ul class="nav flex-column">
+            <?php if ($role !== 'appOwner'): ?>
+            <li class="nav-item">
+                <a class="nav-link position-relative <?php echo isCurrentPage($current_page, '/pages/notifikasi/index.php') ? 'active' : ''; ?>" href="<?php echo baseUrl('pages/notifikasi/index.php'); ?>">
+                    <i class="bi bi-bell"></i> Notifikasi
+                    <?php if ($notif_count > 0): ?>
+                        <span class="badge bg-danger rounded-pill ms-1" style="font-size:10px"><?= $notif_count > 99 ? '99+' : $notif_count ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
+            <?php endif; ?>
             <li class="nav-item">
                 <a class="nav-link <?php echo strpos($current_page, 'dashboard.php') !== false ? 'active' : ''; ?>" href="<?php echo baseUrl('dashboard.php'); ?>">
                     <i class="bi bi-speedometer2"></i> Dashboard
@@ -237,6 +265,13 @@ function safeHasPermission($permission_code) {
             <li class="nav-item">
                 <a class="nav-link <?php echo isCurrentPage($current_page, '/pages/users/index.php') ? 'active' : ''; ?>" href="<?php echo baseUrl('pages/users/index.php'); ?>">
                     <i class="bi bi-person-gear"></i> Users
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (safeHasPermission('manage_users')): ?>
+            <li class="nav-item">
+                <a class="nav-link <?php echo isCurrentPage($current_page, '/pages/users/transfer.php') ? 'active' : ''; ?>" href="<?php echo baseUrl('pages/users/transfer.php'); ?>">
+                    <i class="bi bi-person-x"></i> Resign / Transfer
                 </a>
             </li>
             <?php endif; ?>
@@ -322,6 +357,20 @@ function safeHasPermission($permission_code) {
             <li class="nav-item">
                 <a class="nav-link <?php echo strpos($current_page, 'permissions') !== false ? 'active' : ''; ?>" href="<?php echo baseUrl('pages/permissions/index.php'); ?>">
                     <i class="bi bi-shield-lock"></i> Permissions
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (in_array($role, ['petugas_pusat','petugas_cabang']) && function_exists('isFeatureEnabled') && isFeatureEnabled('slip_harian')): ?>
+            <li class="nav-item">
+                <a class="nav-link <?php echo isCurrentPage($current_page, '/pages/petugas/slip_harian.php') ? 'active' : ''; ?>" href="<?php echo baseUrl('pages/petugas/slip_harian.php'); ?>">
+                    <i class="bi bi-receipt-cutoff"></i> Slip Harian
+                </a>
+            </li>
+            <?php endif; ?>
+            <?php if (in_array($role, ['bos','manager_pusat','manager_cabang','admin_pusat','appOwner']) && function_exists('isFeatureEnabled') && isFeatureEnabled('two_factor_auth')): ?>
+            <li class="nav-item">
+                <a class="nav-link <?php echo isCurrentPage($current_page, '/pages/users/settings_2fa.php') ? 'active' : ''; ?>" href="<?php echo baseUrl('pages/users/settings_2fa.php'); ?>">
+                    <i class="bi bi-shield-shaded"></i> Pengaturan 2FA
                 </a>
             </li>
             <?php endif; ?>

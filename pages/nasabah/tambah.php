@@ -4,6 +4,7 @@ require_once BASE_PATH . '/includes/functions.php';
 require_once BASE_PATH . '/config/database.php';
 require_once BASE_PATH . '/includes/alamat_helper.php';
 require_once BASE_PATH . '/includes/people_helper.php';
+require_once BASE_PATH . '/includes/business_logic.php';
 requireLogin();
 
 // Permission check
@@ -26,7 +27,13 @@ if ($_POST) {
     $telp = $_POST['telp'] ?? '';
     $jenis_usaha = $_POST['jenis_usaha'] ?? '';
     $lokasi_pasar = $_POST['lokasi_pasar'] ?? '';
-    $kantor_id = 1; // Single office
+    $alamat_rumah = $_POST['alamat_rumah'] ?? '';
+
+    // Resolve cabang + owner untuk INSERT
+    $user_now   = getCurrentUser();
+    $owner_bos  = getOwnerBosId();
+    $owned_ids  = getBosOwnedCabangIds();
+    $kantor_id  = $user_now['cabang_id'] ?? ($owned_ids[0] ?? 1);
     
     // Validation
     if (!validateKTP($ktp)) {
@@ -34,11 +41,17 @@ if ($_POST) {
     } elseif (!validatePhone($telp)) {
         $error = 'Format telepon tidak valid (08xxxxxxxxxx)';
     } else {
-        // Check duplicate KTP
-        $check = query("SELECT id FROM nasabah WHERE ktp = ?", [$ktp]);
+        // Cek platform blacklist
+        $platform_bl = query("SELECT id FROM nasabah WHERE ktp = ? AND platform_blacklist = 1 LIMIT 1", [$ktp]);
+        if ($platform_bl) {
+            $error = 'KTP ini diblacklist platform-wide. Tidak bisa mendaftar di koperasi manapun.';
+        }
+        // Check duplicate KTP per koperasi
+        $check = !$platform_bl ? query("SELECT id FROM nasabah WHERE ktp = ? AND owner_bos_id = ?", [$ktp, $owner_bos]) : null;
         if ($check) {
-            $error = 'KTP sudah terdaftar';
-        } else {
+            $error = 'KTP sudah terdaftar di koperasi ini';
+        }
+        if (!$error) {
             // Generate kode nasabah
             $kode_nasabah = generateKode('NSB', 'nasabah', 'kode_nasabah');
             
@@ -56,9 +69,11 @@ if ($_POST) {
                 move_uploaded_file($_FILES['foto_selfie']['tmp_name'], '../../' . $foto_selfie);
             }
             
-            // Insert nasabah
-            $result = query("INSERT INTO nasabah (cabang_id, kode_nasabah, nama, alamat, province_id, regency_id, district_id, village_id, ktp, telp, jenis_usaha, lokasi_pasar, foto_ktp, foto_selfie) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
-                $kantor_id, $kode_nasabah, $nama, $alamat, $province_id ?: null, $regency_id ?: null, $district_id ?: null, $village_id ?: null, $ktp, $telp, $jenis_usaha, $lokasi_pasar, $foto_ktp, $foto_selfie
+            // Insert nasabah dengan owner_bos_id dan skor_kredit
+            $result = query("INSERT INTO nasabah (cabang_id, owner_bos_id, kode_nasabah, nama, alamat, alamat_rumah, province_id, regency_id, district_id, village_id, ktp, telp, jenis_usaha, lokasi_pasar, foto_ktp, foto_selfie, skor_kredit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+                $kantor_id, $owner_bos, $kode_nasabah, $nama, $alamat, $alamat_rumah ?: null,
+                $province_id ?: null, $regency_id ?: null, $district_id ?: null, $village_id ?: null,
+                $ktp, $telp, $jenis_usaha, $lokasi_pasar, $foto_ktp, $foto_selfie, 100
             ]);
             
             if ($result) {
@@ -67,6 +82,7 @@ if ($_POST) {
                 // Log the CRUD operation
                 logCrudOperation('nasabah', 'CREATE', $nasabah_id, null, [
                     'cabang_id' => $kantor_id,
+                    'owner_bos_id' => $owner_bos,
                     'kode_nasabah' => $kode_nasabah,
                     'nama' => $nama,
                     'ktp' => $ktp
@@ -95,7 +111,7 @@ if ($_POST) {
             } else {
                 $error = 'Gagal menambahkan nasabah';
             }
-        }
+        } // end !$error check
     }
 }
 ?>

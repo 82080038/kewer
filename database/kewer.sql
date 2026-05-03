@@ -1,8 +1,14 @@
+-- phpMyAdmin SQL Dump (via mysqldump)
 -- MariaDB dump 10.19  Distrib 10.4.32-MariaDB, for Linux (x86_64)
 --
 -- Host: localhost    Database: kewer
+-- Kewer v2.3.1 — Sistem Pinjaman Modal Pedagang
+-- Generated: 2026-05-04
 -- ------------------------------------------------------
 -- Server version	10.4.32-MariaDB
+
+CREATE DATABASE IF NOT EXISTS `kewer` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `kewer`;
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -14,6 +20,38 @@
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `ahli_waris`
+--
+
+DROP TABLE IF EXISTS `ahli_waris`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ahli_waris` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nasabah_id` int(11) NOT NULL,
+  `nama` varchar(100) NOT NULL,
+  `hubungan` enum('suami','istri','anak','orang_tua','saudara','lainnya') NOT NULL DEFAULT 'lainnya',
+  `ktp` varchar(16) DEFAULT NULL,
+  `telp` varchar(15) DEFAULT NULL,
+  `alamat` text DEFAULT NULL,
+  `adalah_penjamin` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Apakah menjamin pinjaman',
+  `catatan` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_ahli_waris_nasabah` (`nasabah_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Ahli waris nasabah untuk kasus meninggal dunia';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ahli_waris`
+--
+
+LOCK TABLES `ahli_waris` WRITE;
+/*!40000 ALTER TABLE `ahli_waris` DISABLE KEYS */;
+/*!40000 ALTER TABLE `ahli_waris` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `ai_advice`
@@ -121,9 +159,8 @@ CREATE TABLE `angsuran` (
   KEY `idx_angsuran_cabang_status` (`status`),
   KEY `idx_angsuran_frekuensi` (`frekuensi`),
   KEY `idx_angsuran_jatuh_tempo_status` (`jatuh_tempo`,`status`),
-  CONSTRAINT `angsuran_ibfk_2` FOREIGN KEY (`pinjaman_id`) REFERENCES `pinjaman` (`id`),
-  CONSTRAINT `chk_angsuran_jatuh_tempo` CHECK (`jatuh_tempo` >= '2000-01-01')
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  CONSTRAINT `angsuran_ibfk_2` FOREIGN KEY (`pinjaman_id`) REFERENCES `pinjaman` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -262,6 +299,8 @@ CREATE TABLE `blacklist_log` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `nasabah_id` int(11) NOT NULL,
   `aksi` enum('blacklist','unblacklist') NOT NULL,
+  `scope` enum('koperasi','platform') NOT NULL DEFAULT 'koperasi' COMMENT 'koperasi=hanya di koperasi ini, platform=seluruh platform',
+  `owner_bos_id` int(10) unsigned DEFAULT NULL COMMENT 'Bos yang mem-blacklist (null = platform level oleh appOwner)',
   `alasan` text DEFAULT NULL,
   `dilakukan_oleh` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -682,6 +721,42 @@ INSERT INTO `jurnal_detail` VALUES (1,1,'1-2001','Piutang Pinjaman',5000000.00,0
 UNLOCK TABLES;
 
 --
+-- Table structure for table `jurnal_kas`
+--
+
+DROP TABLE IF EXISTS `jurnal_kas`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `jurnal_kas` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `cabang_id` int(11) NOT NULL,
+  `tanggal` date NOT NULL,
+  `tipe` enum('masuk','keluar') NOT NULL,
+  `kategori` enum('angsuran','pencairan','biaya_operasional','gaji','kas_bon','denda','selisih_kas','lainnya') NOT NULL,
+  `referensi_tabel` varchar(50) DEFAULT NULL COMMENT 'Nama tabel sumber: pembayaran, pengeluaran, kas_bon, dll',
+  `referensi_id` int(11) DEFAULT NULL COMMENT 'ID record di tabel referensi',
+  `jumlah` decimal(12,0) NOT NULL,
+  `saldo_sebelum` decimal(12,0) NOT NULL DEFAULT 0,
+  `saldo_sesudah` decimal(12,0) NOT NULL DEFAULT 0,
+  `keterangan` text DEFAULT NULL,
+  `created_by` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_jurnal_cabang_tgl` (`cabang_id`,`tanggal`),
+  KEY `idx_jurnal_ref` (`referensi_tabel`,`referensi_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Jurnal kas harian otomatis dari semua transaksi';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `jurnal_kas`
+--
+
+LOCK TABLES `jurnal_kas` WRITE;
+/*!40000 ALTER TABLE `jurnal_kas` DISABLE KEYS */;
+/*!40000 ALTER TABLE `jurnal_kas` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `kas_bon`
 --
 
@@ -727,26 +802,6 @@ LOCK TABLES `kas_bon` WRITE;
 /*!40000 ALTER TABLE `kas_bon` DISABLE KEYS */;
 /*!40000 ALTER TABLE `kas_bon` ENABLE KEYS */;
 UNLOCK TABLES;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_general_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER trg_kasbon_before_insert
-BEFORE INSERT ON kas_bon
-FOR EACH ROW
-BEGIN
-    SET NEW.potongan_ke = 0;
-END */;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
 
 --
 -- Table structure for table `kas_bon_potongan`
@@ -799,6 +854,11 @@ CREATE TABLE `kas_petugas` (
   `total_terima` decimal(12,0) DEFAULT 0,
   `total_disetor` decimal(12,0) DEFAULT 0,
   `saldo_akhir` decimal(12,0) DEFAULT 0,
+  `selisih` decimal(12,0) DEFAULT NULL COMMENT 'Positif=lebih, Negatif=kurang',
+  `selisih_keterangan` text DEFAULT NULL,
+  `verified_by` int(11) DEFAULT NULL COMMENT 'Admin/manager yang verifikasi kas',
+  `verified_at` datetime DEFAULT NULL,
+  `is_locked` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Kas yang sudah diverifikasi tidak bisa diedit',
   `status` enum('lengkap','kurang','lebih') DEFAULT 'lengkap',
   `catatan` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -819,68 +879,6 @@ LOCK TABLES `kas_petugas` WRITE;
 /*!40000 ALTER TABLE `kas_petugas` DISABLE KEYS */;
 /*!40000 ALTER TABLE `kas_petugas` ENABLE KEYS */;
 UNLOCK TABLES;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8 */ ;
-/*!50003 SET character_set_results = utf8 */ ;
-/*!50003 SET collation_connection  = utf8_general_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER trg_kas_petugas_before_insert
-BEFORE INSERT ON kas_petugas
-FOR EACH ROW
-BEGIN
-    SET NEW.saldo_akhir = NEW.saldo_awal + NEW.total_terima - NEW.total_disetor;
-    
-    
-    IF NEW.total_disetor = 0 THEN
-        SET NEW.status = 'kurang';
-    ELSEIF NEW.saldo_akhir > 0 THEN
-        SET NEW.status = 'kurang';
-    ELSEIF NEW.saldo_akhir < 0 THEN
-        SET NEW.status = 'lebih';
-    ELSE
-        SET NEW.status = 'lengkap';
-    END IF;
-END */;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8 */ ;
-/*!50003 SET character_set_results = utf8 */ ;
-/*!50003 SET collation_connection  = utf8_general_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER trg_kas_petugas_before_update
-BEFORE UPDATE ON kas_petugas
-FOR EACH ROW
-BEGIN
-    SET NEW.saldo_akhir = NEW.saldo_awal + NEW.total_terima - NEW.total_disetor;
-    
-    
-    IF NEW.total_disetor = 0 THEN
-        SET NEW.status = 'kurang';
-    ELSEIF NEW.saldo_akhir > 0 THEN
-        SET NEW.status = 'kurang';
-    ELSEIF NEW.saldo_akhir < 0 THEN
-        SET NEW.status = 'lebih';
-    ELSE
-        SET NEW.status = 'lengkap';
-    END IF;
-END */;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
 
 --
 -- Table structure for table `kas_petugas_setoran`
@@ -923,6 +921,40 @@ LOCK TABLES `kas_petugas_setoran` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `kelebihan_bayar`
+--
+
+DROP TABLE IF EXISTS `kelebihan_bayar`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `kelebihan_bayar` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nasabah_id` int(11) NOT NULL,
+  `pinjaman_id` int(11) DEFAULT NULL COMMENT 'Pinjaman yang menghasilkan kelebihan',
+  `pembayaran_id` int(11) DEFAULT NULL COMMENT 'Pembayaran sumber kelebihan',
+  `jumlah` decimal(12,2) NOT NULL,
+  `status` enum('pending','dikembalikan','dikompensasi') NOT NULL DEFAULT 'pending' COMMENT 'dikembalikan=refund cash, dikompensasi=offset ke pinjaman berikutnya',
+  `diproses_oleh` int(11) DEFAULT NULL,
+  `tanggal_proses` date DEFAULT NULL,
+  `keterangan` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_kelebihan_nasabah` (`nasabah_id`),
+  KEY `idx_kelebihan_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Kelebihan bayar nasabah — refund atau kompensasi';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `kelebihan_bayar`
+--
+
+LOCK TABLES `kelebihan_bayar` WRITE;
+/*!40000 ALTER TABLE `kelebihan_bayar` DISABLE KEYS */;
+/*!40000 ALTER TABLE `kelebihan_bayar` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `koperasi_activities`
 --
 
@@ -948,7 +980,7 @@ CREATE TABLE `koperasi_activities` (
   KEY `idx_kategori` (`kategori`),
   KEY `idx_created` (`created_at`),
   KEY `idx_ref` (`ref_table`,`ref_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Log semua aktivitas penting koperasi';
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Log semua aktivitas penting koperasi';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1108,6 +1140,7 @@ DROP TABLE IF EXISTS `nasabah`;
 CREATE TABLE `nasabah` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `cabang_id` int(11) DEFAULT 1,
+  `owner_bos_id` int(10) unsigned DEFAULT NULL COMMENT 'Bos pemilik data nasabah ini',
   `kode_nasabah` varchar(20) NOT NULL,
   `nama` varchar(100) NOT NULL,
   `nama_ayah` varchar(100) DEFAULT NULL,
@@ -1133,12 +1166,17 @@ CREATE TABLE `nasabah` (
   `blacklist_reason` text DEFAULT NULL,
   `skor_risiko_keluarga` int(11) DEFAULT 0,
   `catatan_risiko` text DEFAULT NULL,
+  `skor_kredit` int(11) NOT NULL DEFAULT 100 COMMENT 'Skor kredit internal 0-100. Turun jika telat, naik jika tepat waktu',
+  `platform_blacklist` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Blacklist platform-wide oleh appOwner (lintas koperasi)',
+  `total_pinjaman_aktif` int(11) NOT NULL DEFAULT 0 COMMENT 'Cache: jumlah pinjaman aktif (di koperasi ini)',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `tanggal_meninggal` date DEFAULT NULL COMMENT 'Jika nasabah meninggal dunia',
+  `penjamin_id` int(11) DEFAULT NULL COMMENT 'ID ahli waris yang menjadi penjamin pinjaman',
   PRIMARY KEY (`id`),
   UNIQUE KEY `kode_nasabah` (`kode_nasabah`),
-  UNIQUE KEY `ktp` (`ktp`),
   UNIQUE KEY `idx_nasabah_email` (`email`),
+  UNIQUE KEY `uk_nasabah_ktp_koperasi` (`ktp`,`owner_bos_id`),
   KEY `idx_nasabah_ktp` (`ktp`),
   KEY `idx_referensi_nasabah` (`referensi_nasabah_id`),
   KEY `idx_nasabah_cabang_status` (`status`),
@@ -1157,7 +1195,7 @@ CREATE TABLE `nasabah` (
 
 LOCK TABLES `nasabah` WRITE;
 /*!40000 ALTER TABLE `nasabah` DISABLE KEYS */;
-INSERT INTO `nasabah` VALUES (1,1,'NSB001','Budi Siregar',NULL,NULL,'Pangururan',NULL,NULL,NULL,NULL,NULL,NULL,'1201010101010001','081234500001',NULL,'Warung','',NULL,NULL,NULL,14,NULL,'aktif',NULL,0,NULL,'2026-05-02 14:19:56','2026-05-02 15:34:24'),(2,1,'NSB002','Maria Tampubolon',NULL,NULL,'Balige',NULL,NULL,NULL,NULL,NULL,NULL,'1201010101010002','081234500002',NULL,'Toko Kelontong','',NULL,NULL,NULL,15,NULL,'aktif',NULL,0,NULL,'2026-05-02 14:19:56','2026-05-02 15:34:24');
+INSERT INTO `nasabah` VALUES (1,1,1,'NSB001','Budi Siregar',NULL,NULL,'Pangururan',NULL,NULL,NULL,NULL,NULL,NULL,'1201010101010001','081234500001',NULL,'Warung','',NULL,NULL,NULL,14,NULL,'aktif',NULL,0,NULL,100,0,0,'2026-05-02 14:19:56','2026-05-03 17:54:53',NULL,NULL),(2,1,1,'NSB002','Maria Tampubolon',NULL,NULL,'Balige',NULL,NULL,NULL,NULL,NULL,NULL,'1201010101010002','081234500002',NULL,'Toko Kelontong','',NULL,NULL,NULL,15,NULL,'aktif',NULL,0,NULL,100,0,0,'2026-05-02 14:19:56','2026-05-03 17:54:53',NULL,NULL);
 /*!40000 ALTER TABLE `nasabah` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1262,6 +1300,41 @@ SET character_set_client = utf8;
 SET character_set_client = @saved_cs_client;
 
 --
+-- Table structure for table `notifikasi`
+--
+
+DROP TABLE IF EXISTS `notifikasi`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `notifikasi` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `cabang_id` int(11) DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL COMMENT 'Null = broadcast ke semua role tertentu',
+  `target_role` varchar(50) DEFAULT NULL COMMENT 'Kirim ke semua user dengan role ini di cabang',
+  `tipe` enum('jatuh_tempo','macet','kas_selisih','pinjaman_baru','restrukturisasi','write_off','info','peringatan') NOT NULL,
+  `judul` varchar(200) NOT NULL,
+  `pesan` text NOT NULL,
+  `referensi_tabel` varchar(50) DEFAULT NULL,
+  `referensi_id` int(11) DEFAULT NULL,
+  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `read_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_notif_user` (`user_id`,`is_read`),
+  KEY `idx_notif_cabang` (`cabang_id`,`tipe`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Notifikasi internal sistem';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `notifikasi`
+--
+
+LOCK TABLES `notifikasi` WRITE;
+/*!40000 ALTER TABLE `notifikasi` DISABLE KEYS */;
+/*!40000 ALTER TABLE `notifikasi` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `pembayaran`
 --
 
@@ -1281,12 +1354,19 @@ CREATE TABLE `pembayaran` (
   `cara_bayar` enum('tunai','transfer','digital') NOT NULL,
   `bukti_bayar` varchar(255) DEFAULT NULL,
   `petugas_id` int(11) NOT NULL,
+  `petugas_pengganti_id` int(11) DEFAULT NULL COMMENT 'Jika pembayaran dikutip oleh petugas pengganti',
+  `is_offline` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Pembayaran diinput offline (belakangan)',
+  `offline_reason` varchar(255) DEFAULT NULL,
+  `tanggal_kutip` date DEFAULT NULL COMMENT 'Tanggal petugas mengutip (bisa berbeda dari tanggal_bayar)',
   `keterangan` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `denda_dibayar` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Jumlah denda yang dibayar',
   `denda_waived` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Jumlah denda yang di-waive',
   `total_pembayaran` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Total = pokok + bunga + denda_dibayar',
+  `lat` decimal(10,7) DEFAULT NULL,
+  `lng` decimal(10,7) DEFAULT NULL,
+  `akurasi_gps` smallint(6) DEFAULT NULL COMMENT 'meters',
   PRIMARY KEY (`id`),
   UNIQUE KEY `kode_pembayaran` (`kode_pembayaran`),
   KEY `angsuran_id` (`angsuran_id`),
@@ -1305,8 +1385,48 @@ CREATE TABLE `pembayaran` (
 
 LOCK TABLES `pembayaran` WRITE;
 /*!40000 ALTER TABLE `pembayaran` DISABLE KEYS */;
-INSERT INTO `pembayaran` VALUES (1,1,1,1,'BYR001',933334.00,0.00,933333.33,'2026-05-02','tunai',NULL,19,'','2026-05-02 14:34:59','2026-05-02 14:34:59',0.00,0.00,933333.33),(2,1,1,2,'BYR002',933334.00,0.00,933333.33,'2026-05-02','tunai',NULL,19,'','2026-05-02 14:35:10','2026-05-02 14:35:10',0.00,0.00,933333.33),(3,1,1,3,'BYR003',933334.00,0.00,933333.33,'2026-05-02','tunai',NULL,19,'','2026-05-02 14:35:10','2026-05-02 14:35:10',0.00,0.00,933333.33),(4,1,1,4,'BYR004',933334.00,0.00,933333.33,'2026-05-02','tunai',NULL,19,'','2026-05-02 14:35:11','2026-05-02 14:35:11',0.00,0.00,933333.33),(5,1,1,5,'BYR005',933334.00,0.00,933333.33,'2026-05-02','tunai',NULL,19,'','2026-05-02 14:35:11','2026-05-02 14:35:11',0.00,0.00,933333.33),(6,1,1,6,'BYR006',933334.00,0.00,933333.33,'2026-05-02','tunai',NULL,19,'','2026-05-02 14:35:11','2026-05-02 14:35:11',0.00,0.00,933333.33);
+INSERT INTO `pembayaran` VALUES (1,1,1,1,'BYR001',933334.00,0.00,933333.33,'2026-05-02','tunai',NULL,19,NULL,0,NULL,NULL,'','2026-05-02 14:34:59','2026-05-02 14:34:59',0.00,0.00,933333.33,NULL,NULL,NULL),(2,1,1,2,'BYR002',933334.00,0.00,933333.33,'2026-05-02','tunai',NULL,19,NULL,0,NULL,NULL,'','2026-05-02 14:35:10','2026-05-02 14:35:10',0.00,0.00,933333.33,NULL,NULL,NULL),(3,1,1,3,'BYR003',933334.00,0.00,933333.33,'2026-05-02','tunai',NULL,19,NULL,0,NULL,NULL,'','2026-05-02 14:35:10','2026-05-02 14:35:10',0.00,0.00,933333.33,NULL,NULL,NULL),(4,1,1,4,'BYR004',933334.00,0.00,933333.33,'2026-05-02','tunai',NULL,19,NULL,0,NULL,NULL,'','2026-05-02 14:35:11','2026-05-02 14:35:11',0.00,0.00,933333.33,NULL,NULL,NULL),(5,1,1,5,'BYR005',933334.00,0.00,933333.33,'2026-05-02','tunai',NULL,19,NULL,0,NULL,NULL,'','2026-05-02 14:35:11','2026-05-02 14:35:11',0.00,0.00,933333.33,NULL,NULL,NULL),(6,1,1,6,'BYR006',933334.00,0.00,933333.33,'2026-05-02','tunai',NULL,19,NULL,0,NULL,NULL,'','2026-05-02 14:35:11','2026-05-02 14:35:11',0.00,0.00,933333.33,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `pembayaran` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `pembayaran_offline_queue`
+--
+
+DROP TABLE IF EXISTS `pembayaran_offline_queue`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `pembayaran_offline_queue` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `cabang_id` int(11) NOT NULL,
+  `petugas_id` int(11) NOT NULL,
+  `nasabah_id` int(11) NOT NULL,
+  `pinjaman_id` int(11) NOT NULL,
+  `angsuran_id` int(11) NOT NULL,
+  `jumlah_bayar` decimal(12,2) NOT NULL,
+  `tanggal_kutip` date NOT NULL,
+  `cara_bayar` enum('tunai','transfer','digital') NOT NULL DEFAULT 'tunai',
+  `keterangan` text DEFAULT NULL,
+  `device_id` varchar(100) DEFAULT NULL COMMENT 'Identifikasi perangkat petugas',
+  `status` enum('pending','processed','failed','duplicate') NOT NULL DEFAULT 'pending',
+  `processed_at` datetime DEFAULT NULL,
+  `processed_by` int(11) DEFAULT NULL,
+  `pembayaran_id` int(11) DEFAULT NULL COMMENT 'ID pembayaran yang dibuat setelah sync',
+  `error_message` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_offline_petugas` (`petugas_id`,`tanggal_kutip`),
+  KEY `idx_offline_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Antrian pembayaran offline untuk sync saat online';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `pembayaran_offline_queue`
+--
+
+LOCK TABLES `pembayaran_offline_queue` WRITE;
+/*!40000 ALTER TABLE `pembayaran_offline_queue` DISABLE KEYS */;
+/*!40000 ALTER TABLE `pembayaran_offline_queue` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1350,6 +1470,46 @@ CREATE TABLE `pengeluaran` (
 LOCK TABLES `pengeluaran` WRITE;
 /*!40000 ALTER TABLE `pengeluaran` DISABLE KEYS */;
 /*!40000 ALTER TABLE `pengeluaran` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `pengganti_petugas`
+--
+
+DROP TABLE IF EXISTS `pengganti_petugas`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `pengganti_petugas` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `cabang_id` int(11) DEFAULT NULL,
+  `petugas_id` int(11) DEFAULT NULL COMMENT 'alias petugas_asli_id',
+  `pengganti_id` int(11) DEFAULT NULL COMMENT 'alias petugas_pengganti_id',
+  `tanggal_mulai` date DEFAULT NULL,
+  `tanggal_selesai` date DEFAULT NULL,
+  `alasan_ketidakhadiran` varchar(50) DEFAULT NULL,
+  `catatan` text DEFAULT NULL,
+  `petugas_asli_id` int(11) NOT NULL COMMENT 'Petugas yang tidak hadir',
+  `petugas_pengganti_id` int(11) NOT NULL COMMENT 'Petugas yang menggantikan',
+  `tanggal` date NOT NULL,
+  `alasan` enum('sakit','izin','cuti','lainnya') NOT NULL DEFAULT 'lainnya',
+  `keterangan` text DEFAULT NULL,
+  `disetujui_oleh` int(11) DEFAULT NULL,
+  `status` enum('pending','aktif','selesai','batal') NOT NULL DEFAULT 'pending',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_pengganti_asli` (`petugas_asli_id`),
+  KEY `idx_pengganti_tgl` (`tanggal`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Penugasan petugas pengganti saat petugas asli berhalangan';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `pengganti_petugas`
+--
+
+LOCK TABLES `pengganti_petugas` WRITE;
+/*!40000 ALTER TABLE `pengganti_petugas` DISABLE KEYS */;
+/*!40000 ALTER TABLE `pengganti_petugas` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1442,7 +1602,7 @@ CREATE TABLE `petugas_daerah_tugas` (
   KEY `idx_district` (`district_id`),
   KEY `idx_village` (`village_id`),
   KEY `idx_active` (`petugas_id`,`is_active`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Daerah tugas petugas lapangan';
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Daerah tugas petugas lapangan';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1485,6 +1645,19 @@ CREATE TABLE `pinjaman` (
   `jaminan_dokumen` varchar(255) DEFAULT NULL,
   `jaminan_status` enum('aktif','dilepas','terjual','hilang') DEFAULT 'aktif',
   `status` enum('pengajuan','disetujui','aktif','lunas','ditolak','macet') NOT NULL DEFAULT 'pengajuan',
+  `pinjaman_induk_id` int(11) DEFAULT NULL COMMENT 'ID pinjaman lama (jika ini adalah restrukturisasi/refinancing)',
+  `is_restrukturisasi` tinyint(1) NOT NULL DEFAULT 0,
+  `sisa_pokok_berjalan` decimal(12,2) DEFAULT NULL COMMENT 'Sisa pokok real-time (diupdate saat bayar)',
+  `total_denda_terhutang` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `tanggal_lunas_awal` date DEFAULT NULL COMMENT 'Target lunas original sebelum reschedule',
+  `approved_by` int(11) DEFAULT NULL COMMENT 'User yang menyetujui pinjaman',
+  `approved_at` datetime DEFAULT NULL,
+  `rejected_by` int(11) DEFAULT NULL,
+  `rejected_at` datetime DEFAULT NULL,
+  `rejection_reason` text DEFAULT NULL,
+  `override_pinjaman_aktif` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Jika 1: bos/manager override larangan pinjaman ganda',
+  `override_oleh` int(11) DEFAULT NULL,
+  `override_alasan` text DEFAULT NULL,
   `tanggal_lunas` date DEFAULT NULL,
   `auto_confirmed` tinyint(1) DEFAULT 0,
   `auto_confirmed_at` timestamp NULL DEFAULT NULL,
@@ -1492,6 +1665,8 @@ CREATE TABLE `pinjaman` (
   `petugas_id` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `kolektibilitas` tinyint(1) DEFAULT 1 COMMENT '1=Lancar,2=DPK,3=KurangLancar,4=Diragukan,5=Macet',
+  `hari_tunggakan` int(11) DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `kode_pinjaman` (`kode_pinjaman`),
   KEY `petugas_id` (`petugas_id`),
@@ -1503,9 +1678,8 @@ CREATE TABLE `pinjaman` (
   KEY `idx_pinjaman_frekuensi_status` (`frekuensi`,`status`),
   CONSTRAINT `pinjaman_ibfk_2` FOREIGN KEY (`nasabah_id`) REFERENCES `nasabah` (`id`),
   CONSTRAINT `pinjaman_ibfk_3` FOREIGN KEY (`petugas_id`) REFERENCES `users` (`id`),
-  CONSTRAINT `pinjaman_ibfk_4` FOREIGN KEY (`auto_confirmed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `chk_pinjaman_plafon` CHECK (`plafon` > 0)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  CONSTRAINT `pinjaman_ibfk_4` FOREIGN KEY (`auto_confirmed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1514,73 +1688,41 @@ CREATE TABLE `pinjaman` (
 
 LOCK TABLES `pinjaman` WRITE;
 /*!40000 ALTER TABLE `pinjaman` DISABLE KEYS */;
-INSERT INTO `pinjaman` VALUES (1,1,'PNJ001',1,5000000.00,6,'bulanan',2.00,600000.00,5600000.00,833333.33,100000.00,933333.33,'2026-05-02','2026-11-02','Modal usaha warung','BPKB Motor','tanpa',NULL,NULL,'aktif','lunas','2026-05-02',0,NULL,NULL,19,'2026-05-02 14:20:20','2026-05-02 14:35:11');
+INSERT INTO `pinjaman` VALUES (1,1,'PNJ001',1,5000000.00,6,'bulanan',2.00,600000.00,5600000.00,833333.33,100000.00,933333.33,'2026-05-02','2026-11-02','Modal usaha warung','BPKB Motor','tanpa',NULL,NULL,'aktif','lunas',NULL,0,NULL,0.00,NULL,NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,'2026-05-02',0,NULL,NULL,19,'2026-05-02 14:20:20','2026-05-02 14:35:11',1,0);
 /*!40000 ALTER TABLE `pinjaman` ENABLE KEYS */;
 UNLOCK TABLES;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_general_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER trg_auto_update_family_risk
-AFTER UPDATE ON pinjaman
-FOR EACH ROW
-BEGIN
-    DECLARE v_nasabah_id INT;
-    DECLARE v_alamat TEXT;
-    DECLARE v_cabang_id INT;
-    DECLARE v_family_risk_id INT;
-    DECLARE v_nama_nasabah VARCHAR(100);
-    
-    
-    IF NEW.status = 'macet' AND OLD.status != 'macet' THEN
-        
-        SELECT nasabah_id, cabang_id INTO v_nasabah_id, v_cabang_id
-        FROM pinjaman WHERE id = NEW.id;
-        
-        SELECT alamat, nama INTO v_alamat, v_nama_nasabah
-        FROM nasabah WHERE id = v_nasabah_id;
-        
-        
-        INSERT INTO loan_risk_log (cabang_id, nasabah_id, pinjaman_id, jenis_risiko, tingkat_risiko, deskripsi, tindakan_diambil, tanggal_kejadian)
-        VALUES (v_cabang_id, v_nasabah_id, NEW.id, 'gagal_bayar', 'tinggi', 'Pinjaman gagal bayar', 'Auto-tagged as family risk', CURDATE());
-        
-        
-        UPDATE nasabah 
-        SET skor_risiko_keluarga = skor_risiko_keluarga + 10
-        WHERE id = v_nasabah_id;
-        
-        
-        SELECT id INTO v_family_risk_id FROM family_risk WHERE alamat_keluarga LIKE CONCAT('%', SUBSTRING_INDEX(v_alamat, ' ', 3), '%') AND cabang_id = v_cabang_id LIMIT 1;
-        
-        IF v_family_risk_id IS NULL THEN
-            
-            INSERT INTO family_risk (cabang_id, nama_kepala_keluarga, alamat_keluarga, tingkat_risiko, total_pinjaman_gagal, total_nasabah_bermasalah, tanggal_ditandai, alasan)
-            VALUES (v_cabang_id, v_nama_nasabah, v_alamat, 'tinggi', 1, 1, CURDATE(), 'Pinjaman gagal bayar');
-        ELSE
-            
-            UPDATE family_risk 
-            SET total_pinjaman_gagal = total_pinjaman_gagal + 1,
-                total_nasabah_bermasalah = total_nasabah_bermasalah + 1,
-                tingkat_risiko = CASE 
-                    WHEN total_pinjaman_gagal + 1 >= 3 THEN 'sangat_tinggi'
-                    WHEN total_pinjaman_gagal + 1 = 2 THEN 'tinggi'
-                    ELSE 'sedang'
-                END,
-                updated_at = NOW()
-            WHERE id = v_family_risk_id;
-        END IF;
-    END IF;
-END */;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
+
+--
+-- Table structure for table `platform_features`
+--
+
+DROP TABLE IF EXISTS `platform_features`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `platform_features` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `feature_key` varchar(64) NOT NULL COMMENT 'identifier unik fitur',
+  `label` varchar(128) NOT NULL COMMENT 'nama tampilan',
+  `description` text DEFAULT NULL,
+  `category` varchar(32) NOT NULL DEFAULT 'general' COMMENT 'wa|auth|pwa|laporan|lapangan|system',
+  `is_enabled` tinyint(1) NOT NULL DEFAULT 0,
+  `changed_by` int(10) unsigned DEFAULT NULL,
+  `changed_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `feature_key` (`feature_key`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `platform_features`
+--
+
+LOCK TABLES `platform_features` WRITE;
+/*!40000 ALTER TABLE `platform_features` DISABLE KEYS */;
+INSERT INTO `platform_features` VALUES (1,'wa_notifikasi','WhatsApp Notifikasi','Kirim notifikasi WA ke nasabah via Fonnte API. Butuh token WA_TOKEN di .env.','wa',0,25,'2026-05-04 01:58:41','2026-05-04 01:35:33'),(2,'wa_pengingat_auto','WA Pengingat Otomatis','Cron harian kirim WA pengingat H-1 dan H-0 jatuh tempo ke nasabah.','wa',0,NULL,NULL,'2026-05-04 01:35:33'),(3,'two_factor_auth','2FA Login (TOTP)','Autentikasi dua faktor untuk role bos/manager menggunakan Google Authenticator.','auth',0,25,'2026-05-04 02:01:06','2026-05-04 01:35:33'),(4,'pwa','PWA (Progressive Web App)','Service worker, manifest, install-to-homescreen, offline fallback.','pwa',0,25,'2026-05-04 02:01:34','2026-05-04 01:35:33'),(5,'gps_pembayaran','GPS pada Pembayaran','Rekam koordinat GPS saat petugas mencatat pembayaran di lapangan.','lapangan',0,NULL,NULL,'2026-05-04 01:35:33'),(6,'export_laporan','Export Laporan (CSV/PDF)','Tombol export di halaman laporan. PDF butuh library dompdf.','laporan',0,25,'2026-05-04 01:59:34','2026-05-04 01:35:33'),(7,'target_petugas','Target Kinerja Petugas','Set target bulanan kutipan/nasabah per petugas, tampil progress bar di kinerja.','lapangan',0,25,'2026-05-04 02:00:35','2026-05-04 01:35:33'),(8,'slip_harian','Slip Harian Petugas','Petugas bisa cetak rekap kutipan harian mereka sendiri.','lapangan',0,25,'2026-05-04 02:00:05','2026-05-04 01:35:33'),(9,'kolektibilitas','Kolektibilitas OJK (1-5)','Badge dan update otomatis level kolektibilitas pinjaman per standar OJK.','lapangan',0,NULL,NULL,'2026-05-04 01:35:33'),(10,'cron_harian','Cron Job Harian','Jalankan autoTandaiMacet, hitungDenda, dan notifikasi jatuh tempo tiap pagi.','system',0,NULL,NULL,'2026-05-04 01:35:33'),(11,'simulasi_pinjaman','Simulasi Pinjaman Real-time','Preview angsuran dan jadwal amortisasi saat input pinjaman baru.','lapangan',1,NULL,NULL,'2026-05-04 01:35:33');
+/*!40000 ALTER TABLE `platform_features` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `ref_jaminan_tipe`
@@ -1767,6 +1909,77 @@ INSERT INTO `ref_status_pinjaman` VALUES (7,'STS001','Pending','Pinjaman menungg
 UNLOCK TABLES;
 
 --
+-- Table structure for table `restrukturisasi`
+--
+
+DROP TABLE IF EXISTS `restrukturisasi`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `restrukturisasi` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `pinjaman_id` int(11) NOT NULL COMMENT 'Pinjaman yang direstrukturisasi',
+  `pinjaman_baru_id` int(11) DEFAULT NULL COMMENT 'Pinjaman pengganti (jika tipe=refinancing)',
+  `tipe` enum('reschedule','reconditioning','restructuring','refinancing') NOT NULL COMMENT 'reschedule=perpanjang tenor, reconditioning=ubah bunga, restructuring=kombinasi, refinancing=pinjaman baru',
+  `alasan` enum('kesulitan_keuangan','bencana_alam','sakit','usaha_merugi','covid','lainnya') NOT NULL DEFAULT 'lainnya',
+  `alasan_detail` text DEFAULT NULL,
+  `sisa_pokok` decimal(12,2) NOT NULL COMMENT 'Sisa pokok saat restrukturisasi',
+  `tenor_baru` int(11) DEFAULT NULL,
+  `bunga_baru` decimal(5,2) DEFAULT NULL,
+  `angsuran_baru` decimal(12,2) DEFAULT NULL,
+  `tanggal_efektif` date NOT NULL,
+  `denda_dibebaskan` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `disetujui_oleh` int(11) NOT NULL,
+  `status` enum('draft','disetujui','aktif','batal') NOT NULL DEFAULT 'draft',
+  `catatan` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_restruk_pinjaman` (`pinjaman_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Restrukturisasi pinjaman bermasalah';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `restrukturisasi`
+--
+
+LOCK TABLES `restrukturisasi` WRITE;
+/*!40000 ALTER TABLE `restrukturisasi` DISABLE KEYS */;
+/*!40000 ALTER TABLE `restrukturisasi` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `riwayat_skor_kredit`
+--
+
+DROP TABLE IF EXISTS `riwayat_skor_kredit`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `riwayat_skor_kredit` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nasabah_id` int(11) NOT NULL,
+  `owner_bos_id` int(10) unsigned NOT NULL,
+  `skor_sebelum` int(11) NOT NULL,
+  `skor_sesudah` int(11) NOT NULL,
+  `delta` int(11) NOT NULL COMMENT 'Positif=naik, Negatif=turun',
+  `alasan` enum('bayar_tepat_waktu','bayar_telat','restrukturisasi','writeoff','blacklist','unblacklist','manual') NOT NULL,
+  `referensi_id` int(11) DEFAULT NULL COMMENT 'ID pembayaran/pinjaman terkait',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_skor_nasabah` (`nasabah_id`),
+  KEY `idx_skor_tanggal` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Riwayat perubahan skor kredit nasabah';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `riwayat_skor_kredit`
+--
+
+LOCK TABLES `riwayat_skor_kredit` WRITE;
+/*!40000 ALTER TABLE `riwayat_skor_kredit` DISABLE KEYS */;
+/*!40000 ALTER TABLE `riwayat_skor_kredit` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `role_permissions`
 --
 
@@ -1783,7 +1996,7 @@ CREATE TABLE `role_permissions` (
   PRIMARY KEY (`id`),
   KEY `idx_role` (`role`),
   KEY `idx_permission_code` (`permission_code`)
-) ENGINE=InnoDB AUTO_INCREMENT=274 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=275 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1792,7 +2005,7 @@ CREATE TABLE `role_permissions` (
 
 LOCK TABLES `role_permissions` WRITE;
 /*!40000 ALTER TABLE `role_permissions` DISABLE KEYS */;
-INSERT INTO `role_permissions` VALUES (32,'bos','angsuran.create',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(33,'bos','angsuran.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(35,'bos','cabang.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(36,'bos','dashboard.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(37,'bos','kas.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(38,'bos','kas.update',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(39,'bos','kas_petugas.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(40,'bos','kas_petugas.update',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(41,'bos','manage_bunga',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(42,'bos','manage_cabang',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(43,'bos','manage_kas_bon',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(44,'bos','manage_nasabah',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(45,'bos','manage_pembayaran',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(46,'bos','manage_pengeluaran',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(47,'bos','manage_petugas',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(48,'bos','manage_pinjaman',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(49,'bos','manage_users',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(50,'bos','nasabah.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(51,'bos','pinjaman.approve',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(52,'bos','pinjaman.auto_confirm',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(53,'bos','pinjaman.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(54,'bos','users.create',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(55,'bos','users.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(56,'bos','view_kas_bon',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(57,'bos','view_laporan',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(58,'bos','view_pengeluaran',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(59,'bos','view_petugas',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(60,'bos','view_settings',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(63,'petugas_cabang','angsuran.create',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(64,'petugas_cabang','angsuran.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(65,'petugas_cabang','assign_permissions',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(66,'petugas_cabang','cabang.read',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(67,'petugas_cabang','dashboard.read',1,'2026-04-28 05:26:12','2026-05-02 13:29:23'),(68,'petugas_cabang','kas.read',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(69,'petugas_cabang','kas.update',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(70,'petugas_cabang','kas_petugas.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(71,'petugas_cabang','kas_petugas.update',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(72,'petugas_cabang','manage_bunga',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(73,'petugas_cabang','manage_cabang',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(74,'petugas_cabang','manage_kas_bon',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(75,'petugas_cabang','manage_nasabah',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(76,'petugas_cabang','manage_pembayaran',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(77,'petugas_cabang','manage_pengeluaran',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(78,'petugas_cabang','manage_petugas',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(79,'petugas_cabang','manage_pinjaman',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(80,'petugas_cabang','manage_users',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(82,'petugas_cabang','pinjaman.approve',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(83,'petugas_cabang','pinjaman.auto_confirm',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(85,'petugas_cabang','users.create',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(86,'petugas_cabang','users.read',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(87,'petugas_cabang','view_kas_bon',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(89,'petugas_cabang','view_pengeluaran',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(90,'petugas_cabang','view_petugas',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(91,'petugas_cabang','view_settings',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(108,'bos','nasabah.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(109,'bos','nasabah.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(110,'bos','nasabah.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(111,'bos','pinjaman.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(112,'bos','pinjaman.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(113,'bos','pinjaman.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(114,'bos','angsuran.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(115,'bos','angsuran.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(116,'bos','users.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(117,'bos','users.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(118,'bos','cabang.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(119,'bos','cabang.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(120,'bos','cabang.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(121,'bos','rute_harian.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(131,'manager_pusat','nasabah.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(132,'manager_pusat','nasabah.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(133,'manager_pusat','nasabah.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(134,'manager_pusat','nasabah.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(135,'manager_pusat','pinjaman.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(136,'manager_pusat','pinjaman.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(137,'manager_pusat','pinjaman.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(138,'manager_pusat','pinjaman.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(139,'manager_pusat','pinjaman.auto_confirm',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(140,'manager_pusat','angsuran.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(141,'manager_pusat','angsuran.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(142,'manager_pusat','angsuran.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(143,'manager_pusat','angsuran.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(144,'manager_pusat','users.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(145,'manager_pusat','users.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(146,'manager_pusat','users.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(147,'manager_pusat','users.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(148,'manager_pusat','cabang.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(149,'manager_pusat','cabang.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(150,'manager_pusat','cabang.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(151,'manager_pusat','cabang.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(152,'manager_pusat','manage_bunga',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(153,'manager_pusat','view_settings',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(154,'manager_pusat','manage_pengeluaran',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(155,'manager_pusat','view_pengeluaran',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(156,'manager_pusat','manage_kas_bon',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(157,'manager_pusat','view_kas_bon',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(158,'manager_pusat','view_laporan',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(159,'manager_pusat','manage_petugas',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(160,'manager_pusat','view_petugas',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(161,'manager_pusat','rute_harian.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(162,'manager_pusat','kas_petugas.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(163,'manager_pusat','kas.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(164,'manager_pusat','assign_permissions',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(165,'admin_pusat','nasabah.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(166,'admin_pusat','pinjaman.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(167,'admin_pusat','angsuran.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(168,'admin_pusat','cabang.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(169,'admin_pusat','view_laporan',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(170,'admin_pusat','view_pengeluaran',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(171,'admin_pusat','view_kas_bon',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(172,'admin_pusat','manage_pengeluaran',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(173,'admin_cabang','manage_nasabah',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(174,'admin_cabang','nasabah.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(175,'admin_cabang','nasabah.create',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(176,'admin_cabang','manage_pinjaman',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(177,'admin_cabang','pinjaman.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(178,'admin_cabang','pinjaman.create',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(179,'admin_cabang','angsuran.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(180,'admin_cabang','manage_pembayaran',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(181,'admin_cabang','kas.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(182,'admin_cabang','kas.update',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(183,'admin_cabang','view_pengeluaran',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(184,'karyawan','nasabah.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(185,'karyawan','pinjaman.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(186,'karyawan','angsuran.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(187,'karyawan','kas.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(188,'karyawan','kas.update',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(189,'karyawan','view_pengeluaran',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(190,'manager_cabang','manage_nasabah',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(191,'manager_cabang','nasabah.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(192,'manager_cabang','manage_pinjaman',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(193,'manager_cabang','pinjaman.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(194,'manager_cabang','pinjaman.approve',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(195,'manager_cabang','angsuran.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(196,'manager_cabang','manage_pembayaran',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(197,'manager_cabang','kas_petugas.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(198,'manager_cabang','kas_petugas.update',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(199,'manager_cabang','kas.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(200,'manager_cabang','kas.update',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(202,'manager_cabang','view_laporan',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(203,'admin_pusat','manage_nasabah',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(204,'admin_pusat','nasabah.create',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(205,'admin_pusat','manage_pinjaman',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(206,'admin_pusat','pinjaman.create',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(207,'admin_pusat','pinjaman.approve',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(208,'admin_pusat','manage_pembayaran',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(209,'admin_pusat','kas.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(210,'admin_pusat','kas.update',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(213,'petugas_pusat','nasabah.read',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(214,'petugas_pusat','nasabah.create',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(215,'petugas_pusat','pinjaman.read',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(216,'petugas_pusat','pinjaman.create',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(217,'petugas_pusat','angsuran.read',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(218,'petugas_pusat','angsuran.create',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(219,'petugas_pusat','kas_petugas.read',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(220,'petugas_pusat','rute_harian.read',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(221,'petugas_pusat','view_laporan',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(222,'petugas_pusat','kas_petugas.create',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(223,'petugas_pusat','kas_petugas.update',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(228,'manager_pusat','dashboard.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(229,'manager_cabang','dashboard.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(230,'admin_pusat','dashboard.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(231,'admin_cabang','dashboard.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(232,'petugas_pusat','dashboard.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(234,'karyawan','dashboard.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(235,'petugas_cabang','nasabah.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(236,'petugas_cabang','nasabah.create',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(237,'petugas_cabang','pinjaman.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(238,'petugas_cabang','pinjaman.create',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(239,'petugas_cabang','rute_harian.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(240,'petugas_cabang','view_laporan',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(241,'manager_cabang','nasabah.create',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(242,'manager_cabang','nasabah.edit',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(243,'manager_cabang','nasabah.delete',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(244,'manager_cabang','pinjaman.create',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(245,'manager_cabang','pinjaman.edit',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(246,'manager_cabang','angsuran.create',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(247,'manager_cabang','angsuran.edit',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(248,'manager_cabang','users.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(249,'manager_cabang','cabang.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(250,'manager_cabang','view_pengeluaran',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(251,'manager_cabang','view_kas_bon',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(252,'manager_cabang','manage_kas_bon',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(253,'manager_cabang','view_petugas',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(254,'manager_cabang','manage_petugas',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(255,'manager_cabang','rute_harian.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(256,'manager_cabang','view_settings',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(258,'admin_cabang','nasabah.edit',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(259,'admin_cabang','nasabah.delete',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(260,'admin_cabang','angsuran.create',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(261,'admin_cabang','cabang.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(262,'admin_cabang','view_kas_bon',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(263,'admin_cabang','view_petugas',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(265,'admin_cabang','rute_harian.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(267,'bos','assign_permissions',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(268,'petugas_pusat','manage_pembayaran',1,'2026-05-02 14:27:07','2026-05-02 14:27:07'),(269,'manager_pusat','manage_pembayaran',1,'2026-05-02 14:27:07','2026-05-02 14:27:07'),(270,'appOwner','manage_app',1,'2026-05-02 14:44:02','2026-05-02 14:44:02'),(271,'appOwner','approve_bos',1,'2026-05-02 14:44:02','2026-05-02 14:44:02'),(272,'appOwner','view_koperasi',1,'2026-05-02 14:44:02','2026-05-02 14:44:02'),(273,'appOwner','suspend_koperasi',1,'2026-05-02 14:44:02','2026-05-02 14:44:02');
+INSERT INTO `role_permissions` VALUES (32,'bos','angsuran.create',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(33,'bos','angsuran.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(35,'bos','cabang.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(36,'bos','dashboard.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(37,'bos','kas.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(38,'bos','kas.update',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(39,'bos','kas_petugas.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(40,'bos','kas_petugas.update',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(41,'bos','manage_bunga',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(42,'bos','manage_cabang',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(43,'bos','manage_kas_bon',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(44,'bos','manage_nasabah',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(45,'bos','manage_pembayaran',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(46,'bos','manage_pengeluaran',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(47,'bos','manage_petugas',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(48,'bos','manage_pinjaman',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(49,'bos','manage_users',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(50,'bos','nasabah.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(51,'bos','pinjaman.approve',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(52,'bos','pinjaman.auto_confirm',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(53,'bos','pinjaman.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(54,'bos','users.create',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(55,'bos','users.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(56,'bos','view_kas_bon',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(57,'bos','view_laporan',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(58,'bos','view_pengeluaran',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(59,'bos','view_petugas',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(60,'bos','view_settings',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(63,'petugas_cabang','angsuran.create',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(64,'petugas_cabang','angsuran.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(65,'petugas_cabang','assign_permissions',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(66,'petugas_cabang','cabang.read',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(67,'petugas_cabang','dashboard.read',1,'2026-04-28 05:26:12','2026-05-02 13:29:23'),(68,'petugas_cabang','kas.read',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(69,'petugas_cabang','kas.update',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(70,'petugas_cabang','kas_petugas.read',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(71,'petugas_cabang','kas_petugas.update',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(72,'petugas_cabang','manage_bunga',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(73,'petugas_cabang','manage_cabang',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(74,'petugas_cabang','manage_kas_bon',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(75,'petugas_cabang','manage_nasabah',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(76,'petugas_cabang','manage_pembayaran',1,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(77,'petugas_cabang','manage_pengeluaran',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(78,'petugas_cabang','manage_petugas',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(79,'petugas_cabang','manage_pinjaman',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(80,'petugas_cabang','manage_users',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(82,'petugas_cabang','pinjaman.approve',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(83,'petugas_cabang','pinjaman.auto_confirm',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(85,'petugas_cabang','users.create',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(86,'petugas_cabang','users.read',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(87,'petugas_cabang','view_kas_bon',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(89,'petugas_cabang','view_pengeluaran',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(90,'petugas_cabang','view_petugas',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(91,'petugas_cabang','view_settings',0,'2026-04-28 05:26:12','2026-04-28 05:26:12'),(108,'bos','nasabah.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(109,'bos','nasabah.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(110,'bos','nasabah.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(111,'bos','pinjaman.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(112,'bos','pinjaman.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(113,'bos','pinjaman.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(114,'bos','angsuran.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(115,'bos','angsuran.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(116,'bos','users.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(117,'bos','users.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(118,'bos','cabang.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(119,'bos','cabang.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(120,'bos','cabang.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(121,'bos','rute_harian.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(131,'manager_pusat','nasabah.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(132,'manager_pusat','nasabah.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(133,'manager_pusat','nasabah.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(134,'manager_pusat','nasabah.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(135,'manager_pusat','pinjaman.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(136,'manager_pusat','pinjaman.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(137,'manager_pusat','pinjaman.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(138,'manager_pusat','pinjaman.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(139,'manager_pusat','pinjaman.auto_confirm',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(140,'manager_pusat','angsuran.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(141,'manager_pusat','angsuran.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(142,'manager_pusat','angsuran.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(143,'manager_pusat','angsuran.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(144,'manager_pusat','users.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(145,'manager_pusat','users.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(146,'manager_pusat','users.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(147,'manager_pusat','users.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(148,'manager_pusat','cabang.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(149,'manager_pusat','cabang.create',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(150,'manager_pusat','cabang.edit',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(151,'manager_pusat','cabang.delete',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(152,'manager_pusat','manage_bunga',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(153,'manager_pusat','view_settings',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(154,'manager_pusat','manage_pengeluaran',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(155,'manager_pusat','view_pengeluaran',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(156,'manager_pusat','manage_kas_bon',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(157,'manager_pusat','view_kas_bon',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(158,'manager_pusat','view_laporan',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(159,'manager_pusat','manage_petugas',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(160,'manager_pusat','view_petugas',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(161,'manager_pusat','rute_harian.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(162,'manager_pusat','kas_petugas.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(163,'manager_pusat','kas.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(164,'manager_pusat','assign_permissions',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(165,'admin_pusat','nasabah.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(166,'admin_pusat','pinjaman.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(167,'admin_pusat','angsuran.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(168,'admin_pusat','cabang.read',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(169,'admin_pusat','view_laporan',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(170,'admin_pusat','view_pengeluaran',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(171,'admin_pusat','view_kas_bon',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(172,'admin_pusat','manage_pengeluaran',1,'2026-04-29 17:41:31','2026-04-29 17:41:31'),(173,'admin_cabang','manage_nasabah',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(174,'admin_cabang','nasabah.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(175,'admin_cabang','nasabah.create',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(176,'admin_cabang','manage_pinjaman',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(177,'admin_cabang','pinjaman.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(178,'admin_cabang','pinjaman.create',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(179,'admin_cabang','angsuran.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(180,'admin_cabang','manage_pembayaran',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(181,'admin_cabang','kas.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(182,'admin_cabang','kas.update',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(183,'admin_cabang','view_pengeluaran',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(184,'karyawan','nasabah.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(185,'karyawan','pinjaman.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(186,'karyawan','angsuran.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(187,'karyawan','kas.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(188,'karyawan','kas.update',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(189,'karyawan','view_pengeluaran',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(190,'manager_cabang','manage_nasabah',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(191,'manager_cabang','nasabah.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(192,'manager_cabang','manage_pinjaman',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(193,'manager_cabang','pinjaman.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(194,'manager_cabang','pinjaman.approve',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(195,'manager_cabang','angsuran.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(196,'manager_cabang','manage_pembayaran',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(197,'manager_cabang','kas_petugas.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(198,'manager_cabang','kas_petugas.update',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(199,'manager_cabang','kas.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(200,'manager_cabang','kas.update',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(202,'manager_cabang','view_laporan',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(203,'admin_pusat','manage_nasabah',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(204,'admin_pusat','nasabah.create',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(205,'admin_pusat','manage_pinjaman',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(206,'admin_pusat','pinjaman.create',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(207,'admin_pusat','pinjaman.approve',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(208,'admin_pusat','manage_pembayaran',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(209,'admin_pusat','kas.read',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(210,'admin_pusat','kas.update',1,'2026-04-30 15:10:58','2026-04-30 15:10:58'),(213,'petugas_pusat','nasabah.read',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(214,'petugas_pusat','nasabah.create',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(215,'petugas_pusat','pinjaman.read',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(216,'petugas_pusat','pinjaman.create',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(217,'petugas_pusat','angsuran.read',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(218,'petugas_pusat','angsuran.create',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(219,'petugas_pusat','kas_petugas.read',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(220,'petugas_pusat','rute_harian.read',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(221,'petugas_pusat','view_laporan',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(222,'petugas_pusat','kas_petugas.create',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(223,'petugas_pusat','kas_petugas.update',1,'2026-05-02 13:23:39','2026-05-02 13:23:39'),(228,'manager_pusat','dashboard.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(229,'manager_cabang','dashboard.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(230,'admin_pusat','dashboard.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(231,'admin_cabang','dashboard.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(232,'petugas_pusat','dashboard.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(234,'karyawan','dashboard.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(235,'petugas_cabang','nasabah.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(236,'petugas_cabang','nasabah.create',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(237,'petugas_cabang','pinjaman.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(238,'petugas_cabang','pinjaman.create',0,'2026-05-02 13:29:23','2026-05-03 17:11:43'),(239,'petugas_cabang','rute_harian.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(240,'petugas_cabang','view_laporan',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(241,'manager_cabang','nasabah.create',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(242,'manager_cabang','nasabah.edit',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(243,'manager_cabang','nasabah.delete',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(244,'manager_cabang','pinjaman.create',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(245,'manager_cabang','pinjaman.edit',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(246,'manager_cabang','angsuran.create',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(247,'manager_cabang','angsuran.edit',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(248,'manager_cabang','users.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(249,'manager_cabang','cabang.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(250,'manager_cabang','view_pengeluaran',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(251,'manager_cabang','view_kas_bon',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(252,'manager_cabang','manage_kas_bon',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(253,'manager_cabang','view_petugas',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(254,'manager_cabang','manage_petugas',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(255,'manager_cabang','rute_harian.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(256,'manager_cabang','view_settings',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(258,'admin_cabang','nasabah.edit',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(259,'admin_cabang','nasabah.delete',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(260,'admin_cabang','angsuran.create',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(261,'admin_cabang','cabang.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(262,'admin_cabang','view_kas_bon',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(263,'admin_cabang','view_petugas',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(265,'admin_cabang','rute_harian.read',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(267,'bos','assign_permissions',1,'2026-05-02 13:29:23','2026-05-02 13:29:23'),(268,'petugas_pusat','manage_pembayaran',1,'2026-05-02 14:27:07','2026-05-02 14:27:07'),(269,'manager_pusat','manage_pembayaran',1,'2026-05-02 14:27:07','2026-05-02 14:27:07'),(270,'appOwner','manage_app',1,'2026-05-02 14:44:02','2026-05-02 14:44:02'),(271,'appOwner','approve_bos',1,'2026-05-02 14:44:02','2026-05-02 14:44:02'),(272,'appOwner','view_koperasi',1,'2026-05-02 14:44:02','2026-05-02 14:44:02'),(273,'appOwner','suspend_koperasi',1,'2026-05-02 14:44:02','2026-05-02 14:44:02'),(274,'manager_pusat','pinjaman.approve',1,'2026-05-03 17:11:43','2026-05-03 17:11:43');
 /*!40000 ALTER TABLE `role_permissions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1896,6 +2109,40 @@ INSERT INTO `settings` VALUES (20,'denda_harian_percent','0.5','Denda harian dal
 UNLOCK TABLES;
 
 --
+-- Table structure for table `target_petugas`
+--
+
+DROP TABLE IF EXISTS `target_petugas`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `target_petugas` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `cabang_id` int(11) NOT NULL,
+  `petugas_id` int(11) NOT NULL,
+  `bulan` varchar(7) NOT NULL COMMENT 'Format: YYYY-MM',
+  `target_kutipan` decimal(15,2) DEFAULT 0.00,
+  `target_nasabah_baru` int(11) DEFAULT 0,
+  `target_pinjaman_baru` int(11) DEFAULT 0,
+  `target_collection_rate` decimal(5,2) DEFAULT 90.00,
+  `catatan` text DEFAULT NULL,
+  `dibuat_oleh` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_target` (`petugas_id`,`bulan`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `target_petugas`
+--
+
+LOCK TABLES `target_petugas` WRITE;
+/*!40000 ALTER TABLE `target_petugas` DISABLE KEYS */;
+/*!40000 ALTER TABLE `target_petugas` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `transaksi_log`
 --
 
@@ -1957,7 +2204,7 @@ CREATE TABLE `usage_daily_summary` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_bos_tanggal` (`bos_user_id`,`tanggal`)
-) ENGINE=InnoDB AUTO_INCREMENT=124 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=355 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1966,7 +2213,7 @@ CREATE TABLE `usage_daily_summary` (
 
 LOCK TABLES `usage_daily_summary` WRITE;
 /*!40000 ALTER TABLE `usage_daily_summary` DISABLE KEYS */;
-INSERT INTO `usage_daily_summary` VALUES (1,1,'2026-05-02',22,96,'2026-05-02 15:13:20','2026-05-02 15:37:06'),(33,26,'2026-05-02',0,5,'2026-05-02 15:14:41','2026-05-02 15:14:41');
+INSERT INTO `usage_daily_summary` VALUES (1,1,'2026-05-02',22,96,'2026-05-02 15:13:20','2026-05-02 15:37:06'),(33,26,'2026-05-02',0,5,'2026-05-02 15:14:41','2026-05-02 15:14:41'),(124,1,'2026-05-03',17,214,'2026-05-03 18:46:03','2026-05-03 19:02:19');
 /*!40000 ALTER TABLE `usage_daily_summary` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1990,7 +2237,7 @@ CREATE TABLE `usage_log` (
   PRIMARY KEY (`id`),
   KEY `idx_bos_tanggal` (`bos_user_id`,`tanggal`),
   KEY `idx_tanggal` (`tanggal`)
-) ENGINE=InnoDB AUTO_INCREMENT=124 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=355 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1999,7 +2246,7 @@ CREATE TABLE `usage_log` (
 
 LOCK TABLES `usage_log` WRITE;
 /*!40000 ALTER TABLE `usage_log` DISABLE KEYS */;
-INSERT INTO `usage_log` VALUES (1,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:13:20'),(2,1,1,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:13:20'),(3,1,1,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:13:20'),(4,1,1,'api_call','/kewer/api/nasabah.php','GET',200,'2026-05-02','2026-05-02 15:13:20'),(5,1,1,'api_call','/kewer/api/bos_registration.php','POST',200,'2026-05-02','2026-05-02 15:14:39'),(6,1,1,'api_call','/kewer/api/bos_registration.php','POST',200,'2026-05-02','2026-05-02 15:14:39'),(7,1,1,'api_call','/kewer/api/bos_registration.php','POST',200,'2026-05-02','2026-05-02 15:14:39'),(8,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(9,1,1,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(10,1,1,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(11,1,1,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(12,1,1,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(13,1,2,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(14,1,2,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(15,1,2,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(16,1,2,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(17,1,2,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(18,1,19,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(19,1,19,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(20,1,19,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(21,1,19,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(22,1,19,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(23,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(24,1,21,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(25,1,21,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(26,1,21,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(27,1,21,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(28,1,23,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(29,1,23,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(30,1,23,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(31,1,23,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(32,1,23,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(33,26,26,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(34,26,26,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(35,26,26,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(36,26,26,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(37,26,26,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(38,1,1,'api_call','/kewer/api/bos_registration.php','POST',200,'2026-05-02','2026-05-02 15:14:56'),(39,1,1,'api_call','/kewer/api/bos_registration.php','POST',200,'2026-05-02','2026-05-02 15:14:56'),(40,1,1,'api_call','/kewer/api/bos_registration.php','GET',200,'2026-05-02','2026-05-02 15:14:56'),(41,1,1,'api_call','/kewer/api/bos_registration.php','GET',200,'2026-05-02','2026-05-02 15:14:56'),(42,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(43,1,1,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(44,1,1,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(45,1,1,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(46,1,1,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(47,1,1,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(48,1,1,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(49,1,1,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(50,1,1,'api_call','/kewer/api/alamat.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(51,1,1,'api_call','/kewer/api/alamat.php','GET',200,'2026-05-02','2026-05-02 15:30:13'),(52,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(53,1,1,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(54,1,1,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(55,1,1,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(56,1,1,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(57,1,1,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(58,1,1,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(59,1,1,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(60,1,1,'page_render','/kewer/pages/pembayaran/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(61,1,2,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(62,1,2,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(63,1,2,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(64,1,2,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(65,1,2,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(66,1,2,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(67,1,2,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(68,1,2,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(69,1,2,'page_render','/kewer/pages/pembayaran/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(70,1,19,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(71,1,19,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(72,1,19,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(73,1,19,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(74,1,19,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(75,1,19,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(76,1,19,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(77,1,19,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(78,1,19,'page_render','/kewer/pages/pembayaran/index.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(79,1,1,'api_call','/kewer/api/nasabah.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(80,1,1,'api_call','/kewer/api/pinjaman.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(81,1,1,'api_call','/kewer/api/angsuran.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(82,1,1,'api_call','/kewer/api/pembayaran.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(83,1,1,'api_call','/kewer/api/cabang.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(84,1,1,'api_call','/kewer/api/kas_bon.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(85,1,1,'api_call','/kewer/api/pengeluaran.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(86,1,1,'api_call','/kewer/api/accounting.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(87,1,1,'api_call','/kewer/api/family_risk.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(88,1,1,'api_call','/kewer/api/kas_petugas.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(89,1,1,'api_call','/kewer/api/setting_bunga.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(90,1,1,'api_call','/kewer/api/nasabah_blacklist.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(91,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(92,1,1,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(93,1,1,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(94,1,1,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(95,1,1,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(96,1,1,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(97,1,1,'page_render','/kewer/pages/petugas/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(98,1,1,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(99,1,1,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(100,1,1,'page_render','/kewer/pages/pembayaran/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(101,1,1,'page_render','/kewer/pages/users/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(102,1,2,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(103,1,2,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(104,1,2,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(105,1,2,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(106,1,2,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(107,1,2,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(108,1,2,'page_render','/kewer/pages/petugas/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(109,1,2,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(110,1,2,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(111,1,2,'page_render','/kewer/pages/pembayaran/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(112,1,2,'page_render','/kewer/pages/users/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(113,1,19,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(114,1,19,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(115,1,19,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(116,1,19,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(117,1,19,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(118,1,19,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(119,1,19,'page_render','/kewer/pages/petugas/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(120,1,19,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:37:06'),(121,1,19,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:06'),(122,1,19,'page_render','/kewer/pages/pembayaran/index.php','GET',200,'2026-05-02','2026-05-02 15:37:06'),(123,1,19,'page_render','/kewer/pages/users/index.php','GET',200,'2026-05-02','2026-05-02 15:37:06');
+INSERT INTO `usage_log` VALUES (1,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:13:20'),(2,1,1,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:13:20'),(3,1,1,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:13:20'),(4,1,1,'api_call','/kewer/api/nasabah.php','GET',200,'2026-05-02','2026-05-02 15:13:20'),(5,1,1,'api_call','/kewer/api/bos_registration.php','POST',200,'2026-05-02','2026-05-02 15:14:39'),(6,1,1,'api_call','/kewer/api/bos_registration.php','POST',200,'2026-05-02','2026-05-02 15:14:39'),(7,1,1,'api_call','/kewer/api/bos_registration.php','POST',200,'2026-05-02','2026-05-02 15:14:39'),(8,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(9,1,1,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(10,1,1,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(11,1,1,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(12,1,1,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(13,1,2,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(14,1,2,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(15,1,2,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(16,1,2,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(17,1,2,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(18,1,19,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(19,1,19,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:14:39'),(20,1,19,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(21,1,19,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(22,1,19,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(23,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(24,1,21,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(25,1,21,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(26,1,21,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(27,1,21,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(28,1,23,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(29,1,23,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:14:40'),(30,1,23,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(31,1,23,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(32,1,23,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(33,26,26,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(34,26,26,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(35,26,26,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(36,26,26,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(37,26,26,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:14:41'),(38,1,1,'api_call','/kewer/api/bos_registration.php','POST',200,'2026-05-02','2026-05-02 15:14:56'),(39,1,1,'api_call','/kewer/api/bos_registration.php','POST',200,'2026-05-02','2026-05-02 15:14:56'),(40,1,1,'api_call','/kewer/api/bos_registration.php','GET',200,'2026-05-02','2026-05-02 15:14:56'),(41,1,1,'api_call','/kewer/api/bos_registration.php','GET',200,'2026-05-02','2026-05-02 15:14:56'),(42,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(43,1,1,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(44,1,1,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(45,1,1,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(46,1,1,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(47,1,1,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(48,1,1,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(49,1,1,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(50,1,1,'api_call','/kewer/api/alamat.php','GET',200,'2026-05-02','2026-05-02 15:30:12'),(51,1,1,'api_call','/kewer/api/alamat.php','GET',200,'2026-05-02','2026-05-02 15:30:13'),(52,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(53,1,1,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(54,1,1,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(55,1,1,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(56,1,1,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(57,1,1,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(58,1,1,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(59,1,1,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(60,1,1,'page_render','/kewer/pages/pembayaran/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(61,1,2,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(62,1,2,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(63,1,2,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(64,1,2,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(65,1,2,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(66,1,2,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(67,1,2,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(68,1,2,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(69,1,2,'page_render','/kewer/pages/pembayaran/index.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(70,1,19,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:31:52'),(71,1,19,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(72,1,19,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(73,1,19,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(74,1,19,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(75,1,19,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(76,1,19,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(77,1,19,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(78,1,19,'page_render','/kewer/pages/pembayaran/index.php','GET',200,'2026-05-02','2026-05-02 15:31:53'),(79,1,1,'api_call','/kewer/api/nasabah.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(80,1,1,'api_call','/kewer/api/pinjaman.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(81,1,1,'api_call','/kewer/api/angsuran.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(82,1,1,'api_call','/kewer/api/pembayaran.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(83,1,1,'api_call','/kewer/api/cabang.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(84,1,1,'api_call','/kewer/api/kas_bon.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(85,1,1,'api_call','/kewer/api/pengeluaran.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(86,1,1,'api_call','/kewer/api/accounting.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(87,1,1,'api_call','/kewer/api/family_risk.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(88,1,1,'api_call','/kewer/api/kas_petugas.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(89,1,1,'api_call','/kewer/api/setting_bunga.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(90,1,1,'api_call','/kewer/api/nasabah_blacklist.php','GET',200,'2026-05-02','2026-05-02 15:31:54'),(91,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(92,1,1,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(93,1,1,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(94,1,1,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(95,1,1,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(96,1,1,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(97,1,1,'page_render','/kewer/pages/petugas/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(98,1,1,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(99,1,1,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(100,1,1,'page_render','/kewer/pages/pembayaran/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(101,1,1,'page_render','/kewer/pages/users/index.php','GET',200,'2026-05-02','2026-05-02 15:37:04'),(102,1,2,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(103,1,2,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(104,1,2,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(105,1,2,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(106,1,2,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(107,1,2,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(108,1,2,'page_render','/kewer/pages/petugas/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(109,1,2,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(110,1,2,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(111,1,2,'page_render','/kewer/pages/pembayaran/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(112,1,2,'page_render','/kewer/pages/users/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(113,1,19,'page_render','/kewer/dashboard.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(114,1,19,'page_render','/kewer/pages/nasabah/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(115,1,19,'page_render','/kewer/pages/nasabah/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(116,1,19,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(117,1,19,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(118,1,19,'page_render','/kewer/pages/petugas/index.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(119,1,19,'page_render','/kewer/pages/petugas/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:05'),(120,1,19,'page_render','/kewer/pages/cabang/index.php','GET',200,'2026-05-02','2026-05-02 15:37:06'),(121,1,19,'page_render','/kewer/pages/cabang/tambah.php','GET',200,'2026-05-02','2026-05-02 15:37:06'),(122,1,19,'page_render','/kewer/pages/pembayaran/index.php','GET',200,'2026-05-02','2026-05-02 15:37:06'),(123,1,19,'page_render','/kewer/pages/users/index.php','GET',200,'2026-05-02','2026-05-02 15:37:06'),(124,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:46:03'),(125,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:46:04'),(126,1,2,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:46:11'),(127,1,2,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:46:12'),(128,1,18,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:46:20'),(129,1,18,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:46:21'),(130,1,19,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:46:28'),(131,1,19,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:46:29'),(132,1,20,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:46:36'),(133,1,20,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:46:37'),(134,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:46:44'),(135,1,21,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:46:45'),(136,1,22,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:46:52'),(137,1,22,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:46:53'),(138,1,23,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:47:00'),(139,1,23,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:47:01'),(140,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:47:20'),(141,1,1,'api_call','/kewer/api/feature_flags.php','POST',200,'2026-05-03','2026-05-03 18:47:20'),(142,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:47:21'),(143,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:47:34'),(144,1,1,'api_call','/kewer/api/export.php','GET',200,'2026-05-03','2026-05-03 18:47:35'),(145,1,1,'api_call','/kewer/api/wa_notifikasi.php','GET',200,'2026-05-03','2026-05-03 18:47:35'),(146,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:47:35'),(147,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:47:48'),(148,1,1,'page_render','/kewer/pages/laporan/index.php','GET',200,'2026-05-03','2026-05-03 18:47:49'),(149,1,1,'api_call','/kewer/api/export.php','GET',200,'2026-05-03','2026-05-03 18:47:51'),(150,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:47:51'),(151,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:48:04'),(152,1,1,'page_render','/kewer/pages/laporan/index.php','GET',200,'2026-05-03','2026-05-03 18:48:05'),(153,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:48:07'),(154,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:48:21'),(155,1,21,'page_render','/kewer/pages/petugas/slip_harian.php','GET',200,'2026-05-03','2026-05-03 18:48:22'),(156,1,21,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:48:24'),(157,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:48:38'),(158,1,1,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 18:48:39'),(159,1,1,'api_call','/kewer/api/target_petugas.php','GET',200,'2026-05-03','2026-05-03 18:48:41'),(160,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:48:41'),(161,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:48:54'),(162,1,1,'page_render','/kewer/pages/users/settings_2fa.php','GET',200,'2026-05-03','2026-05-03 18:48:55'),(163,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:48:56'),(164,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:09'),(165,1,1,'page_render','/kewer/pages/users/settings_2fa.php','GET',200,'2026-05-03','2026-05-03 18:49:10'),(166,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:10'),(167,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:49:11'),(168,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:25'),(169,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:25'),(170,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:25'),(171,1,1,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-03','2026-05-03 18:49:25'),(172,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:26'),(173,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:26'),(174,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:49:27'),(175,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:39'),(176,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:39'),(177,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:49:41'),(178,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:46'),(179,1,1,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-03','2026-05-03 18:49:47'),(180,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:47'),(181,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:47'),(182,1,1,'page_render','/kewer/pages/pinjaman/detail.php','GET',200,'2026-05-03','2026-05-03 18:49:49'),(183,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:49:51'),(184,1,23,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:57'),(185,1,23,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 18:49:58'),(186,1,23,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:49:58'),(187,1,23,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:49:59'),(188,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:50:06'),(189,1,21,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 18:50:07'),(190,1,21,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:50:09'),(191,1,2,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:50:16'),(192,1,2,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 18:50:16'),(193,1,2,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:50:18'),(194,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:52:01'),(195,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:52:02'),(196,1,2,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:52:09'),(197,1,2,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:52:10'),(198,1,18,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:52:17'),(199,1,18,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:52:18'),(200,1,19,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:52:25'),(201,1,19,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:52:26'),(202,1,20,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:52:33'),(203,1,20,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:52:34'),(204,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:52:42'),(205,1,21,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:52:43'),(206,1,22,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:52:50'),(207,1,22,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:52:51'),(208,1,23,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:52:58'),(209,1,23,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:52:59'),(210,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:53:20'),(211,1,1,'page_render','/kewer/pages/app_owner/features.php','GET',200,'2026-05-03','2026-05-03 18:53:20'),(212,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:53:20'),(213,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:53:21'),(214,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:53:28'),(215,1,1,'api_call','/kewer/api/feature_flags.php','POST',200,'2026-05-03','2026-05-03 18:53:29'),(216,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:53:29'),(217,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:53:42'),(218,1,1,'api_call','/kewer/api/export.php','GET',200,'2026-05-03','2026-05-03 18:53:43'),(219,1,1,'api_call','/kewer/api/wa_notifikasi.php','POST',200,'2026-05-03','2026-05-03 18:53:43'),(220,1,1,'api_call','/kewer/api/auth_2fa.php','GET',200,'2026-05-03','2026-05-03 18:53:43'),(221,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:53:43'),(222,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:53:57'),(223,1,1,'page_render','/kewer/pages/laporan/index.php','GET',200,'2026-05-03','2026-05-03 18:53:58'),(224,1,1,'api_call','/kewer/api/export.php','GET',200,'2026-05-03','2026-05-03 18:53:59'),(225,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:54:00'),(226,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:54:11'),(227,1,1,'page_render','/kewer/pages/laporan/index.php','GET',200,'2026-05-03','2026-05-03 18:54:12'),(228,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:54:14'),(229,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:54:28'),(230,1,21,'page_render','/kewer/pages/petugas/slip_harian.php','GET',200,'2026-05-03','2026-05-03 18:54:28'),(231,1,21,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:54:30'),(232,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:54:44'),(233,1,1,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 18:54:45'),(234,1,1,'api_call','/kewer/api/target_petugas.php','GET',200,'2026-05-03','2026-05-03 18:54:47'),(235,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:54:47'),(236,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:54:59'),(237,1,1,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 18:55:00'),(238,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:55:01'),(239,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:55:15'),(240,1,1,'page_render','/kewer/pages/users/settings_2fa.php','GET',200,'2026-05-03','2026-05-03 18:55:16'),(241,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:55:18'),(242,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:55:30'),(243,1,1,'page_render','/kewer/pages/users/settings_2fa.php','GET',200,'2026-05-03','2026-05-03 18:55:31'),(244,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:55:31'),(245,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:55:32'),(246,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:55:44'),(247,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:55:44'),(248,1,1,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-03','2026-05-03 18:55:44'),(249,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:55:44'),(250,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:55:45'),(251,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:55:45'),(252,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:55:46'),(253,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:55:58'),(254,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:55:59'),(255,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:56:00'),(256,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:56:05'),(257,1,1,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-03','2026-05-03 18:56:06'),(258,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:56:06'),(259,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:56:06'),(260,1,1,'page_render','/kewer/pages/pinjaman/detail.php','GET',200,'2026-05-03','2026-05-03 18:56:08'),(261,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:56:10'),(262,1,23,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:56:17'),(263,1,23,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 18:56:17'),(264,1,23,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:56:17'),(265,1,23,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:56:18'),(266,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:56:25'),(267,1,21,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 18:56:26'),(268,1,21,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:56:28'),(269,1,2,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:56:35'),(270,1,2,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 18:56:36'),(271,1,2,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:56:37'),(272,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:57:27'),(273,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:57:28'),(274,1,2,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:57:35'),(275,1,2,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:57:36'),(276,1,18,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:57:43'),(277,1,18,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:57:44'),(278,1,19,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:57:51'),(279,1,19,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:57:52'),(280,1,20,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:58:00'),(281,1,20,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:58:01'),(282,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:58:08'),(283,1,21,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:58:09'),(284,1,22,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:58:16'),(285,1,22,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:58:17'),(286,1,23,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:58:24'),(287,1,23,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:58:25'),(288,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:58:47'),(289,1,1,'page_render','/kewer/pages/app_owner/features.php','GET',200,'2026-05-03','2026-05-03 18:58:48'),(290,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:58:48'),(291,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:58:49'),(292,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:58:56'),(293,1,1,'api_call','/kewer/api/feature_flags.php','POST',200,'2026-05-03','2026-05-03 18:58:56'),(294,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:58:57'),(295,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:59:10'),(296,1,1,'api_call','/kewer/api/export.php','GET',200,'2026-05-03','2026-05-03 18:59:11'),(297,1,1,'api_call','/kewer/api/wa_notifikasi.php','POST',200,'2026-05-03','2026-05-03 18:59:11'),(298,1,1,'api_call','/kewer/api/auth_2fa.php','GET',200,'2026-05-03','2026-05-03 18:59:11'),(299,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:59:11'),(300,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:59:24'),(301,1,1,'page_render','/kewer/pages/laporan/index.php','GET',200,'2026-05-03','2026-05-03 18:59:25'),(302,1,1,'api_call','/kewer/api/export.php','GET',200,'2026-05-03','2026-05-03 18:59:27'),(303,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:59:27'),(304,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:59:39'),(305,1,1,'page_render','/kewer/pages/laporan/index.php','GET',200,'2026-05-03','2026-05-03 18:59:40'),(306,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:59:42'),(307,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:59:55'),(308,1,21,'page_render','/kewer/pages/petugas/slip_harian.php','GET',200,'2026-05-03','2026-05-03 18:59:56'),(309,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 18:59:57'),(310,1,21,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 18:59:59'),(311,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:00:11'),(312,1,21,'page_render','/kewer/pages/petugas/slip_harian.php','GET',200,'2026-05-03','2026-05-03 19:00:12'),(313,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:00:12'),(314,1,21,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 19:00:13'),(315,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:00:25'),(316,1,1,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 19:00:26'),(317,1,1,'api_call','/kewer/api/target_petugas.php','GET',200,'2026-05-03','2026-05-03 19:00:28'),(318,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 19:00:28'),(319,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:00:40'),(320,1,1,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 19:00:41'),(321,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 19:00:43'),(322,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:00:56'),(323,1,1,'page_render','/kewer/pages/users/settings_2fa.php','GET',200,'2026-05-03','2026-05-03 19:00:57'),(324,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 19:00:58'),(325,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:01:11'),(326,1,1,'page_render','/kewer/pages/users/settings_2fa.php','GET',200,'2026-05-03','2026-05-03 19:01:11'),(327,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:01:12'),(328,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 19:01:12'),(329,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:01:25'),(330,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:01:25'),(331,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:01:25'),(332,1,1,'page_render','/kewer/pages/angsuran/index.php','GET',200,'2026-05-03','2026-05-03 19:01:25'),(333,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:01:26'),(334,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:01:26'),(335,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 19:01:27'),(336,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:01:39'),(337,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:01:40'),(338,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 19:01:41'),(339,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:01:47'),(340,1,1,'page_render','/kewer/pages/pinjaman/index.php','GET',200,'2026-05-03','2026-05-03 19:01:48'),(341,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:01:48'),(342,1,1,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:01:48'),(343,1,1,'page_render','/kewer/pages/pinjaman/detail.php','GET',200,'2026-05-03','2026-05-03 19:01:50'),(344,1,1,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 19:01:53'),(345,1,23,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:01:59'),(346,1,23,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 19:02:00'),(347,1,23,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:02:00'),(348,1,23,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 19:02:01'),(349,1,21,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:02:08'),(350,1,21,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 19:02:09'),(351,1,21,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 19:02:11'),(352,1,2,'page_render','/kewer/dashboard.php','GET',200,'2026-05-03','2026-05-03 19:02:17'),(353,1,2,'page_render','/kewer/pages/kinerja/index.php','GET',200,'2026-05-03','2026-05-03 19:02:18'),(354,1,2,'page_render','/kewer/logout.php','GET',200,'2026-05-03','2026-05-03 19:02:19');
 /*!40000 ALTER TABLE `usage_log` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2048,6 +2295,7 @@ CREATE TABLE `users` (
   `username` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
   `nama` varchar(100) NOT NULL,
+  `ktp` varchar(16) DEFAULT NULL COMMENT 'NIK KTP - identitas global via db_orang',
   `email` varchar(100) DEFAULT NULL,
   `telp` varchar(20) DEFAULT NULL,
   `role` varchar(50) NOT NULL DEFAULT 'karyawan',
@@ -2062,10 +2310,15 @@ CREATE TABLE `users` (
   `tanggal_lahir` date DEFAULT NULL,
   `tanggal_masuk` date DEFAULT NULL,
   `db_orang_person_id` int(11) DEFAULT NULL,
+  `totp_secret` varchar(64) DEFAULT NULL,
+  `totp_enabled` tinyint(1) DEFAULT 0,
+  `totp_verified_at` timestamp NULL DEFAULT NULL,
+  `phone_2fa` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   KEY `idx_owner_bos_id` (`owner_bos_id`),
-  KEY `idx_db_orang_person` (`db_orang_person_id`)
+  KEY `idx_db_orang_person` (`db_orang_person_id`),
+  KEY `idx_users_ktp` (`ktp`)
 ) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -2075,10 +2328,141 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'patri','$2y$10$zucy/tAcsiUBX5OqgemSgud7V8Kyd5kuiryiABLy1.Rux68v5JC0.','Patri Sihaloho','patri@kewer.co.id','081234567890','bos',NULL,1,NULL,'aktif','2026-05-02 14:17:07','2026-05-02 15:34:24',0,0,NULL,NULL,3),(2,'mgr_pusat','$2y$10$uGH5./H5aYqFVBMWUB.p/Oh3EQhw4ejNLM6Pz9ALxZpfuHTViZ4qO','Sondang Silaban','','','manager_pusat',1,1,NULL,'aktif','2026-05-02 14:18:26','2026-05-02 15:34:24',0,0,NULL,NULL,4),(18,'mgr_balige','$2y$10$M3T60PI35ooIbe7AJTFG.eEUvuuqtgSoayMu2yvpsN6yR6b6zTHFu','Roswita Nainggolan','mgr_balige@kewer.co.id',NULL,'manager_cabang',1,2,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,5),(19,'adm_pusat','$2y$10$0NOdONMqf3C2krjFnXaDVujJj6jybgKQ.HF5mbnnuHijJQ2CdaWyi','Melvina Hutabarat','adm_pusat@kewer.co.id',NULL,'admin_pusat',1,1,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,6),(20,'adm_balige','$2y$10$kvbrWAiSVSdYfgfdcJGpK.qGYjopxzgL8HZd/vuJT3Vz1SI6i5UCC','Ruli Sirait','adm_balige@kewer.co.id',NULL,'admin_cabang',1,2,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,7),(21,'ptr_pusat','$2y$10$MLr90EoeRX1o2pD7qS4pwODQ2rX/WI9Nwm2dKfjvIga5khYdQ9tO6','Darwin Sinaga','ptr_pusat@kewer.co.id',NULL,'petugas_pusat',1,1,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,8),(22,'ptr_balige','$2y$10$RoBvhk/8HBof0rZmYYXxmuEtnpS2aXZ2/1OxohVXGIFHtKAjAOv16','Markus Situmorang','ptr_balige@kewer.co.id',NULL,'petugas_cabang',1,2,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,9),(23,'krw_pusat','$2y$10$JOIggChOhqoxkU1capAwG./eELKhgkl0HTpy4Qgx90ejPuolVFDAm','Susi Aritonang','krw_pusat@kewer.co.id',NULL,'karyawan',1,1,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,10),(24,'krw_balige','$2y$10$LhWlwITO.UVOYFmpymybTe5CxDIzRZyfgr0kyzXOBPRmgXfynNzBu','Petrus Hutagalung','krw_balige@kewer.co.id',NULL,'karyawan',1,2,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,11),(25,'appowner','$2y$10$CtXCJToI4qyhfCTWl7yPjOxF9fLr1rJwrT6LjD1dFvcFWJoHs2GhG','App Owner','admin@kewer.app',NULL,'appOwner',NULL,NULL,NULL,'aktif','2026-05-02 14:44:02','2026-05-02 15:13:20',0,0,NULL,NULL,NULL),(26,'bos_test','$2y$10$O8sF3tlZnxzYmuAEFbdWRemzJP6ugwOYgfJWCNr8qt6c/CCNeYmWa','Test Bos Koperasi','test@kewer.co.id','081299990000','bos',NULL,NULL,NULL,'aktif','2026-05-02 14:51:52','2026-05-02 15:34:24',0,0,NULL,NULL,12),(27,'bos_flow_test','$2y$10$aVKCp3ektX/ptO64NUiu.uHb0Ny.DAS1oqEtuxh4C8u271c8wjSpi','Flow Test Bos','flow@test.co.id','081288880001','bos',NULL,NULL,NULL,'aktif','2026-05-02 14:54:15','2026-05-02 15:34:24',0,0,NULL,NULL,13);
+INSERT INTO `users` VALUES (1,'patri','$2y$10$zucy/tAcsiUBX5OqgemSgud7V8Kyd5kuiryiABLy1.Rux68v5JC0.','Patri Sihaloho',NULL,'patri@kewer.co.id','081234567890','bos',NULL,1,NULL,'aktif','2026-05-02 14:17:07','2026-05-02 15:34:24',0,0,NULL,NULL,3,NULL,0,NULL,NULL),(2,'mgr_pusat','$2y$10$uGH5./H5aYqFVBMWUB.p/Oh3EQhw4ejNLM6Pz9ALxZpfuHTViZ4qO','Sondang Silaban',NULL,'','','manager_pusat',1,1,NULL,'aktif','2026-05-02 14:18:26','2026-05-02 15:34:24',0,0,NULL,NULL,4,NULL,0,NULL,NULL),(18,'mgr_balige','$2y$10$M3T60PI35ooIbe7AJTFG.eEUvuuqtgSoayMu2yvpsN6yR6b6zTHFu','Roswita Nainggolan',NULL,'mgr_balige@kewer.co.id',NULL,'manager_cabang',1,2,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,5,NULL,0,NULL,NULL),(19,'adm_pusat','$2y$10$0NOdONMqf3C2krjFnXaDVujJj6jybgKQ.HF5mbnnuHijJQ2CdaWyi','Melvina Hutabarat',NULL,'adm_pusat@kewer.co.id',NULL,'admin_pusat',1,1,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,6,NULL,0,NULL,NULL),(20,'adm_balige','$2y$10$kvbrWAiSVSdYfgfdcJGpK.qGYjopxzgL8HZd/vuJT3Vz1SI6i5UCC','Ruli Sirait',NULL,'adm_balige@kewer.co.id',NULL,'admin_cabang',1,2,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,7,NULL,0,NULL,NULL),(21,'ptr_pusat','$2y$10$MLr90EoeRX1o2pD7qS4pwODQ2rX/WI9Nwm2dKfjvIga5khYdQ9tO6','Darwin Sinaga',NULL,'ptr_pusat@kewer.co.id',NULL,'petugas_pusat',1,1,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,8,NULL,0,NULL,NULL),(22,'ptr_balige','$2y$10$RoBvhk/8HBof0rZmYYXxmuEtnpS2aXZ2/1OxohVXGIFHtKAjAOv16','Markus Situmorang',NULL,'ptr_balige@kewer.co.id',NULL,'petugas_cabang',1,2,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,9,NULL,0,NULL,NULL),(23,'krw_pusat','$2y$10$JOIggChOhqoxkU1capAwG./eELKhgkl0HTpy4Qgx90ejPuolVFDAm','Susi Aritonang',NULL,'krw_pusat@kewer.co.id',NULL,'karyawan',1,1,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,10,NULL,0,NULL,NULL),(24,'krw_balige','$2y$10$LhWlwITO.UVOYFmpymybTe5CxDIzRZyfgr0kyzXOBPRmgXfynNzBu','Petrus Hutagalung',NULL,'krw_balige@kewer.co.id',NULL,'karyawan',1,2,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,11,NULL,0,NULL,NULL),(25,'appowner','$2y$10$CtXCJToI4qyhfCTWl7yPjOxF9fLr1rJwrT6LjD1dFvcFWJoHs2GhG','App Owner',NULL,'admin@kewer.app',NULL,'appOwner',NULL,NULL,NULL,'aktif','2026-05-02 14:44:02','2026-05-02 15:13:20',0,0,NULL,NULL,NULL,NULL,0,NULL,NULL),(26,'bos_test','$2y$10$O8sF3tlZnxzYmuAEFbdWRemzJP6ugwOYgfJWCNr8qt6c/CCNeYmWa','Test Bos Koperasi',NULL,'test@kewer.co.id','081299990000','bos',NULL,NULL,NULL,'aktif','2026-05-02 14:51:52','2026-05-02 15:34:24',0,0,NULL,NULL,12,NULL,0,NULL,NULL),(27,'bos_flow_test','$2y$10$aVKCp3ektX/ptO64NUiu.uHb0Ny.DAS1oqEtuxh4C8u271c8wjSpi','Flow Test Bos',NULL,'flow@test.co.id','081288880001','bos',NULL,NULL,NULL,'aktif','2026-05-02 14:54:15','2026-05-02 15:34:24',0,0,NULL,NULL,13,NULL,0,NULL,NULL);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
--- Dumping events for database 'kewer'
+-- Table structure for table `wa_log`
 --
+
+DROP TABLE IF EXISTS `wa_log`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `wa_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `nasabah_id` int(11) DEFAULT NULL,
+  `petugas_id` int(11) DEFAULT NULL,
+  `tipe` enum('tagihan','konfirmasi_bayar','jatuh_tempo','macet','pengingat') NOT NULL,
+  `nomor_wa` varchar(20) NOT NULL,
+  `pesan` text NOT NULL,
+  `status` enum('pending','sent','failed','read') DEFAULT 'pending',
+  `provider` varchar(30) DEFAULT 'fonnte',
+  `response_code` varchar(10) DEFAULT NULL,
+  `response_body` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `sent_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `wa_log`
+--
+
+LOCK TABLES `wa_log` WRITE;
+/*!40000 ALTER TABLE `wa_log` DISABLE KEYS */;
+/*!40000 ALTER TABLE `wa_log` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `write_off`
+--
+
+DROP TABLE IF EXISTS `write_off`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `write_off` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `pinjaman_id` int(11) NOT NULL,
+  `nasabah_id` int(11) NOT NULL,
+  `sisa_pokok` decimal(12,2) NOT NULL,
+  `total_denda` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `total_kerugian` decimal(12,2) NOT NULL,
+  `alasan` enum('meninggal','bangkrut','kabur','tidak_ditemukan','force_majeure','lainnya') NOT NULL,
+  `alasan_detail` text DEFAULT NULL,
+  `upaya_penagihan` text DEFAULT NULL COMMENT 'Dokumentasi upaya penagihan sebelum write-off',
+  `disetujui_oleh` int(11) NOT NULL,
+  `tanggal_writeoff` date NOT NULL,
+  `status_aset` enum('tidak_ada','jaminan_ada','sudah_disita','sedang_diproses') NOT NULL DEFAULT 'tidak_ada',
+  `dokumen` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_writeoff_pinjaman` (`pinjaman_id`),
+  KEY `idx_writeoff_pinjaman` (`pinjaman_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Hapus buku pinjaman macet dengan audit trail';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `write_off`
+--
+
+LOCK TABLES `write_off` WRITE;
+/*!40000 ALTER TABLE `write_off` DISABLE KEYS */;
+/*!40000 ALTER TABLE `write_off` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Final view structure for view `labarugi`
+--
+
+/*!50001 DROP VIEW IF EXISTS `labarugi`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb4 */;
+/*!50001 SET character_set_results     = utf8mb4 */;
+/*!50001 SET collation_connection      = utf8mb4_general_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `labarugi` AS select 'Pendapatan' AS `kategori`,`neraca_saldo`.`kode` AS `kode`,`neraca_saldo`.`nama` AS `nama`,`neraca_saldo`.`saldo_akhir` AS `saldo_akhir` from `neraca_saldo` where `neraca_saldo`.`tipe` = 'pendapatan' and `neraca_saldo`.`saldo_akhir` <> 0 union all select 'Beban' AS `kategori`,`neraca_saldo`.`kode` AS `kode`,`neraca_saldo`.`nama` AS `nama`,`neraca_saldo`.`saldo_akhir` AS `saldo_akhir` from `neraca_saldo` where `neraca_saldo`.`tipe` = 'beban' and `neraca_saldo`.`saldo_akhir` <> 0 order by case when `kategori` = 'Pendapatan' then 1 else 2 end,`kategori`,`kode` */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
+
+--
+-- Final view structure for view `neraca`
+--
+
+/*!50001 DROP VIEW IF EXISTS `neraca`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb4 */;
+/*!50001 SET character_set_results     = utf8mb4 */;
+/*!50001 SET collation_connection      = utf8mb4_general_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `neraca` AS select 'Aset' AS `kategori`,`neraca_saldo`.`kode` AS `kode`,`neraca_saldo`.`nama` AS `nama`,`neraca_saldo`.`saldo_akhir` AS `saldo_akhir` from `neraca_saldo` where `neraca_saldo`.`tipe` = 'aset' and `neraca_saldo`.`saldo_akhir` <> 0 union all select 'Kewajiban' AS `kategori`,`neraca_saldo`.`kode` AS `kode`,`neraca_saldo`.`nama` AS `nama`,`neraca_saldo`.`saldo_akhir` AS `saldo_akhir` from `neraca_saldo` where `neraca_saldo`.`tipe` = 'kewajiban' and `neraca_saldo`.`saldo_akhir` <> 0 union all select 'Ekuitas' AS `kategori`,`neraca_saldo`.`kode` AS `kode`,`neraca_saldo`.`nama` AS `nama`,`neraca_saldo`.`saldo_akhir` AS `saldo_akhir` from `neraca_saldo` where `neraca_saldo`.`tipe` = 'ekuitas' and `neraca_saldo`.`saldo_akhir` <> 0 order by `kategori`,`kode` */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
+
+--
+-- Final view structure for view `neraca_saldo`
+--
+
+/*!50001 DROP VIEW IF EXISTS `neraca_saldo`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb4 */;
+/*!50001 SET character_set_results     = utf8mb4 */;
+/*!50001 SET collation_connection      = utf8mb4_general_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `neraca_saldo` AS select `a`.`kode` AS `kode`,`a`.`nama` AS `nama`,`a`.`tipe` AS `tipe`,`a`.`kategori` AS `kategori`,`a`.`saldo_normal` AS `saldo_normal`,coalesce(sum(case when `jd`.`debit` > 0 then `jd`.`debit` else 0 end),0) AS `total_debit`,coalesce(sum(case when `jd`.`kredit` > 0 then `jd`.`kredit` else 0 end),0) AS `total_kredit`,case when `a`.`saldo_normal` = 'debit' then coalesce(sum(case when `jd`.`debit` > 0 then `jd`.`debit` else 0 end),0) - coalesce(sum(case when `jd`.`kredit` > 0 then `jd`.`kredit` else 0 end),0) else coalesce(sum(case when `jd`.`kredit` > 0 then `jd`.`kredit` else 0 end),0) - coalesce(sum(case when `jd`.`debit` > 0 then `jd`.`debit` else 0 end),0) end AS `saldo_akhir` from (`akun` `a` left join `jurnal_detail` `jd` on(`a`.`kode` = `jd`.`akun_kode`)) group by `a`.`kode`,`a`.`nama`,`a`.`tipe`,`a`.`kategori`,`a`.`saldo_normal` */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2026-05-04  2:15:03

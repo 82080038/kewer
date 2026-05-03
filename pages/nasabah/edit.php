@@ -4,6 +4,7 @@ require_once BASE_PATH . '/includes/functions.php';
 require_once BASE_PATH . '/config/database.php';
 require_once BASE_PATH . '/includes/alamat_helper.php';
 require_once BASE_PATH . '/includes/people_helper.php';
+require_once BASE_PATH . '/includes/business_logic.php';
 requireLogin();
 
 // Permission check
@@ -12,14 +13,19 @@ if (!hasPermission('manage_nasabah')) {
     exit();
 }
 
-$id = $_GET['id'];
-$kantor_id = 1; // Single office
+$id = (int)($_GET['id'] ?? 0);
 
-// Get nasabah data
+// Get nasabah data dengan validasi kepemilikan
 $nasabah = query("SELECT * FROM nasabah WHERE id = ?", [$id]);
-
 if (!$nasabah) {
     header('Location: index.php');
+    exit();
+}
+
+// Isolasi: cek kepemilikan nasabah
+$owner_bos_edit = getOwnerBosId();
+if ($nasabah[0]['owner_bos_id'] && $nasabah[0]['owner_bos_id'] != $owner_bos_edit && getCurrentUser()['role'] !== 'appOwner') {
+    header('Location: index.php?error=forbidden');
     exit();
 }
 
@@ -38,6 +44,8 @@ if ($_POST) {
     $telp = $_POST['telp'] ?? '';
     $jenis_usaha = $_POST['jenis_usaha'] ?? '';
     $lokasi_pasar = $_POST['lokasi_pasar'] ?? '';
+    $alamat_rumah = $_POST['alamat_rumah'] ?? '';
+    $catatan_risiko = $_POST['catatan_risiko'] ?? '';
     $status = $_POST['status'] ?? 'aktif';
     
     // Validation
@@ -66,9 +74,9 @@ if ($_POST) {
             move_uploaded_file($_FILES['foto_selfie']['tmp_name'], '../../' . $foto_selfie);
         }
         
-        // Update nasabah
-        $result = query("UPDATE nasabah SET nama = ?, alamat = ?, province_id = ?, regency_id = ?, district_id = ?, village_id = ?, telp = ?, jenis_usaha = ?, lokasi_pasar = ?, status = ?, foto_ktp = ?, foto_selfie = ? WHERE id = ?", [
-            $nama, $alamat, $province_id ?: null, $regency_id ?: null, $district_id ?: null, $village_id ?: null, $telp, $jenis_usaha, $lokasi_pasar, $status, $foto_ktp, $foto_selfie, $id
+        // Update nasabah (termasuk field baru v2.2.0)
+        $result = query("UPDATE nasabah SET nama = ?, alamat = ?, alamat_rumah = ?, province_id = ?, regency_id = ?, district_id = ?, village_id = ?, telp = ?, jenis_usaha = ?, lokasi_pasar = ?, catatan_risiko = ?, status = ?, foto_ktp = ?, foto_selfie = ?, updated_at = NOW() WHERE id = ?", [
+            $nama, $alamat, $alamat_rumah ?: null, $province_id ?: null, $regency_id ?: null, $district_id ?: null, $village_id ?: null, $telp, $jenis_usaha, $lokasi_pasar, $catatan_risiko ?: null, $status, $foto_ktp, $foto_selfie, $id
         ]);
         
         if ($result) {

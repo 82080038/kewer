@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
+require_once BASE_PATH . '/includes/business_logic.php';
 requireLogin();
 
 // Permission check
@@ -125,6 +126,21 @@ $stats = query("
                             <a href="../angsuran/bayar.php?pinjaman_id=<?php echo $pinjaman['id']; ?>" class="btn btn-success me-2">
                                 <i class="bi bi-cash"></i> Bayar Angsuran
                             </a>
+                            <?php if (hasPermission('manage_pembayaran')): ?>
+                            <button class="btn btn-outline-warning me-2" onclick="modalLunasDipercepat(<?= $pinjaman['id'] ?>)">
+                                <i class="bi bi-lightning"></i> Lunas Dipercepat
+                            </button>
+                            <?php endif; ?>
+                            <?php if (hasPermission('pinjaman.approve')): ?>
+                            <button class="btn btn-outline-info me-2" onclick="modalRestrukturisasi(<?= $pinjaman['id'] ?>)">
+                                <i class="bi bi-arrow-repeat"></i> Restrukturisasi
+                            </button>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                        <?php if ($pinjaman['status'] === 'macet' && getCurrentUser()['role'] === 'bos'): ?>
+                            <button class="btn btn-outline-danger me-2" onclick="modalWriteOff(<?= $pinjaman['id'] ?>)">
+                                <i class="bi bi-trash"></i> Write-Off
+                            </button>
                         <?php endif; ?>
                         <a href="index.php" class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Kembali
@@ -200,8 +216,23 @@ $stats = query("
                                             <span class="badge bg-<?php echo $status_class[$pinjaman['status']]; ?>">
                                                 <?php echo ucfirst($pinjaman['status']); ?>
                                             </span>
+                                            <?php
+                                            $kol = (int)($pinjaman['kolektibilitas'] ?? 1);
+                                            $kol_label = ['','Lancar','Dalam Perhatian Khusus','Kurang Lancar','Diragukan','Macet'];
+                                            $kol_color = ['','success','warning','orange','danger','dark'];
+                                            if ($kol > 1): ?>
+                                            <span class="badge ms-1" style="background:<?= $kol >= 3 ? ($kol >= 4 ? '#dc3545' : '#fd7e14') : '#ffc107' ?>;color:#fff;" title="Kolektibilitas OJK">
+                                                Kol-<?= $kol ?> <?= $kol_label[$kol] ?? '' ?>
+                                            </span>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
+                                    <?php if (($pinjaman['hari_tunggakan'] ?? 0) > 0): ?>
+                                    <tr>
+                                        <td><strong>Hari Tunggakan:</strong></td>
+                                        <td><span class="text-danger fw-bold"><?= (int)$pinjaman['hari_tunggakan'] ?> hari</span></td>
+                                    </tr>
+                                    <?php endif; ?>
                                 </table>
                             </div>
                         </div>
@@ -417,5 +448,158 @@ $stats = query("
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+    const API_BUSINESS = '<?= baseUrl('api/business.php') ?>';
+
+    // Pelunasan Dipercepat
+    async function modalLunasDipercepat(pinjaman_id) {
+        const res = await fetch(API_BUSINESS + '?action=hitung_lunas_dipercepat&pinjaman_id=' + pinjaman_id);
+        const d   = await res.json();
+        if (d.error) { Swal.fire('Error', d.error, 'error'); return; }
+
+        const html = `
+            <table class="table table-sm text-start">
+                <tr><td>Sisa Pokok</td><td class="text-end fw-bold">Rp ${d.sisa_pokok.toLocaleString('id-ID')}</td></tr>
+                <tr><td>Bunga Sisa (normal)</td><td class="text-end">Rp ${d.bunga_sisa_normal.toLocaleString('id-ID')}</td></tr>
+                <tr><td>Diskon Bunga (50%)</td><td class="text-end text-success">- Rp ${d.diskon_bunga.toLocaleString('id-ID')}</td></tr>
+                <tr><td>Denda Terhutang</td><td class="text-end text-danger">Rp ${d.denda_terhitung ? d.denda_terhitung.toLocaleString('id-ID') : 0}</td></tr>
+                <tr class="fw-bold table-primary"><td>Total Harus Dibayar</td><td class="text-end">Rp ${d.total_harus_dibayar.toLocaleString('id-ID')}</td></tr>
+            </table>
+            <select class="form-select mt-2" id="cara_bayar_lunas">
+                <option value="tunai">Tunai</option>
+                <option value="transfer">Transfer</option>
+                <option value="digital">Digital</option>
+            </select>`;
+
+        const result = await Swal.fire({
+            title: 'Pelunasan Dipercepat', html, icon: 'info',
+            showCancelButton: true, confirmButtonText: 'Proses Sekarang', cancelButtonText: 'Batal',
+            confirmButtonColor: '#198754'
+        });
+        if (!result.isConfirmed) return;
+
+        const btn = Swal.showLoading();
+        const resp = await fetch(API_BUSINESS, { method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ action: 'lunas_dipercepat', pinjaman_id, confirm: true,
+                cara_bayar: document.getElementById('cara_bayar_lunas')?.value || 'tunai' }) });
+        const r = await resp.json();
+        if (r.success) { Swal.fire('Berhasil', 'Pinjaman berhasil dilunasi.', 'success').then(() => location.reload()); }
+        else { Swal.fire('Gagal', r.error || 'Terjadi kesalahan', 'error'); }
+    }
+
+    // Restrukturisasi
+    async function modalRestrukturisasi(pinjaman_id) {
+        const { value: formValues } = await Swal.fire({
+            title: 'Restrukturisasi Pinjaman',
+            html: `
+                <div class="text-start">
+                <div class="mb-2">
+                    <label class="form-label">Tipe Restrukturisasi</label>
+                    <select class="form-select" id="rst_tipe">
+                        <option value="reschedule">Reschedule — Perpanjang Tenor</option>
+                        <option value="reconditioning">Reconditioning — Turunkan Bunga</option>
+                        <option value="restructuring">Restructuring — Kombinasi</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Alasan</label>
+                    <select class="form-select" id="rst_alasan">
+                        <option value="kesulitan_keuangan">Kesulitan Keuangan</option>
+                        <option value="sakit">Sakit</option>
+                        <option value="usaha_merugi">Usaha Merugi</option>
+                        <option value="bencana_alam">Bencana Alam</option>
+                        <option value="lainnya">Lainnya</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Tenor Baru (angsuran)</label>
+                    <input type="number" class="form-control" id="rst_tenor" min="1" placeholder="Kosongkan jika tidak diubah">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Bunga Baru (%/bulan)</label>
+                    <input type="number" class="form-control" id="rst_bunga" step="0.01" placeholder="Kosongkan jika tidak diubah">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Denda Dibebaskan (Rp)</label>
+                    <input type="number" class="form-control" id="rst_denda" value="0">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Tanggal Efektif</label>
+                    <input type="date" class="form-control" id="rst_tgl" value="<?= date('Y-m-d') ?>">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Catatan</label>
+                    <textarea class="form-control" id="rst_catatan" rows="2"></textarea>
+                </div></div>`,
+            showCancelButton: true, confirmButtonText: 'Simpan', cancelButtonText: 'Batal',
+            confirmButtonColor: '#0dcaf0',
+            preConfirm: () => ({
+                tipe: document.getElementById('rst_tipe').value,
+                alasan: document.getElementById('rst_alasan').value,
+                tenor_baru: document.getElementById('rst_tenor').value || null,
+                bunga_baru: document.getElementById('rst_bunga').value || null,
+                denda_dibebaskan: document.getElementById('rst_denda').value || 0,
+                tanggal_efektif: document.getElementById('rst_tgl').value,
+                catatan: document.getElementById('rst_catatan').value,
+            })
+        });
+        if (!formValues) return;
+        const resp = await fetch(API_BUSINESS, { method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ action: 'restrukturisasi', pinjaman_id, ...formValues }) });
+        const r = await resp.json();
+        if (r.success) { Swal.fire('Berhasil', 'Restrukturisasi berhasil disimpan.', 'success').then(() => location.reload()); }
+        else { Swal.fire('Gagal', r.error || 'Terjadi kesalahan', 'error'); }
+    }
+
+    // Write-Off
+    async function modalWriteOff(pinjaman_id) {
+        const { value: formValues } = await Swal.fire({
+            title: 'Write-Off Pinjaman Macet',
+            icon: 'warning',
+            html: `<div class="text-start">
+                <div class="alert alert-danger">Tindakan ini akan menghapusbukukan pinjaman macet dan tidak dapat dibatalkan. Pastikan semua upaya penagihan sudah dilakukan.</div>
+                <div class="mb-2">
+                    <label class="form-label">Alasan Write-Off</label>
+                    <select class="form-select" id="wo_alasan">
+                        <option value="meninggal">Nasabah Meninggal</option>
+                        <option value="bangkrut">Usaha Bangkrut</option>
+                        <option value="kabur">Nasabah Kabur / Tidak Diketahui Alamat</option>
+                        <option value="tidak_ditemukan">Tidak Dapat Dihubungi</option>
+                        <option value="force_majeure">Force Majeure</option>
+                        <option value="lainnya">Lainnya</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Upaya Penagihan yang Sudah Dilakukan</label>
+                    <textarea class="form-control" id="wo_upaya" rows="3" placeholder="Dokumentasikan upaya penagihan: kunjungan, surat peringatan, dll" required></textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Status Aset Jaminan</label>
+                    <select class="form-select" id="wo_aset">
+                        <option value="tidak_ada">Tidak Ada Jaminan</option>
+                        <option value="jaminan_ada">Ada Jaminan (Belum Diproses)</option>
+                        <option value="sedang_diproses">Sedang Diproses</option>
+                        <option value="sudah_disita">Sudah Disita/Dijual</option>
+                    </select>
+                </div>
+            </div>`,
+            showCancelButton: true, confirmButtonText: 'Write-Off Sekarang', cancelButtonText: 'Batal',
+            confirmButtonColor: '#dc3545',
+            preConfirm: () => {
+                const upaya = document.getElementById('wo_upaya').value.trim();
+                if (!upaya) { Swal.showValidationMessage('Dokumentasi upaya penagihan wajib diisi'); return false; }
+                return { alasan: document.getElementById('wo_alasan').value, upaya_penagihan: upaya, status_aset: document.getElementById('wo_aset').value };
+            }
+        });
+        if (!formValues) return;
+        const resp = await fetch(API_BUSINESS, { method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ action: 'write_off', pinjaman_id, ...formValues }) });
+        const r = await resp.json();
+        if (r.success) { Swal.fire('Write-Off Berhasil', `Kerugian dicatat: Rp ${r.total_kerugian?.toLocaleString('id-ID')}`, 'success').then(() => location.reload()); }
+        else { Swal.fire('Gagal', r.error || 'Terjadi kesalahan', 'error'); }
+    }
+    </script>
 </body>
 </html>

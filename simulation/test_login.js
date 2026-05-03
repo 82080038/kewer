@@ -9,8 +9,8 @@ const config = {
   baseUrl: 'http://localhost/kewer',
   headless: false,
   credentials: {
-    testbos: { username: 'testbos', password: 'password123' },
-    patri: { username: 'patri', password: 'password' }
+    patri: { username: 'patri', password: 'Kewer2024!' },
+    appowner: { username: 'appowner', password: 'AppOwner2024!' }
   }
 };
 
@@ -57,17 +57,17 @@ async function testLogin(username, password) {
 async function runTests() {
   console.log('=== Testing Login Functionality ===\n');
   
-  // Test patri
+  // Test patri (bos)
   const patriResult = await testLogin(config.credentials.patri.username, config.credentials.patri.password);
   
-  // Test testbos
-  const testbosResult = await testLogin(config.credentials.testbos.username, config.credentials.testbos.password);
+  // Test appowner
+  const appownerResult = await testLogin(config.credentials.appowner.username, config.credentials.appowner.password);
   
   console.log('\n=== Test Results ===');
   console.log(`Patri login: ${patriResult ? 'PASS' : 'FAIL'}`);
-  console.log(`Testbos login: ${testbosResult ? 'PASS' : 'FAIL'}`);
+  console.log(`AppOwner login: ${appownerResult ? 'PASS' : 'FAIL'}`);
   
-  if (patriResult || testbosResult) {
+  if (patriResult || appownerResult) {
     console.log('\n✓ At least one login method works');
   } else {
     console.log('\n✗ All login methods failed');

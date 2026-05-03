@@ -807,6 +807,61 @@ function checkFamilyRisk($nasabah_id) {
 }
 
 // ============================================
+// Multi-Tenant Isolation Helpers
+// ============================================
+
+/**
+ * Dapatkan bos_id dari user yang sedang login.
+ * - Jika role 'bos'     → return id user itu sendiri
+ * - Jika role lain      → return owner_bos_id mereka
+ * - Jika role appOwner  → return null (tidak akses data koperasi)
+ */
+function getOwnerBosId() {
+    $user = getCurrentUser();
+    if (!$user) return null;
+    if ($user['role'] === 'appOwner') return null;
+    if ($user['role'] === 'bos') return (int)$user['id'];
+    return $user['owner_bos_id'] ? (int)$user['owner_bos_id'] : null;
+}
+
+/**
+ * Dapatkan array cabang_id yang dimiliki bos dari user yang sedang login.
+ * Digunakan sebagai filter isolasi data agar user A tidak lihat data bos B.
+ */
+function getBosOwnedCabangIds() {
+    $bos_id = getOwnerBosId();
+    if (!$bos_id) return [];
+    $rows = query("SELECT id FROM cabang WHERE owner_bos_id = ? AND status = 'aktif'", [$bos_id]);
+    if (!is_array($rows) || empty($rows)) return [];
+    return array_column($rows, 'id');
+}
+
+/**
+ * Validasi apakah sebuah cabang_id dimiliki oleh bos dari user yang sedang login.
+ * Return true jika valid, false jika bukan miliknya.
+ */
+function validateCabangOwnership($cabang_id) {
+    $bos_id = getOwnerBosId();
+    if (!$bos_id) return false;
+    $result = query("SELECT id FROM cabang WHERE id = ? AND owner_bos_id = ?", [$cabang_id, $bos_id]);
+    return is_array($result) && count($result) > 0;
+}
+
+/**
+ * Bangun klausa SQL IN untuk filter cabang_id milik bos yang login.
+ * Return ['clause' => 'AND field IN (?,?)', 'params' => [1,2]] atau false jika gagal.
+ */
+function buildCabangFilter($field = 'cabang_id') {
+    $ids = getBosOwnedCabangIds();
+    if (empty($ids)) return false;
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    return [
+        'clause'  => "AND $field IN ($placeholders)",
+        'params'  => $ids,
+    ];
+}
+
+// ============================================
 // Permission System Functions
 // ============================================
 
@@ -965,6 +1020,37 @@ function getUserPermissions($user_id) {
                          [$user_id, $user_id, $user_id, $user_id]);
     
     return $permissions;
+}
+
+// Revoke permission from user
+function revokePermission($user_id, $permission_code) {
+    $user = getCurrentUser();
+    if (!$user || !hasPermission('assign_permissions')) return false;
+    
+    // Check if user can manage the target user
+    $target_user = query("SELECT * FROM users WHERE id = ?", [$user_id]);
+    if (!$target_user) return false;
+    
+    if (!canManageRole($target_user[0]['role'])) return false;
+    
+    // Get permission id
+    $permission = query("SELECT id FROM permissions WHERE kode = ?", [$permission_code]);
+    if (!$permission) return false;
+    
+    // Log the change
+    $current_granted = query("SELECT granted FROM user_permissions WHERE user_id = ? AND permission_id = ?", 
+                              [$user_id, $permission[0]['id']]);
+    
+    query("INSERT INTO permission_audit_log (user_id, target_user_id, action, permission_id, old_value, new_value) 
+          VALUES (?, ?, ?, ?, ?, ?)", 
+          [$user['id'], $user_id, 'revoke_permission', $permission[0]['id'], 
+           $current_granted ? $current_granted[0]['granted'] : null, 0]);
+    
+    // Delete user permission
+    $result = query("DELETE FROM user_permissions WHERE user_id = ? AND permission_id = ?", 
+                    [$user_id, $permission[0]['id']]);
+    
+    return $result;
 }
 
 // Get role hierarchy level (lower number = higher hierarchy)

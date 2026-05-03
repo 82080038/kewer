@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
+require_once BASE_PATH . '/includes/business_logic.php';
 requireLogin();
 
 // Permission check
@@ -71,9 +72,12 @@ $pinjaman_aktif = query("
     FROM pinjaman
     WHERE nasabah_id = ? AND status = 'aktif'
 ", [$id]);
-if (!is_array($pinjaman_aktif)) {
-    $pinjaman_aktif = [];
-}
+if (!is_array($pinjaman_aktif)) $pinjaman_aktif = [];
+
+// Data v2.2.0
+$ahli_waris    = query("SELECT * FROM ahli_waris WHERE nasabah_id = ? ORDER BY adalah_penjamin DESC", [$id]) ?: [];
+$kelebihan_byr = query("SELECT * FROM kelebihan_bayar WHERE nasabah_id = ? ORDER BY created_at DESC LIMIT 10", [$id]) ?: [];
+$riwayat_skor  = query("SELECT * FROM riwayat_skor_kredit WHERE nasabah_id = ? ORDER BY created_at DESC LIMIT 10", [$id]) ?: [];
 ?>
 
 <!DOCTYPE html>
@@ -126,14 +130,19 @@ if (!is_array($pinjaman_aktif)) {
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Detail Nasabah</h1>
                     <div>
-                        <?php if ($nasabah['status'] !== 'blacklist'): ?>
+                        <?php if ($nasabah['status'] !== 'blacklist' && !$nasabah['tanggal_meninggal']): ?>
                             <button class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#blacklistModal">
                                 <i class="bi bi-slash-circle"></i> Blacklist
                             </button>
-                        <?php else: ?>
+                        <?php elseif ($nasabah['status'] === 'blacklist'): ?>
                             <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#unblacklistModal">
                                 <i class="bi bi-check-circle"></i> Unblacklist
                             </button>
+                        <?php endif; ?>
+                        <?php if (!$nasabah['tanggal_meninggal'] && hasPermission('manage_nasabah')): ?>
+                        <button class="btn btn-outline-dark me-2" onclick="modalMeninggal(<?= $nasabah['id'] ?>, '<?= htmlspecialchars($nasabah['nama']) ?>')">
+                            <i class="bi bi-file-earmark-x"></i> Meninggal
+                        </button>
                         <?php endif; ?>
                         <a href="edit.php?id=<?php echo $nasabah['id']; ?>" class="btn btn-warning me-2">
                             <i class="bi bi-pencil"></i> Edit
@@ -200,15 +209,29 @@ if (!is_array($pinjaman_aktif)) {
                                                 <td><strong>Status:</strong></td>
                                                 <td>
                                                     <?php
-                                                    $status_class = [
-                                                        'aktif' => 'success',
-                                                        'nonaktif' => 'warning',
-                                                        'blacklist' => 'danger'
-                                                    ];
+                                                    $status_class = ['aktif'=>'success','nonaktif'=>'warning','blacklist'=>'danger'];
                                                     ?>
-                                                    <span class="badge bg-<?php echo $status_class[$nasabah['status']]; ?>">
+                                                    <span class="badge bg-<?php echo $status_class[$nasabah['status']] ?? 'secondary'; ?>">
                                                         <?php echo ucfirst($nasabah['status']); ?>
                                                     </span>
+                                                    <?php if ($nasabah['platform_blacklist']): ?>
+                                                        <span class="badge bg-dark ms-1">Platform Blacklist</span>
+                                                    <?php endif; ?>
+                                                    <?php if ($nasabah['tanggal_meninggal']): ?>
+                                                        <span class="badge bg-secondary ms-1"><i class="bi bi-file-earmark-x"></i> Meninggal <?= $nasabah['tanggal_meninggal'] ?></span>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Skor Kredit:</strong></td>
+                                                <td>
+                                                    <?php
+                                                    $skor = (int)($nasabah['skor_kredit'] ?? 100);
+                                                    $skor_color = $skor >= 70 ? 'success' : ($skor >= 40 ? 'warning' : 'danger');
+                                                    ?>
+                                                    <div class="progress" style="height:18px;width:120px;display:inline-flex">
+                                                        <div class="progress-bar bg-<?= $skor_color ?>" style="width:<?= $skor ?>%"><?= $skor ?>/100</div>
+                                                    </div>
                                                 </td>
                                             </tr>
                                             <tr>
@@ -341,6 +364,94 @@ if (!is_array($pinjaman_aktif)) {
                         <?php endif; ?>
                     </div>
                 </div>
+                <!-- Ahli Waris -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-people"></i> Ahli Waris / Penjamin</h5>
+                        <?php if (hasPermission('manage_nasabah')): ?>
+                        <button class="btn btn-sm btn-outline-primary" onclick="modalTambahAhliWaris(<?= $nasabah['id'] ?>)">
+                            <i class="bi bi-plus"></i> Tambah
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                    <div class="card-body">
+                        <?php if (empty($ahli_waris)): ?>
+                            <p class="text-muted mb-0">Belum ada data ahli waris</p>
+                        <?php else: ?>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead><tr><th>Nama</th><th>Hubungan</th><th>KTP</th><th>Telepon</th><th>Penjamin?</th></tr></thead>
+                                <tbody>
+                                <?php foreach ($ahli_waris as $aw): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($aw['nama']) ?></td>
+                                    <td><?= ucfirst($aw['hubungan']) ?></td>
+                                    <td><?= $aw['ktp'] ?: '-' ?></td>
+                                    <td><?= $aw['telp'] ?: '-' ?></td>
+                                    <td><?= $aw['adalah_penjamin'] ? '<span class="badge bg-success">Ya</span>' : '-' ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Kelebihan Bayar -->
+                <?php if (!empty($kelebihan_byr)): ?>
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-cash-coin"></i> Kelebihan Bayar</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead><tr><th>Tanggal</th><th>Jumlah</th><th>Status</th></tr></thead>
+                                <tbody>
+                                <?php foreach ($kelebihan_byr as $kb): ?>
+                                <tr>
+                                    <td><?= date('d/m/Y', strtotime($kb['created_at'])) ?></td>
+                                    <td>Rp <?= number_format($kb['jumlah']) ?></td>
+                                    <td>
+                                        <?php $kb_color = ['pending'=>'warning','dikembalikan'=>'success','dikompensasi'=>'info'][$kb['status']] ?? 'secondary'; ?>
+                                        <span class="badge bg-<?= $kb_color ?>"><?= ucfirst($kb['status']) ?></span>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Riwayat Skor Kredit -->
+                <?php if (!empty($riwayat_skor)): ?>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-graph-up"></i> Riwayat Skor Kredit</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead><tr><th>Tanggal</th><th>Skor</th><th>Delta</th><th>Alasan</th></tr></thead>
+                                <tbody>
+                                <?php foreach ($riwayat_skor as $rs): ?>
+                                <tr>
+                                    <td><?= date('d/m/Y H:i', strtotime($rs['created_at'])) ?></td>
+                                    <td><?= $rs['skor_sebelum'] ?> → <strong><?= $rs['skor_sesudah'] ?></strong></td>
+                                    <td><span class="badge bg-<?= $rs['delta'] > 0 ? 'success' : 'danger' ?>"><?= $rs['delta'] > 0 ? '+' : '' ?><?= $rs['delta'] ?></span></td>
+                                    <td><?= ucwords(str_replace('_', ' ', $rs['alasan'])) ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <!-- Blacklist History -->
                 <?php if (!empty($blacklist_log)): ?>
                 <div class="card mb-4">
@@ -449,8 +560,76 @@ if (!is_array($pinjaman_aktif)) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
+        const API_BUSINESS = '<?= baseUrl('api/business.php') ?>';
+
         function showPending() {
             window.location.href = '?status=pending';
+        }
+
+        // Modal meninggal dunia
+        async function modalMeninggal(nasabah_id, nama) {
+            const { value: formValues } = await Swal.fire({
+                title: 'Proses Nasabah Meninggal',
+                icon: 'warning',
+                html: `<div class="text-start">
+                    <div class="alert alert-warning">Nasabah <strong>${nama}</strong> akan ditandai meninggal. Semua pinjaman aktif yang tidak memiliki penjamin akan otomatis macet.</div>
+                    <div class="mb-2">
+                        <label class="form-label">Tanggal Meninggal</label>
+                        <input type="date" class="form-control" id="tgl_meninggal" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Catatan</label>
+                        <textarea class="form-control" id="catatan_meninggal" rows="2" placeholder="Sumber informasi, dokumen, dll"></textarea>
+                    </div>
+                </div>`,
+                showCancelButton: true, confirmButtonText: 'Proses', cancelButtonText: 'Batal',
+                confirmButtonColor: '#6c757d',
+                preConfirm: () => ({ tanggal_meninggal: document.getElementById('tgl_meninggal').value, catatan: document.getElementById('catatan_meninggal').value })
+            });
+            if (!formValues) return;
+            const resp = await fetch(API_BUSINESS, { method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ action: 'nasabah_meninggal', nasabah_id, ...formValues }) });
+            const r = await resp.json();
+            if (r.success) {
+                Swal.fire('Berhasil', `Data diperbarui. ${r.pinjaman_terdampak} pinjaman terdampak. ${r.ada_penjamin ? 'Ada penjamin, pinjaman dilanjutkan.' : 'Tidak ada penjamin — pinjaman ditandai macet.'}`, 'success')
+                    .then(() => location.reload());
+            } else { Swal.fire('Gagal', r.error || 'Terjadi kesalahan', 'error'); }
+        }
+
+        // Modal tambah ahli waris
+        async function modalTambahAhliWaris(nasabah_id) {
+            const { value: f } = await Swal.fire({
+                title: 'Tambah Ahli Waris',
+                html: `<div class="text-start">
+                    <div class="mb-2"><label class="form-label">Nama *</label><input class="form-control" id="aw_nama" required></div>
+                    <div class="mb-2"><label class="form-label">Hubungan *</label>
+                        <select class="form-select" id="aw_hubungan">
+                            <option value="suami">Suami</option><option value="istri">Istri</option>
+                            <option value="anak">Anak</option><option value="orang_tua">Orang Tua</option>
+                            <option value="saudara">Saudara</option><option value="lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="mb-2"><label class="form-label">No. KTP</label><input class="form-control" id="aw_ktp" maxlength="16"></div>
+                    <div class="mb-2"><label class="form-label">Telepon</label><input class="form-control" id="aw_telp"></div>
+                    <div class="form-check mb-2"><input type="checkbox" class="form-check-input" id="aw_penjamin"><label class="form-check-label" for="aw_penjamin">Menjadi penjamin pinjaman</label></div>
+                </div>`,
+                showCancelButton: true, confirmButtonText: 'Simpan', cancelButtonText: 'Batal',
+                preConfirm: () => {
+                    const nama = document.getElementById('aw_nama').value.trim();
+                    if (!nama) { Swal.showValidationMessage('Nama wajib diisi'); return false; }
+                    return { nasabah_id, nama, hubungan: document.getElementById('aw_hubungan').value,
+                        ktp: document.getElementById('aw_ktp').value || null,
+                        telp: document.getElementById('aw_telp').value || null,
+                        adalah_penjamin: document.getElementById('aw_penjamin').checked ? 1 : 0 };
+                }
+            });
+            if (!f) return;
+            const resp = await fetch(API_BUSINESS, { method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ action: 'tambah_ahli_waris', ...f }) });
+            const r = await resp.json();
+            if (r.success) { Swal.fire('Berhasil', 'Ahli waris ditambahkan', 'success').then(() => location.reload()); }
+            else { Swal.fire('Gagal', r.error || 'Terjadi kesalahan', 'error'); }
         }
 
         // Convert session alerts to SweetAlert2

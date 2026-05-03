@@ -320,6 +320,25 @@ $metode_list = ['Tunai', 'Transfer Bank', 'QRIS', 'Debit', 'Lainnya'];
         }
     }
 
+    // GPS: ambil koordinat di background saat halaman dimuat (jika fitur aktif)
+    let gpsData = { lat: null, lng: null, akurasi_gps: null };
+    <?php
+    require_once BASE_PATH . '/includes/feature_flags.php';
+    if (isFeatureEnabled('gps_pembayaran')): ?>
+    if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                gpsData.lat        = pos.coords.latitude;
+                gpsData.lng        = pos.coords.longitude;
+                gpsData.akurasi_gps = Math.round(pos.coords.accuracy);
+                console.log('GPS acquired:', gpsData.lat, gpsData.lng, `±${gpsData.akurasi_gps}m`);
+            },
+            (err) => { console.warn('GPS tidak tersedia:', err.message); },
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+        );
+    }
+    <?php endif; ?>
+
     // Form submission
     $('#formPembayaran').submit(function(e) {
         e.preventDefault();
@@ -333,7 +352,9 @@ $metode_list = ['Tunai', 'Transfer Bank', 'QRIS', 'Debit', 'Lainnya'];
             keterangan: $('textarea[name="keterangan"]').val(),
             denda_terhitung: parseFloat($('#inputDenda').val()) || 0,
             denda_dibebaskan: parseFloat($('#inputWaive').val()) || 0,
-            denda_alasan: $('textarea[name="denda_alasan"]').val() || ''
+            denda_alasan: $('textarea[name="denda_alasan"]').val() || '',
+            // Sertakan GPS jika tersedia
+            ...( gpsData.lat ? { lat: gpsData.lat, lng: gpsData.lng, akurasi_gps: gpsData.akurasi_gps } : {} )
         };
 
         // Validate
@@ -344,7 +365,7 @@ $metode_list = ['Tunai', 'Transfer Bank', 'QRIS', 'Debit', 'Lainnya'];
 
         Swal.fire({
             title: 'Konfirmasi Pembayaran',
-            text: `Total yang akan dibayar: ${$('#finalTotal').text()}`,
+            html: `Total yang akan dibayar: <strong>${$('#finalTotal').text()}</strong>${gpsData.lat ? '<br><small class="text-success"><i class="bi bi-geo-alt-fill"></i> Lokasi GPS tersimpan</small>' : ''}`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Ya, Bayar',

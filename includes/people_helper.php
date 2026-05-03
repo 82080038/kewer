@@ -167,6 +167,102 @@ function deletePersonAddress($address_id, $person_id) {
 }
 
 /**
+ * Cari person di db_orang berdasarkan NIK/KTP.
+ * Return row people atau null jika tidak ditemukan.
+ */
+function findPersonByKtp($ktp) {
+    if (!$ktp || strlen(trim($ktp)) !== 16) return null;
+    $result = query_orang("SELECT * FROM people WHERE ktp = ? LIMIT 1", [trim($ktp)]);
+    return (is_array($result) && isset($result[0])) ? $result[0] : null;
+}
+
+/**
+ * Cek apakah NIK sudah terdaftar sebagai user AKTIF di koperasi (owner_bos_id) tertentu.
+ * Digunakan saat pendaftaran petugas baru untuk mencegah duplikat aktif.
+ *
+ * Return: array user jika sudah aktif, null jika belum/sudah resign.
+ */
+function isKtpActiveInKoperasi($ktp, $owner_bos_id) {
+    if (!$ktp || !$owner_bos_id) return null;
+
+    // Cari person di db_orang dulu
+    $person = findPersonByKtp($ktp);
+    if (!$person) return null;
+
+    // Cek apakah kewer_user_id-nya aktif di koperasi ini
+    if (!$person['kewer_user_id']) return null;
+
+    $user = query(
+        "SELECT id, username, nama, role, status FROM users
+         WHERE id = ? AND owner_bos_id = ? AND status = 'aktif'",
+        [$person['kewer_user_id'], $owner_bos_id]
+    );
+    return (is_array($user) && isset($user[0])) ? $user[0] : null;
+}
+
+/**
+ * Ambil riwayat koperasi dari NIK — semua user (aktif maupun nonaktif) yang
+ * terhubung ke NIK ini di seluruh koperasi dalam platform.
+ * Berguna untuk referensi bos baru saat mendaftarkan petugas yang pernah bekerja di tempat lain.
+ *
+ * Return: array riwayat [{user_id, username, role, status, nama_koperasi, cabang, tanggal_masuk}]
+ */
+function getKtpKoperasiHistory($ktp) {
+    if (!$ktp) return [];
+
+    // Temukan semua kewer_user_id yang pernah memakai KTP ini
+    // KTP bisa muncul di people dengan kewer_user_id berbeda jika pernah resign & daftar ulang
+    $persons = query_orang("SELECT kewer_user_id FROM people WHERE ktp = ? AND kewer_user_id IS NOT NULL", [trim($ktp)]);
+    if (!is_array($persons) || empty($persons)) return [];
+
+    $user_ids = array_column($persons, 'kewer_user_id');
+    $placeholders = implode(',', array_fill(0, count($user_ids), '?'));
+
+    $rows = query(
+        "SELECT u.id, u.username, u.nama, u.role, u.status, u.tanggal_masuk,
+                c.nama_cabang, b.nama as nama_bos
+         FROM users u
+         LEFT JOIN cabang c ON u.cabang_id = c.id
+         LEFT JOIN users b ON u.owner_bos_id = b.id
+         WHERE u.id IN ($placeholders)
+         ORDER BY u.created_at DESC",
+        $user_ids
+    );
+    return is_array($rows) ? $rows : [];
+}
+
+/**
+ * Sinkronisasi: setelah user di-nonaktifkan (resign), update status people di db_orang.
+ * Data identitas TIDAK dihapus — hanya status yang diupdate.
+ */
+function syncPersonStatusOnResign($kewer_user_id) {
+    if (!$kewer_user_id) return false;
+    return query_orang(
+        "UPDATE people SET status = 'nonaktif', updated_at = CURRENT_TIMESTAMP WHERE kewer_user_id = ?",
+        [$kewer_user_id]
+    );
+}
+
+/**
+ * Sinkronisasi: saat petugas yang pernah resign daftar ulang di koperasi baru,
+ * buat record people baru (dengan kewer_user_id baru) yang tetap memiliki KTP sama.
+ * Data lama (kewer_user_id lama) tidak diubah — histori terjaga.
+ */
+function createPersonForReturningStaff($new_user_id, $ktp, $nama, $extra = []) {
+    return createPerson(array_merge([
+        'kewer_user_id'  => $new_user_id,
+        'nama'           => $nama,
+        'ktp'            => $ktp,
+        'telp'           => $extra['telp'] ?? null,
+        'email'          => $extra['email'] ?? null,
+        'jenis_kelamin'  => $extra['jenis_kelamin'] ?? null,
+        'tanggal_lahir'  => $extra['tanggal_lahir'] ?? null,
+        'tempat_lahir'   => $extra['tempat_lahir'] ?? null,
+        'pekerjaan'      => $extra['pekerjaan'] ?? null,
+    ], $extra));
+}
+
+/**
  * Convenience: Create person + address in one call
  * Used when registering bos or creating nasabah
  */
