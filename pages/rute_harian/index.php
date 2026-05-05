@@ -4,9 +4,10 @@ require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
 
 $user = getCurrentUser();
-$kantor_id = 1; // Single office
+$user_cabang_id = $user['cabang_id'] ?? null;
+$kantor_id = $user_cabang_id ?? 1; // Use user's cabang_id or default to 1
 
-// Default: today
+$petugas_id = $_GET['petugas_id'] ?? null;
 $tanggal = $_GET['tanggal'] ?? date('Y-m-d');
 $petugas_filter = $_GET['petugas_id'] ?? '';
 
@@ -80,19 +81,9 @@ foreach ($rute as $r) {
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark no-print">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="../../dashboard.php">Dashboard</a>
-                <a class="nav-link" href="../../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
     <div class="main-container">
         <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
-        
+
         <main class="content-area">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2"><i class="bi bi-map"></i> Rute Harian Petugas</h1>

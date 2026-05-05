@@ -16,15 +16,15 @@ $data = query("
         a.*,
         p.kode_pinjaman, p.frekuensi, p.plafon as total_pinjaman,
         n.nama as nasabah_nama, n.telp as nasabah_telp, n.alamat as nasabah_alamat,
-        c.nama as cabang_nama, c.alamat as cabang_alamat, c.telp as cabang_telp,
-        byr.kode_pembayaran, byr.tanggal_bayar, byr.metode,
+        c.nama_cabang as cabang_nama, c.alamat as cabang_alamat, c.telp as cabang_telp,
+        byr.kode_pembayaran, byr.tanggal_bayar, byr.cara_bayar as metode,
         u.nama as petugas_nama
     FROM angsuran a
     JOIN pinjaman p ON a.pinjaman_id = p.id
     JOIN nasabah n ON p.nasabah_id = n.id
     JOIN cabang c ON a.cabang_id = c.id
     LEFT JOIN pembayaran byr ON byr.angsuran_id = a.id
-    LEFT JOIN users u ON byr.dibayar_oleh = u.id
+    LEFT JOIN users u ON byr.petugas_id = u.id
     WHERE a.id = ? AND a.cabang_id = ? AND a.status = 'lunas'
 ", [$angsuran_id, $cabang_id]);
 

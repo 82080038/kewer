@@ -4,9 +4,18 @@ require_once BASE_PATH . '/includes/functions.php';
 require_once BASE_PATH . '/includes/alamat_helper.php';
 requireLogin();
 
-$kantor_id = 1; // Single office
+$user = getCurrentUser();
+$role = $user['role'];
+$user_cabang_id = $user['cabang_id'] ?? null;
+
 $search = $_GET['search'] ?? '';
 $status = $_GET['status'] ?? '';
+
+// Get cabang filter based on role (using shared function from includes/functions.php)
+$cabang_filter = getPageCabangFilter($role, $user_cabang_id, $user['id'], 'n');
+if ($cabang_filter) {
+    $cabang_filter = "AND " . $cabang_filter;
+}
 
 // Build query
 $where = ["1=1"];
@@ -25,6 +34,11 @@ if ($status) {
     $params[] = $status;
 }
 
+// Add cabang filter
+if ($cabang_filter) {
+    $where[] = ltrim($cabang_filter, 'AND ');
+}
+
 $where_clause = "WHERE " . implode(" AND ", $where);
 
 // Get nasabah data
@@ -41,14 +55,23 @@ if (!is_array($nasabah)) {
     $nasabah = [];
 }
 
-// Get statistics
+// Get statistics with cabang filter
+// Use cabang_id directly without alias since this query doesn't use table alias
+$stats_where = "WHERE 1=1";
+if ($cabang_filter) {
+    // Extract cabang_id from cabang_filter and use it directly
+    if (preg_match('/cabang_id\s*=\s*(\d+)/', $cabang_filter, $matches)) {
+        $stats_where .= " AND cabang_id = " . $matches[1];
+    }
+}
 $stats_result = query("
-    SELECT 
+    SELECT
         COUNT(*) as total,
         SUM(CASE WHEN status = 'aktif' THEN 1 ELSE 0 END) as aktif,
         SUM(CASE WHEN status = 'nonaktif' THEN 1 ELSE 0 END) as nonaktif,
         SUM(CASE WHEN status = 'blacklist' THEN 1 ELSE 0 END) as blacklist
     FROM nasabah
+    $stats_where
 ");
 
 $stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] : ['total' => 0, 'aktif' => 0, 'nonaktif' => 0, 'blacklist' => 0];
@@ -70,19 +93,9 @@ $stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] :
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="../../dashboard.php">Dashboard</a>
-                <a class="nav-link" href="../../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
     <div class="main-container">
         <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
-        
+
         <main class="content-area">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Data Nasabah</h1>

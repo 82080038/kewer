@@ -1,7 +1,7 @@
 # Panduan Setup Kewer — Development Environment
 
-**Versi:** 2.1  
-**Terakhir Diperbarui:** 2026-05-03  
+**Versi:** 2.3.1  
+**Terakhir Diperbarui:** 2026-05-06  
 **Server:** XAMPP di Linux (Apache 2.4, MariaDB 10.4, PHP 8.2)
 
 ---
@@ -159,7 +159,7 @@ http://localhost/kewer/login.php
 | mgr_balige | manager_cabang | 4 |
 | adm_pusat | admin_pusat | 5 |
 | ptr_pngr1 | petugas_pusat | 7 |
-| ptr_pngr2 | petugas_cabang | 8 |
+| ptr_blg1 | petugas_cabang | 8 |
 | krw_pngr | karyawan | 9 |
 
 > Quick login tersedia di halaman login saat `APP_ENV=development`
@@ -179,7 +179,7 @@ appOwner (level 0) — Platform owner, tidak akses data koperasi
        └── karyawan (level 9) — Rekonsiliasi kas, view data
 ```
 
-> **Single office structure:** `kantor_id = 1` (hardcoded). Tidak ada multi-cabang aktif.
+> **Multi-cabang:** Pusat (id=1, Pematangsiantar) + Cabang Balige (id=2).
 
 ---
 

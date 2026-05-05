@@ -3,9 +3,18 @@ require_once __DIR__ . '/../../config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
 
-$kantor_id = 1; // Single office
+$user = getCurrentUser();
+$role = $user['role'];
+$user_cabang_id = $user['cabang_id'] ?? null;
+
 $search = $_GET['search'] ?? '';
 $status = $_GET['status'] ?? '';
+
+// Get cabang filter based on role (using shared function from includes/functions.php)
+$cabang_filter = getPageCabangFilter($role, $user_cabang_id, $user['id'], 'p');
+if ($cabang_filter) {
+    $cabang_filter = "AND " . $cabang_filter;
+}
 
 // Build query
 $where = ["1=1"];
@@ -24,6 +33,11 @@ if ($status) {
     $params[] = $status;
 }
 
+// Add cabang filter
+if ($cabang_filter) {
+    $where[] = ltrim($cabang_filter, 'AND ');
+}
+
 $where_clause = "WHERE " . implode(" AND ", $where);
 
 // Get pinjaman data
@@ -40,9 +54,10 @@ if (!is_array($pinjaman)) {
     $pinjaman = [];
 }
 
-// Get statistics
+// Get statistics with cabang filter
+$stats_where = "WHERE 1=1 " . str_replace("p.cabang_id", "cabang_id", $cabang_filter);
 $stats_result = query("
-    SELECT 
+    SELECT
         COUNT(*) as total,
         SUM(CASE WHEN status = 'pengajuan' THEN 1 ELSE 0 END) as pengajuan,
         SUM(CASE WHEN status = 'disetujui' THEN 1 ELSE 0 END) as disetujui,
@@ -50,12 +65,17 @@ $stats_result = query("
         SUM(CASE WHEN status = 'lunas' THEN 1 ELSE 0 END) as lunas,
         SUM(plafon) as total_plafon
     FROM pinjaman
+    $stats_where
 ");
 
 $stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] : ['total' => 0, 'pengajuan' => 0, 'disetujui' => 0, 'aktif' => 0, 'lunas' => 0, 'total_plafon' => 0];
 
-// Get active nasabah list for modal
-$nasabah_list = query("SELECT id, kode_nasabah, nama FROM nasabah WHERE status = 'aktif' ORDER BY nama");
+// Get active nasabah list for modal with cabang filter
+$nasabah_cabang_filter = getCabangFilterForRole($role, $user_cabang_id, $user['id']);
+if ($nasabah_cabang_filter) {
+    $nasabah_cabang_filter = "AND " . $nasabah_cabang_filter;
+}
+$nasabah_list = query("SELECT id, kode_nasabah, nama FROM nasabah WHERE status = 'aktif' $nasabah_cabang_filter ORDER BY nama");
 if (!is_array($nasabah_list)) {
     $nasabah_list = [];
 }
@@ -77,19 +97,9 @@ if (!is_array($nasabah_list)) {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="../../dashboard.php">Dashboard</a>
-                <a class="nav-link" href="../../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
     <div class="main-container">
         <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
-        
+
         <main class="content-area">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Data Pinjaman</h1>

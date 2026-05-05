@@ -9,8 +9,12 @@ if (!hasPermission('manage_nasabah')) {
     exit();
 }
 
-$id = $_GET['id'];
-$kantor_id = 1; // Single office
+$id = $_GET['id'] ?? null;
+
+// Get cabang filter based on role
+$user = getCurrentUser();
+$role = $user['role'];
+$user_cabang_id = $user['cabang_id'] ?? null;
 
 // Check if nasabah exists
 $nasabah = query("SELECT * FROM nasabah WHERE id = ?", [$id]);

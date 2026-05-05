@@ -97,21 +97,9 @@ if ($_POST) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="<?php echo baseUrl('dashboard.php'); ?>"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
-                    <i class="bi bi-person-circle"></i> <?php echo $user['nama']; ?>
-                </span>
-                <a class="nav-link" href="<?php echo baseUrl('logout.php'); ?>">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
     <div class="main-container">
         <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
-        
+
         <main class="content-area">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2"><i class="bi bi-shield-lock"></i> Delegasi Permission</h1>
@@ -258,6 +246,7 @@ if ($_POST) {
         </div>
     </div>
     
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>

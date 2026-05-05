@@ -41,21 +41,9 @@ $stats = getAutoConfirmStats($cabang_id);
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
-                    <i class="bi bi-person-circle"></i> <?php echo $user['nama']; ?>
-                </span>
-                <a class="nav-link" href="../../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
     <div class="main-container">
         <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
-        
+
         <main class="content-area">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2><i class="bi bi-gear"></i> Pengaturan Auto-Confirm Pinjaman</h2>

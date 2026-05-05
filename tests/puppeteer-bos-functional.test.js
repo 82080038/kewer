@@ -56,7 +56,7 @@ async function runTests() {
     try {
       console.log('\n📋 Test 1: Login as Bos');
       
-      await page.goto(config.baseUrl + '/login.php?test_login=true&username=testbos&password=password123');
+      await page.goto(config.baseUrl + '/login.php?test_login=true&username=patri&password=Kewer2024!');
       
       await new Promise(resolve => setTimeout(resolve, 2000));
       const currentUrl = page.url();
@@ -82,13 +82,17 @@ async function runTests() {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Click Tambah Nasabah button
-      const tambahButton = await page.evaluateHandle(() => {
+      const tambahButtonClicked = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll('button, .btn, a.btn'));
-        return buttons.find(btn => btn.textContent.includes('Tambah'));
+        const tambahButton = buttons.find(btn => btn.textContent.includes('Tambah'));
+        if (tambahButton) {
+          tambahButton.click();
+          return true;
+        }
+        return false;
       });
-      
-      if (tambahButton) {
-        await tambahButton.click();
+
+      if (tambahButtonClicked) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Check if modal appeared
@@ -152,13 +156,17 @@ async function runTests() {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Click Tambah Cabang button
-      const tambahButton = await page.evaluateHandle(() => {
+      const tambahButtonClicked = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll('button, .btn'));
-        return buttons.find(btn => btn.textContent.includes('Tambah'));
+        const tambahButton = buttons.find(btn => btn.textContent.includes('Tambah'));
+        if (tambahButton) {
+          tambahButton.click();
+          return true;
+        }
+        return false;
       });
-      
-      if (tambahButton) {
-        await tambahButton.click();
+
+      if (tambahButtonClicked) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Check if modal appeared
@@ -209,13 +217,17 @@ async function runTests() {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Click Tambah Pengeluaran button
-      const tambahButton = await page.evaluateHandle(() => {
+      const tambahButtonClicked = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll('button, .btn'));
-        return buttons.find(btn => btn.textContent.includes('Tambah'));
+        const tambahButton = buttons.find(btn => btn.textContent.includes('Tambah'));
+        if (tambahButton) {
+          tambahButton.click();
+          return true;
+        }
+        return false;
       });
-      
-      if (tambahButton) {
-        await tambahButton.click();
+
+      if (tambahButtonClicked) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Check if modal appeared
@@ -279,13 +291,17 @@ async function runTests() {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Click Ajukan Pinjaman button
-      const tambahButton = await page.evaluateHandle(() => {
+      const tambahButtonClicked = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll('button, .btn'));
-        return buttons.find(btn => btn.textContent.includes('Ajukan'));
+        const tambahButton = buttons.find(btn => btn.textContent.includes('Ajukan'));
+        if (tambahButton) {
+          tambahButton.click();
+          return true;
+        }
+        return false;
       });
-      
-      if (tambahButton) {
-        await tambahButton.click();
+
+      if (tambahButtonClicked) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Check if modal appeared

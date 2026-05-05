@@ -1,7 +1,7 @@
 # Kewer Application Analysis
 
-> **Terakhir diperbarui**: 3 Mei 2026
-> **Versi Aplikasi**: v2.0.0
+> **Terakhir diperbarui**: 6 Mei 2026
+> **Versi Aplikasi**: v2.3.1 (Feature Flags + Layout Consistency)
 
 ## Overview
 **Project Name**: Kewer - Koperasi Warga Ekonomi Rakyat
@@ -20,12 +20,13 @@
 - **Platform**: Multi-tenant — setiap Bos punya koperasi sendiri, appOwner mengelola platform
 
 ## Architecture
-- **Backend**: PHP 8.0+ with MySQL/MariaDB
+- **Backend**: PHP 8.2 with MySQL/MariaDB
 - **Frontend**: Bootstrap 5.3 + Vanilla JavaScript
 - **Database**: 3 database terpisah (kewer, db_alamat_simple, db_orang)
 - **Authentication**: Session-based with role-based permissions
 - **Platform**: appOwner layer (billing, usage tracking, AI advisor)
 - **Audit Trail**: CRUD operations logged to audit_log table
+- **Feature Flags**: Dynamic feature toggle system (v2.3.1)
 
 ---
 
@@ -201,21 +202,59 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 | — | auto_confirm_settings | Auto-confirm pinjaman |
 | — | denda_settings | Setting denda |
 | — | setting_denda | Setting denda per cabang |
+| 50 | platform_features | Feature flags system (v2.3.1) |
+| 51 | target_petugas | Target petugas lapangan (v2.3.1) |
+| 52 | wa_log | Log WA notifikasi (v2.3.1) |
 
 ### Views (3)
 - v_karyawan_kasbon, v_kasbon_summary, v_laporan_kas_harian
 
 ---
 
+## v2.3.1 Feature Flags System
+
+### Platform Features Table
+| Feature Key | Category | Default | Description |
+|-------------|----------|---------|-------------|
+| wa_notifikasi | wa | OFF | WhatsApp notifikasi via Fonnte API |
+| wa_pengingat_auto | wa | OFF | Auto reminder WA (cron harian) |
+| two_factor_auth | auth | OFF | 2FA TOTP untuk login |
+| pwa | pwa | OFF | Progressive Web App support |
+| gps_pembayaran | lapangan | OFF | GPS tracking pembayaran lapangan |
+| export_laporan | laporan | OFF | Export laporan CSV/PDF |
+| target_petugas | lapangan | OFF | Target kinerja petugas |
+| slip_harian | lapangan | OFF | Slip harian petugas |
+| kolektibilitas | lapangan | OFF | Kolektibilitas OJK 1-5 |
+| cron_harian | system | OFF | Cron job harian otomatis |
+| simulasi_pinjaman | lapangan | ON | Simulasi pinjaman real-time |
+
+### Feature Flags Components
+- **Helper**: `includes/feature_flags.php` — isFeatureEnabled(), requireFeature(), getAllFeatures()
+- **API**: `api/feature_flags.php` — GET list, POST toggle, POST bulk toggle
+- **UI**: `pages/app_owner/features.php` — Toggle switches per fitur
+- **Guard Pattern**: API returns 403 if feature disabled, UI redirects or hides elements
+
+### v2.3.1 Database Additions
+- `platform_features` — Feature flags configuration
+- `target_petugas` — Target petugas per cabang
+- `wa_log` — Log pengiriman WA
+- `pinjaman.kolektibilitas` — Kolektibilitas OJK (1-5)
+- `pinjaman.hari_tunggakan` — Jumlah hari tunggakan
+- `pembayaran.lat, lng, akurasi_gps` — GPS location pembayaran
+- `users.totp_secret, totp_enabled, totp_verified_at, phone_2fa` — 2FA TOTP
+
+---
+
 ## Application Structure
 
-### API Endpoints (25 files)
+### API Endpoints (30+ files)
 | File | Fungsi |
 |------|--------|
 | alamat.php | Cascade dropdown lokasi (db_alamat_simple) |
 | accounting.php | Akuntansi (jurnal, ledger, neraca) |
 | angsuran.php | CRUD angsuran |
 | auth.php | Login/logout API |
+| auth_2fa.php | 2FA TOTP (v2.3.1) |
 | auto_confirm_settings.php | Auto-confirm pinjaman |
 | bos_registration.php | Registrasi & approval bos |
 | branch_managers.php | Assign manager ke cabang |
@@ -223,7 +262,9 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 | daily_cash_reconciliation.php | Rekonsiliasi kas |
 | dashboard.php | Statistik dashboard |
 | delegated_permissions.php | Delegasi permission |
+| export.php | Export laporan CSV/PDF (v2.3.1) |
 | family_risk.php | Penilaian risiko keluarga |
+| feature_flags.php | Feature flags management (v2.3.1) |
 | field_officer_activities.php | Aktivitas petugas |
 | kas_bon.php | Kasbon karyawan |
 | kas_petugas.php | Kas petugas |
@@ -236,8 +277,10 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 | pinjaman.php | CRUD pinjaman |
 | roles.php | Manajemen role & permission |
 | setting_bunga.php | Setting bunga |
+| target_petugas.php | Target petugas (v2.3.1) |
+| wa_notifikasi.php | WA notifikasi via Fonnte (v2.3.1) | |
 
-### Includes (24 files)
+### Includes (26+ files)
 | File | Fungsi |
 |------|--------|
 | functions.php | Core business logic |
@@ -264,21 +307,43 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 | jwt_helper.php | JWT helper |
 | auto_confirm.php | Auto-confirm logic |
 | sidebar.php | Dynamic sidebar rendering |
+| feature_flags.php | Feature flags helper (v2.3.1) |
+| wa_notifikasi.php | WA notification via Fonnte (v2.3.1) | |
 
 ### Page Modules (24 directories)
 angsuran, app_owner, audit, auto_confirm, bos, cabang, cash_reconciliation, family_risk, field_activities, jaminan, kas_bon, kas_petugas, kinerja, laporan, nasabah, pembayaran, pengeluaran, permissions, petugas, pinjaman, rute_harian, setting_bunga, superadmin, users
 
-### appOwner Pages (7)
-dashboard, approvals, koperasi, billing, usage, ai_advisor, settings
+### appOwner Pages (8)
+dashboard, approvals, koperasi, billing, usage, ai_advisor, settings, features
+
+---
+
+## Page Layout Pattern
+
+Semua halaman (kecuali compact/standalone views) menggunakan layout konsisten:
+
+```html
+<div class="main-container">
+    <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
+    <main class="content-area">
+        <!-- page content -->
+    </main>
+</div>
+```
+
+- **sidebar.php** menyediakan: navbar (fixed top), sidebar navigasi (role-based), dan CSS layout
+- **Standalone pages** (compact/mobile): `bayar_compact.php`, `index_compact.php`, `blacklist_compact.php`, `transaksi.php`, `riwayat_harian.php`, `gabungan.php`, `setup_headquarters.php`
 
 ---
 
 ## Technology Stack
 
-- **Backend**: PHP 8.0+, MySQL/MariaDB, MySQLi prepared statements
+- **Backend**: PHP 8.2, MySQL/MariaDB, MySQLi prepared statements
 - **Frontend**: Bootstrap 5.3, DataTable.js 1.13.6, SweetAlert2 v11, Select2 4.1.0, Flatpickr 4.6.13
-- **Testing**: F2E (PHP), E2E (Playwright/Puppeteer)
+- **Testing**: F2E (PHP), E2E (Puppeteer), Bash curl scripts
 - **Server**: XAMPP on Linux (Apache 2.4.58, MariaDB 10.4.32, PHP 8.2.12)
+- **WA Provider**: Fonnte API (v2.3.1)
+- **PWA**: Service Worker + Manifest (v2.3.1)
 
 ## Security Features
 - SQL injection prevention (prepared statements)
@@ -295,8 +360,25 @@ dashboard, approvals, koperasi, billing, usage, ai_advisor, settings
 - **Path**: /opt/lampp/htdocs/kewer
 - **MySQL**: root / root
 - **SUDO**: 8208
+- **WA Token**: WA_TOKEN (di .env, untuk Fonnte API)
+- **WA Provider**: fonnte (default)
 
 ## Database Files (database/)
 - `kewer.sql` — Full export database kewer (49 tabel + 3 views + data)
 - `db_alamat_simple.sql` — Export db_alamat_simple (4 tabel + data Sumut)
 - `db_orang.sql` — Export db_orang (19 tabel + 6 views + geospasial nasional)
+- `migrations/` — Migration scripts (009, 010)
+
+---
+
+## Bugfix History (v2.3.1)
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `api/dashboard.php` | Undefined `$cabang_id` | Replaced with `$kantor_id` |
+| `api/auto_confirm_settings.php` | `hasPermission()` undefined | Added `require functions.php` |
+| `pages/petugas/slip_harian.php` | Unknown column `a.ke` | Changed to `a.no_angsuran` |
+| `pages/angsuran/cetak_kwitansi.php` | Unknown column `c.nama`, `byr.dibayar_oleh` | Fixed to `c.nama_cabang`, `byr.petugas_id`, `byr.cara_bayar` |
+| `pages/pinjaman/tambah.php` | Undefined `$error`/`$success` | Initialized before POST block |
+| 7 pages | Double navbar (sidebar.php + inline nav) | Removed inline navbar |
+| 12 pages | Hardcoded mini sidebar | Replaced with shared `sidebar.php` |

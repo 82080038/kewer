@@ -3,13 +3,13 @@
  * Cache strategy: Cache-first untuk aset statis, Network-first untuk API/halaman dinamis
  */
 
-const CACHE_NAME   = 'kewer-v2.3.0';
-const STATIC_CACHE = 'kewer-static-v1';
+const CACHE_NAME   = 'kewer-v2.3.2';
+const STATIC_CACHE = 'kewer-static-v2';
 
 // Aset yang di-cache untuk offline
 const STATIC_ASSETS = [
-    '/kewer/dashboard.php',
-    '/kewer/pages/angsuran/index.php',
+    // PHP pages should not be cached as static assets - they are dynamic
+    // Only cache CDN assets and static files
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
     'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css',
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
@@ -53,6 +53,14 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // PHP files — network only (jangan cache untuk menghindari MIME type errors)
+    if (url.pathname.endsWith('.php')) {
+        event.respondWith(
+            fetch(event.request).catch(() => caches.match(OFFLINE_PAGE))
+        );
+        return;
+    }
+
     // CDN aset statis — cache first
     if (url.origin !== location.origin) {
         event.respondWith(
@@ -65,7 +73,7 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Halaman PHP — network first, fallback ke cache
+    // Halaman lain — network first, fallback ke cache
     event.respondWith(
         fetch(event.request).then(resp => {
             const clone = resp.clone();

@@ -69,6 +69,18 @@ function safeHasPermission($permission_code) {
     }
 }
 ?>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="<?php echo baseUrl('dashboard.php'); ?>"><?php echo defined('APP_NAME') ? APP_NAME : 'Kewer'; ?></a>
+        <div class="navbar-nav ms-auto">
+            <span class="navbar-text me-3">
+                <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($user['nama']); ?>
+            </span>
+            <a class="nav-link" href="<?php echo baseUrl('logout.php'); ?>">Logout</a>
+        </div>
+    </div>
+</nav>
+
 <style>
     html, body {
         height: 100%;

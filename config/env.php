@@ -78,3 +78,7 @@ if (!defined('RATE_LIMIT_PER_MINUTE')) define('RATE_LIMIT_PER_MINUTE', (int)($_E
 
 if (!defined('CSRF_TOKEN_NAME')) define('CSRF_TOKEN_NAME', $_ENV['CSRF_TOKEN_NAME'] ?? 'csrf_token');
 if (!defined('SESSION_LIFETIME')) define('SESSION_LIFETIME', (int)($_ENV['SESSION_LIFETIME'] ?? 7200));
+
+// v2.3.1 Feature Flags Configuration
+if (!defined('WA_TOKEN')) define('WA_TOKEN', $_ENV['WA_TOKEN'] ?? '');
+if (!defined('WA_PROVIDER')) define('WA_PROVIDER', $_ENV['WA_PROVIDER'] ?? 'fonnte');

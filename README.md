@@ -59,10 +59,10 @@ Petugas keliling mengutip angsuran langsung ke lokasi nasabah (pasar, lapak, rum
 | 4 | manager_cabang | mgr_balige | Operasional cabang, approve pinjaman |
 | 5 | admin_pusat | adm_pusat | Input nasabah, pinjaman, angsuran |
 | 7 | petugas_pusat | ptr_pngr1 | Koleksi pembayaran lapangan |
-| 8 | petugas_cabang | ptr_pngr2 | Koleksi pembayaran lapangan cabang |
+| 8 | petugas_cabang | ptr_blg1 | Koleksi pembayaran lapangan cabang |
 | 9 | karyawan | krw_pngr | Dukungan administratif, rekonsiliasi kas |
 
-> **Catatan:** Struktur single office (`kantor_id = 1`). Tidak ada multi-cabang aktif.
+> **Catatan:** Multi-cabang aktif — Cabang Pusat (Pematangsiantar, id=1) + Cabang Balige (id=2).
 
 ---
 
@@ -76,7 +76,7 @@ Petugas keliling mengutip angsuran langsung ke lokasi nasabah (pasar, lapak, rum
 | manager_cabang | mgr_balige | Kewer2024! |
 | admin_pusat | adm_pusat | Kewer2024! |
 | petugas_pusat | ptr_pngr1 | Kewer2024! |
-| petugas_cabang | ptr_pngr2 | Kewer2024! |
+| petugas_cabang | ptr_blg1 | Kewer2024! |
 | karyawan | krw_pngr | Kewer2024! |
 
 > Quick login tersedia di halaman login (development mode `APP_ENV=development`).
@@ -247,6 +247,20 @@ tail -f /opt/lampp/var/mysql/*.err
 ---
 
 ## Changelog
+
+### v2.3.1 (2026-05-06)
+- ✅ Feature Flags System — dynamic toggle semua fitur baru
+- ✅ Layout consistency fix — semua halaman pakai shared `sidebar.php`
+- ✅ SQL column bugfixes (cetak_kwitansi, slip_harian, dashboard)
+- ✅ 8 appOwner pages (+ features.php)
+- ✅ Cleanup: hapus file temp/debug, consolidasi SQL ke `database/`
+- ✅ E2E test: 189 tests × 9 roles — 0 failures
+
+### v2.3.0 (2026-05-05)
+- ✅ Kolektibilitas OJK, Cron harian, WA Pengingat
+- ✅ Target Petugas, Slip Harian, Export Laporan
+- ✅ GPS Pembayaran, PWA, 2FA TOTP
+- ✅ Simulasi pinjaman real-time
 
 ### v2.1.0 (2026-05-03)
 - ✅ Single office structure refactor (hapus multi-branch, `kantor_id = 1`)

@@ -69,16 +69,6 @@ unset($k);
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="../../dashboard.php">Dashboard</a>
-                <a class="nav-link" href="../../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
     <div class="main-container">
         <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
         

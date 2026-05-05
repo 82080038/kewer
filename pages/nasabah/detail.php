@@ -10,8 +10,12 @@ if (!hasPermission('view_nasabah')) {
     exit();
 }
 
-$id = $_GET['id'];
-$kantor_id = 1; // Single office
+$id = $_GET['id'] ?? null;
+
+// Get cabang filter based on role
+$user = getCurrentUser();
+$role = $user['role'];
+$user_cabang_id = $user['cabang_id'] ?? null;
 
 // Get nasabah data
 $nasabah = query("
@@ -93,40 +97,10 @@ $riwayat_skor  = query("SELECT * FROM riwayat_skor_kredit WHERE nasabah_id = ? O
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="../../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
-    <div class="container-fluid">
-        <div class="row">
-            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="../../dashboard.php">
-                                <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="index.php">
-                                <i class="bi bi-people"></i> Nasabah
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../pinjaman/index.php">
-                                <i class="bi bi-cash-stack"></i> Pinjaman
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
-            
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <div class="main-container">
+        <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
+        
+        <main class="content-area">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Detail Nasabah</h1>
                     <div>

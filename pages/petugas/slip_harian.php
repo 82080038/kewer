@@ -32,7 +32,7 @@ $petugas = $petugas[0];
 $pembayaran = query(
     "SELECT py.*, n.nama as nama_nasabah, n.kode_nasabah,
             p.kode_pinjaman, p.frekuensi,
-            a.ke as angsuran_ke
+            a.no_angsuran as angsuran_ke
      FROM pembayaran py
      JOIN pinjaman p ON py.pinjaman_id = p.id
      JOIN nasabah n ON p.nasabah_id = n.id
@@ -67,21 +67,12 @@ if (hasPermission('view_petugas')) {
             .no-print { display: none !important; }
             body { font-size: 12px; }
             .slip-header { border-bottom: 2px solid #000; margin-bottom: 8px; }
+            .main-container, .content-area { margin: 0; height: auto; overflow: visible; }
         }
-        .main-container { display: flex; }
-        .content-area { flex: 1; padding: 20px; }
     </style>
 </head>
 <body>
-    <div class="no-print">
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="../../dashboard.php"><?= APP_NAME ?></a>
-            </div>
-        </nav>
-    </div>
-
-    <div class="main-container">
+    <div class="main-container no-print-nav">
         <div class="no-print"><?php require_once BASE_PATH . '/includes/sidebar.php'; ?></div>
         <main class="content-area">
 

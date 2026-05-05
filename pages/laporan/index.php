@@ -6,6 +6,7 @@ requireLogin();
 
 $user = getCurrentUser();
 $role = $user['role'];
+$user_cabang_id = $user['cabang_id'] ?? null;
 $pusat_roles = ['bos'];
 
 // Permission check
@@ -14,7 +15,10 @@ if (!hasPermission('view_laporan') && !in_array($role, $pusat_roles)) {
     exit();
 }
 
-$kantor_id = 1; // Single office
+// Get cabang filter for reports (using shared function from includes/functions.php)
+$cabang_filter_ids = getReportCabangFilter($role, $user_cabang_id, $user['id']);
+$kantor_id = $cabang_filter_ids ? implode(',', $cabang_filter_ids) : 1; // Use filtered IDs or default
+
 $start_date = $_GET['tanggal_mulai'] ?? date('Y-m-01');
 $end_date = $_GET['tanggal_selesai'] ?? date('Y-m-t');
 $report_type = $_GET['jenis_laporan'] ?? 'comprehensive';
@@ -42,7 +46,16 @@ switch ($report_type) {
 // Get branch list for filter
 $branches = [];
 if (in_array($role, $pusat_roles)) {
-    $branches = query("SELECT * FROM cabang WHERE status = 'aktif' ORDER BY nama_cabang");
+    // Bos only sees their owned branches
+    if ($role === 'bos') {
+        $owned_cabangs = getBosOwnedCabangIds();
+        if (!empty($owned_cabangs)) {
+            $placeholders = implode(',', array_fill(0, count($owned_cabangs), '?'));
+            $branches = query("SELECT * FROM cabang WHERE status = 'aktif' AND id IN ($placeholders) ORDER BY nama_cabang", $owned_cabangs);
+        }
+    } else {
+        $branches = query("SELECT * FROM cabang WHERE status = 'aktif' ORDER BY nama_cabang");
+    }
     if (!is_array($branches)) $branches = [];
 }
 ?>
@@ -61,21 +74,9 @@ if (in_array($role, $pusat_roles)) {
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
-                    <i class="bi bi-person-circle"></i> <?php echo $user['nama']; ?>
-                </span>
-                <a class="nav-link" href="../../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
     <div class="main-container">
         <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
-        
+
         <main class="content-area">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2"><i class="bi bi-file-earmark-bar-graph"></i> Laporan</h1>
@@ -328,8 +329,10 @@ if (in_array($role, $pusat_roles)) {
             const params = new URLSearchParams(window.location.search);
             const base = '../../api/export.php';
             const q = `jenis=${params.get('jenis_laporan') || 'comprehensive'}&tanggal_mulai=${params.get('tanggal_mulai') || ''}&tanggal_selesai=${params.get('tanggal_selesai') || ''}`;
-            document.getElementById('btnExportCsv').href = `${base}?format=csv&${q}`;
-            document.getElementById('btnExportPdf').href = `${base}?format=pdf&${q}`;
+            const btnCsv = document.getElementById('btnExportCsv');
+            const btnPdf = document.getElementById('btnExportPdf');
+            if (btnCsv) btnCsv.href = `${base}?format=csv&${q}`;
+            if (btnPdf) btnPdf.href = `${base}?format=pdf&${q}`;
         }
         updateExportLinks();
     </script>

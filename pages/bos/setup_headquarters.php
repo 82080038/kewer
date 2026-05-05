@@ -82,13 +82,13 @@ if ($_POST) {
             <a class="navbar-brand" href="<?php echo baseUrl('dashboard.php'); ?>"><?php echo APP_NAME; ?></a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">
-                    <i class="bi bi-person-circle"></i> <?php echo $user['nama']; ?>
+                    <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($user['nama']); ?>
                 </span>
                 <a class="nav-link" href="<?php echo baseUrl('logout.php'); ?>">Logout</a>
             </div>
         </div>
     </nav>
-    
+
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">

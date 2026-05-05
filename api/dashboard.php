@@ -95,7 +95,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 SUM(plafon) as total_plafon
             FROM pinjaman 
             WHERE cabang_id = ?
-        ", [$cabang_id]);
+        ", [$kantor_id]);
         $loan_stats = is_array($loan_stats_result) && isset($loan_stats_result[0]) ? $loan_stats_result[0] : [
             'total_pinjaman' => 0, 'pengajuan' => 0, 'disetujui' => 0, 
             'aktif' => 0, 'lunas' => 0, 'total_plafon' => 0
@@ -113,7 +113,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 SUM(denda) as total_denda
             FROM angsuran 
             WHERE cabang_id = ?
-        ", [$cabang_id]);
+        ", [$kantor_id]);
         $installment_stats = is_array($installment_stats_result) && isset($installment_stats_result[0]) ? $installment_stats_result[0] : [
             'total_angsuran' => 0, 'belum' => 0, 'lunas' => 0, 
             'telat' => 0, 'total_tagihan' => 0, 'total_dibayar' => 0, 'total_denda' => 0

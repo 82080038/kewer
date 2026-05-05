@@ -127,55 +127,10 @@ if ($_POST) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="../../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
-    <div class="container-fluid">
-        <div class="row">
-            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="../../dashboard.php">
-                                <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../nasabah/index.php">
-                                <i class="bi bi-people"></i> Nasabah
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../pinjaman/index.php">
-                                <i class="bi bi-cash-stack"></i> Pinjaman
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../angsuran/index.php">
-                                <i class="bi bi-calendar-check"></i> Angsuran
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="index.php">
-                                <i class="bi bi-person-badge"></i> Petugas
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../cabang/index.php">
-                                <i class="bi bi-building"></i> Cabang
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
-            
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <div class="main-container">
+        <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
+        
+        <main class="content-area">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Tambah Petugas</h1>
                     <a href="index.php" class="btn btn-secondary">

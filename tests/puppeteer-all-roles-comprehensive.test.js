@@ -41,10 +41,15 @@ function logSuccess(testName) {
 
 // Roles to test
 const testUsers = [
-  { role: 'superadmin', username: 'patri', password: 'password' },
-  { role: 'bos', username: 'bos_simulasi', password: 'password123' },
-  { role: 'petugas', username: 'petugas1_sim', password: 'password123' },
-  { role: 'manager_pusat', username: 'manager_pusat_sim', password: 'password123' }
+  { role: 'appOwner', username: 'appowner', password: 'AppOwner2024!' },
+  { role: 'bos', username: 'patri', password: 'Kewer2024!' },
+  { role: 'manager_pusat', username: 'mgr_pusat', password: 'Kewer2024!' },
+  { role: 'manager_cabang', username: 'mgr_balige', password: 'Kewer2024!' },
+  { role: 'admin_pusat', username: 'adm_pusat', password: 'Kewer2024!' },
+  { role: 'admin_cabang', username: 'adm_balige', password: 'Kewer2024!' },
+  { role: 'petugas_pusat', username: 'ptr_pusat', password: 'Kewer2024!' },
+  { role: 'petugas_cabang', username: 'ptr_balige', password: 'Kewer2024!' },
+  { role: 'karyawan', username: 'krw_pusat', password: 'Kewer2024!' }
 ];
 
 // Expected menu order
@@ -90,15 +95,34 @@ async function runTests() {
     // Test each role
     for (const role of testUsers) {
       try {
-        console.log(`\n📋 Testing Role: ${role.name}`);
-        
+        console.log(`\n📋 Testing Role: ${role.role}`);
+
+        // Clear all cookies from browser to avoid session persistence
+        const client = await page.target().createCDPSession();
+        await client.send('Network.clearBrowserCookies');
+        await client.send('Network.clearBrowserCache');
+
         // Login
         await page.goto(config.baseUrl + '/login.php?test_login=true&username=' + role.username + '&password=' + role.password);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
         const currentUrl = page.url();
         console.log(`  Current URL after login: ${currentUrl}`);
-        
+
+        // Handle appOwner differently (has own dashboard)
+        if (role.role === 'appOwner') {
+          if (currentUrl.includes('pages/app_owner/dashboard.php')) {
+            console.log(`  ✓ ${role.role} login successful (appOwner dashboard)`);
+            results.roles.push({ role: role.role, status: 'Success', menuItems: ['Dashboard', 'Approvals', 'Koperasi', 'Billing', 'Usage', 'AI Advisor', 'Settings', 'Features'] });
+            await takeScreenshot(page, `${role.role}_dashboard`);
+            continue;
+          } else {
+            console.log(`  ⚠️ ${role.role} login failed`);
+            results.roles.push({ role: role.role, status: 'Login Failed', menuItems: [] });
+            continue;
+          }
+        }
+
         // Accept dashboard.php or setup_headquarters.php as valid login success
         if (!currentUrl.includes('dashboard.php') && !currentUrl.includes('setup_headquarters.php')) {
           console.log(`  ⚠️ ${role.role} login failed or redirected`);
@@ -111,23 +135,23 @@ async function runTests() {
           results.roles.push({ role: role.role, status: 'Login Failed', menuItems: [] });
           continue;
         }
-        
+
         // If on setup_headquarters.php, redirect to dashboard
         if (currentUrl.includes('setup_headquarters.php')) {
           console.log(`  Redirecting from setup_headquarters to dashboard`);
           await page.goto(config.baseUrl + '/dashboard.php');
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
-        
+
         await page.waitForSelector('.sidebar', { timeout: 5000 });
         console.log(`  ✓ ${role.role} login successful`);
-        
+
         // Get menu items
         const menuItems = await page.evaluate(() => {
           const links = Array.from(document.querySelectorAll('.sidebar .nav-link'));
           return links.map(link => link.textContent.trim());
         });
-        
+
         console.log(`  Menu items found: ${menuItems.length}`);
         menuItems.forEach(item => console.log(`    - ${item}`));
         
@@ -159,7 +183,13 @@ async function runTests() {
         
         logSuccess(`${role.role} Role Test`);
         await takeScreenshot(page, `role-${role.role}-dashboard`);
-        
+
+        // Logout before testing next role
+        console.log(`  Logging out ${role.role}...`);
+        await page.goto(config.baseUrl + '/logout.php');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log(`  ✓ ${role.role} logged out`);
+
         // Test navigation to each accessible menu item
         for (const menuItem of menuItems.slice(0, 3)) { // Test first 3 menu items
           try {

@@ -53,7 +53,7 @@ async function runTests() {
     await page.setDefaultNavigationTimeout(30000);
 
     // Login as petugas
-    await page.goto(config.baseUrl + '/login.php?test_login=true&username=test_petugas&password=password123');
+    await page.goto(config.baseUrl + '/login.php?test_login=true&username=ptr_pusat&password=Kewer2024!');
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     const currentUrl = page.url();
@@ -71,13 +71,17 @@ async function runTests() {
       await page.goto(config.baseUrl + '/pages/nasabah/index.php');
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      const tambahButton = await page.evaluateHandle(() => {
+      const tambahButtonClicked = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll('button, .btn'));
-        return buttons.find(btn => btn.textContent.includes('Tambah'));
+        const tambahButton = buttons.find(btn => btn.textContent.includes('Tambah'));
+        if (tambahButton) {
+          tambahButton.click();
+          return true;
+        }
+        return false;
       });
-      
-      if (tambahButton) {
-        await page.evaluate((btn) => btn.click(), tambahButton);
+
+      if (tambahButtonClicked) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         await page.type('input[name="nama"]', 'Test Petugas Nasabah');
@@ -105,13 +109,17 @@ async function runTests() {
       await page.goto(config.baseUrl + '/pages/pinjaman/index.php');
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      const ajukanButton = await page.evaluateHandle(() => {
+      const ajukanButtonClicked = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll('button, .btn'));
-        return buttons.find(btn => btn.textContent.includes('Ajukan'));
+        const ajukanButton = buttons.find(btn => btn.textContent.includes('Ajukan'));
+        if (ajukanButton) {
+          ajukanButton.click();
+          return true;
+        }
+        return false;
       });
-      
-      if (ajukanButton) {
-        await page.evaluate((btn) => btn.click(), ajukanButton);
+
+      if (ajukanButtonClicked) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         const nasabahSelect = await page.$('select[name="nasabah_id"]');
@@ -120,8 +128,11 @@ async function runTests() {
           await new Promise(resolve => setTimeout(resolve, 500));
           const options = await page.$$('select[name="nasabah_id"] option');
           if (options.length > 1) {
-            await page.select('select[name="nasabah_id"]', options[1].value);
-            await new Promise(resolve => setTimeout(resolve, 500));
+            const optionValue = await page.evaluate(el => el.value, options[1]);
+            if (optionValue) {
+              await page.select('select[name="nasabah_id"]', optionValue);
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
           }
         }
         
@@ -147,26 +158,30 @@ async function runTests() {
     // Workflow 3: Aktivitas Lapangan
     try {
       console.log('\n📋 Workflow 3: Aktivitas Lapangan (Petugas)');
-      
+
       await page.goto(config.baseUrl + '/pages/field_activities/index.php');
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const tambahButton = await page.evaluateHandle(() => {
+
+      const tambahButtonClicked = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll('button, .btn'));
-        return buttons.find(btn => btn.textContent.includes('Tambah'));
+        const tambahButton = buttons.find(btn => btn.textContent.includes('Tambah'));
+        if (tambahButton) {
+          tambahButton.click();
+          return true;
+        }
+        return false;
       });
-      
-      if (tambahButton) {
+
+      if (tambahButtonClicked) {
         try {
-          await page.evaluate((btn) => btn.click(), tambahButton);
           await new Promise(resolve => setTimeout(resolve, 2000));
-          
+
           const modal = await page.$('.modal');
           if (modal) {
             await takeScreenshot(page, 'petugas-aktivitas-modal');
             await page.keyboard.press('Escape');
             await new Promise(resolve => setTimeout(resolve, 500));
-            
+
             logSuccess('Petugas Aktivitas Lapangan');
             results.workflows.push({ workflow: 'Aktivitas Lapangan', status: 'Working' });
           } else {
@@ -192,18 +207,22 @@ async function runTests() {
     // Workflow 4: Kas Petugas
     try {
       console.log('\n📋 Workflow 4: Kas Petugas (Petugas)');
-      
+
       await page.goto(config.baseUrl + '/pages/kas_petugas/index.php');
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const tambahButton = await page.evaluateHandle(() => {
+
+      const tambahButtonClicked = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll('button, .btn'));
-        return buttons.find(btn => btn.textContent.includes('Tambah'));
+        const tambahButton = buttons.find(btn => btn.textContent.includes('Tambah'));
+        if (tambahButton) {
+          tambahButton.click();
+          return true;
+        }
+        return false;
       });
-      
-      if (tambahButton) {
+
+      if (tambahButtonClicked) {
         try {
-          await page.evaluate((btn) => btn.click(), tambahButton);
           await new Promise(resolve => setTimeout(resolve, 2000));
           
           const modal = await page.$('.modal');

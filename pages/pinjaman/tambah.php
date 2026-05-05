@@ -9,15 +9,23 @@ if (!hasPermission('manage_pinjaman')) {
     exit();
 }
 
-$kantor_id = 1; // Single office
-$error = '';
-$success = '';
+// Get cabang filter based on role
+$user = getCurrentUser();
+$role = $user['role'];
+$user_cabang_id = $user['cabang_id'] ?? null;
 
-// Get active nasabah list
-$nasabah_list = query("SELECT id, kode_nasabah, nama FROM nasabah WHERE status = 'aktif' ORDER BY nama");
+// Get active nasabah list with cabang filter
+$cabang_filter = getCabangFilterForRole($role, $user_cabang_id, $user['id']);
+if ($cabang_filter) {
+    $cabang_filter = "AND " . $cabang_filter;
+}
+$nasabah_list = query("SELECT id, kode_nasabah, nama FROM nasabah WHERE status = 'aktif' $cabang_filter ORDER BY nama");
 if (!is_array($nasabah_list)) {
     $nasabah_list = [];
 }
+
+$error = '';
+$success = '';
 
 if ($_POST) {
     $nasabah_id = $_POST['nasabah_id'] ?? '';
@@ -78,13 +86,13 @@ if ($_POST) {
             }
             
             // Insert pinjaman with transaction
-            $result = crudTransaction(function() use ($kantor_id, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi, $bunga_per_bulan, $calc, $tanggal_akad, $tanggal_jatuh_tempo, $tujuan_pinjaman, $jaminan, $jaminan_tipe, $jaminan_nilai) {
+            $result = crudTransaction(function() use ($user_cabang_id, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi, $bunga_per_bulan, $calc, $tanggal_akad, $tanggal_jatuh_tempo, $tujuan_pinjaman, $jaminan, $jaminan_tipe, $jaminan_nilai) {
                 $result = query("INSERT INTO pinjaman (
                     cabang_id, kode_pinjaman, nasabah_id, plafon, tenor, frekuensi, bunga_per_bulan, 
                     total_bunga, total_pembayaran, angsuran_pokok, angsuran_bunga, angsuran_total,
                     tanggal_akad, tanggal_jatuh_tempo, tujuan_pinjaman, jaminan, jaminan_tipe, jaminan_nilai, status, petugas_id
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pengajuan', ?)", [
-                    $kantor_id, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi, $bunga_per_bulan,
+                    $user_cabang_id, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi, $bunga_per_bulan,
                     $calc['total_bunga'], $calc['total_pembayaran'], $calc['angsuran_pokok'], 
                     $calc['angsuran_bunga'], $calc['angsuran_total'], $tanggal_akad, 
                     $tanggal_jatuh_tempo, $tujuan_pinjaman, $jaminan, $jaminan_tipe, $jaminan_nilai ?: null, getCurrentUser()['id']
@@ -94,7 +102,7 @@ if ($_POST) {
                     // Log the CRUD operation
                     $pinjaman_id = query("SELECT LAST_INSERT_ID() as id")[0]['id'];
                     logCrudOperation('pinjaman', 'CREATE', $pinjaman_id, null, [
-                        'cabang_id' => $kantor_id,
+                        'cabang_id' => $user_cabang_id,
                         'kode_pinjaman' => $kode_pinjaman,
                         'nasabah_id' => $nasabah_id,
                         'plafon' => $plafon,
@@ -268,45 +276,10 @@ if ($_POST) {
     </script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="../../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
-    <div class="container-fluid">
-        <div class="row">
-            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="../../dashboard.php">
-                                <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../nasabah/index.php">
-                                <i class="bi bi-people"></i> Nasabah
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="index.php">
-                                <i class="bi bi-cash-stack"></i> Pinjaman
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="../angsuran/index.php">
-                                <i class="bi bi-calendar-check"></i> Angsuran
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
-            
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <div class="main-container">
+        <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
+        
+        <main class="content-area">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Ajukan Pinjaman Baru</h1>
                     <a href="index.php" class="btn btn-secondary">

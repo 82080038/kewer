@@ -51,10 +51,18 @@ $riwayat = query(
 if (!is_array($riwayat)) $riwayat = [];
 
 $page_title = 'Resign / Pindah Cabang Karyawan';
-require_once BASE_PATH . '/includes/header.php';
-require_once BASE_PATH . '/includes/sidebar.php';
 ?>
-<div class="content-area">
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $page_title; ?> - <?php echo APP_NAME; ?></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+<?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
     <div class="container-fluid">
         <div class="row mb-3">
             <div class="col">
@@ -286,5 +294,5 @@ document.getElementById('formTransfer').addEventListener('submit', async functio
     }
 });
 </script>
-
-<?php require_once BASE_PATH . '/includes/footer.php'; ?>
+</body>
+</html>

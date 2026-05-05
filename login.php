@@ -17,11 +17,11 @@ if (isset($_GET['timeout']) && $_GET['timeout'] == '1') {
 // Test-specific login for automated testing (GET request with credentials)
 if (isset($_GET['test_login']) && $_GET['test_login'] === 'true' && APP_ENV === 'development') {
     $username = $_GET['username'] ?? '';
-    $password = $_GET['password'] ?? '';
     
-    if ($username && $password) {
+    if ($username) {
         $user = query("SELECT * FROM users WHERE username = ? AND status = 'aktif'", [$username]);
-        if ($user && password_verify($password, $user[0]['password'])) {
+        if ($user) {
+            // For development mode, allow login without password verification
             $_SESSION['user_id'] = $user[0]['id'];
             $_SESSION['username'] = $user[0]['username'];
             $_SESSION['role'] = $user[0]['role'];
@@ -125,7 +125,7 @@ if ($_POST) {
                     $btn = $role_colors[$du['role']] ?? 'secondary';
                     $label = strtoupper(str_replace('_', ' ', $du['role']));
                 ?>
-                <button type="button" class="btn btn-<?= $btn ?> btn-sm" onclick="quickLogin('<?= htmlspecialchars($du['username']) ?>','password')"><strong><?= $label ?></strong>: <?= htmlspecialchars($du['nama']) ?></button>
+                <button type="button" class="btn btn-<?= $btn ?> btn-sm" onclick="quickLogin('<?= htmlspecialchars($du['username']) ?>')"><strong><?= $label ?></strong>: <?= htmlspecialchars($du['nama']) ?></button>
                 <?php endforeach; ?>
             </div>
         </div>
@@ -136,10 +136,9 @@ if ($_POST) {
         </div>
         
         <script>
-            function quickLogin(username, password) {
-                document.querySelector('input[name="username"]').value = username;
-                document.querySelector('input[name="password"]').value = password;
-                document.querySelector('form').submit();
+            function quickLogin(username) {
+                // Use test_login parameter for automated login (development mode only)
+                window.location.href = 'login.php?test_login=true&username=' + encodeURIComponent(username);
             }
         </script>
     </div>

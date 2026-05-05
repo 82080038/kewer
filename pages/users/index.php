@@ -9,8 +9,35 @@ if (!hasPermission('users.create') && !hasPermission('users.read')) {
     exit();
 }
 
-$kantor_id = 1; // Single office
-$users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.cabang_id = c.id ORDER BY u.created_at DESC");
+$currentUser = getCurrentUser();
+$role = $currentUser['role'];
+$user_cabang_id = $currentUser['cabang_id'] ?? null;
+
+// Filter users based on role
+if ($role === 'appOwner') {
+    // appOwner can see all users except other appOwners
+    $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.cabang_id = c.id WHERE u.role != 'appOwner' ORDER BY u.created_at DESC");
+} elseif ($role === 'bos') {
+    // Bos can see users from their branches
+    $owned_cabangs = getBosOwnedCabangIds();
+    if (!empty($owned_cabangs)) {
+        $placeholders = implode(',', array_fill(0, count($owned_cabangs), '?'));
+        $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.cabang_id = c.id WHERE u.cabang_id IN ($placeholders) AND u.role != 'appOwner' AND u.role != 'bos' ORDER BY u.created_at DESC", $owned_cabangs);
+    } else {
+        $users = [];
+    }
+} elseif (in_array($role, ['manager_pusat', 'admin_pusat'])) {
+    // Manager/Admin pusat can see all users from all branches
+    $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.cabang_id = c.id WHERE u.role != 'appOwner' ORDER BY u.created_at DESC");
+} else {
+    // Other roles can only see users from their own branch
+    if ($user_cabang_id) {
+        $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.cabang_id = c.id WHERE u.cabang_id = ? AND u.role != 'appOwner' ORDER BY u.created_at DESC", [$user_cabang_id]);
+    } else {
+        $users = [];
+    }
+}
+
 if (!is_array($users)) {
     $users = [];
 }
@@ -31,16 +58,6 @@ if (!is_array($users)) {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="../../dashboard.php">Dashboard</a>
-                <a class="nav-link" href="../../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
     <div class="main-container">
         <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
         

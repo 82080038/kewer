@@ -19,14 +19,14 @@ for user in patri mgr_pusat adm_pusat ptr_pngr1 krw_pngr; do
 done
 echo "Koperasi: $((total-fail))/$total OK"
 
-# Test appOwner pages (7 pages)
+# Test appOwner pages (8 pages)
 OC=$(curl -s -D - -X POST "http://localhost/kewer/login.php" -d "username=appowner" -d "password=AppOwner2024!" | grep -i "Set-Cookie.*PHPSESSID" | head -1 | sed "s/.*PHPSESSID=/PHPSESSID=/" | sed "s/;.*//")
 ok=0
-for page in dashboard.php approvals.php koperasi.php billing.php usage.php ai_advisor.php settings.php; do
+for page in dashboard.php approvals.php koperasi.php billing.php usage.php ai_advisor.php settings.php features.php; do
   body=$(curl -s -b "$OC" "http://localhost/kewer/pages/app_owner/$page")
   echo "$body" | grep -qi "Fatal error\|Parse error\|Uncaught" || ok=$((ok+1))
 done
-echo "appOwner: $ok/7 OK"
+echo "appOwner: $ok/8 OK"
 ```
 
 ### 2. Database Integrity Test

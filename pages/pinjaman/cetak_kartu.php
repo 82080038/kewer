@@ -3,12 +3,14 @@ require_once __DIR__ . '/../../config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
 
+$user = getCurrentUser();
+$user_cabang_id = $user['cabang_id'] ?? null;
+$kantor_id = $user_cabang_id ?? 1; // Use user's cabang_id or default to 1
+
 $pinjaman_id = $_GET['id'] ?? null;
 if (!$pinjaman_id) {
     die('Parameter tidak valid');
 }
-
-$kantor_id = 1; // Single office
 
 // Get loan data
 $pinjaman = query("

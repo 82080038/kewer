@@ -3,7 +3,9 @@ require_once __DIR__ . '/../../config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
 
-$kantor_id = 1; // Single office
+$user = getCurrentUser();
+$user_cabang_id = $user['cabang_id'] ?? null;
+$kantor_id = $user_cabang_id ?? 1; // Use user's cabang_id or default to 1
 $cabang_id = getCurrentCabang() ?: $kantor_id;
 $search = $_GET['search'] ?? '';
 $status = $_GET['status'] ?? '';

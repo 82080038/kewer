@@ -65,8 +65,39 @@ description: Workflow untuk memperbaiki error secara menyeluruh di aplikasi Kewe
 1. Cari semua external language URL
 2. Ganti dengan inline Indonesian translations
 
+### Error: SQL column mismatch
+1. Periksa schema tabel dengan `DESCRIBE kewer.<table>`
+2. Common mismatches:
+   - `cabang.nama` → harus `cabang.nama_cabang`
+   - `pembayaran.metode` → harus `pembayaran.cara_bayar`
+   - `pembayaran.dibayar_oleh` → harus `pembayaran.petugas_id`
+   - `angsuran.ke` → harus `angsuran.no_angsuran`
+3. Gunakan `grep -rn "pattern" pages/ api/` untuk cari instance serupa
+
+### Error: Undefined variable
+1. Pastikan variabel diinisialisasi sebelum digunakan di template
+2. Pola: pindahkan inisialisasi `$error = ''; $success = '';` ke luar blok `if ($_POST)`
+
+### Error: Layout inconsistency
+1. Semua halaman harus menggunakan `sidebar.php` (bukan inline sidebar)
+2. Pola layout standar: `main-container > sidebar.php > content-area`
+3. Jangan duplikasi navbar — `sidebar.php` sudah menyediakan navbar
+
+## Quick Test Command
+```bash
+# Full E2E test semua role
+bash /tmp/kewer_e2e.sh
+
+# Check error log
+cat logs/error.log
+
+# PHP syntax check
+find . -name "*.php" -not -path "*/vendor/*" | xargs -I{} php -l {}
+```
+
 ## Catatan Penting
 - Selalu gunakan pendekatan yang konsisten
 - Dokumentasikan perubahan yang dilakukan
 - Pastikan perbaikan tidak merusak fungsionalitas yang sudah ada
 - Test secara menyeluruh setelah perbaikan besar
+- Periksa `logs/error.log` setelah testing — harus kosong

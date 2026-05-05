@@ -213,7 +213,10 @@ function calculateLoanDinamis($plafon, $tenor, $jenis_pinjaman, $nasabah_id = nu
 // Create loan schedule - supports harian/mingguan/bulanan
 function createLoanSchedule($pinjaman_id, $plafon, $tenor, $bunga_per_bulan, $tanggal_akad, $frekuensi = 'bulanan') {
     $calc = calculateLoan($plafon, $tenor, $bunga_per_bulan, $frekuensi);
-    $kantor_id = 1; // Single office
+    
+    // Get cabang_id from pinjaman record
+    $pinjaman_data = query("SELECT cabang_id FROM pinjaman WHERE id = ?", [$pinjaman_id]);
+    $cabang_id = is_array($pinjaman_data) && isset($pinjaman_data[0]) ? $pinjaman_data[0]['cabang_id'] : 1;
     
     $success_count = 0;
     
@@ -250,7 +253,10 @@ function createLoanSchedule($pinjaman_id, $plafon, $tenor, $bunga_per_bulan, $ta
 // Create loan schedule with dynamic interest (NEW) - supports harian/mingguan/bulanan
 function createLoanScheduleDinamis($pinjaman_id, $plafon, $tenor, $jenis_pinjaman, $tanggal_akad, $nasabah_id = null, $jaminan_tipe = 'tanpa', $metode = 'flat', $frekuensi = 'bulanan') {
     $calc = calculateLoanDinamis($plafon, $tenor, $jenis_pinjaman, $nasabah_id, $jaminan_tipe, $metode);
-    $kantor_id = 1; // Single office
+    
+    // Get cabang_id from pinjaman record
+    $pinjaman_data = query("SELECT cabang_id FROM pinjaman WHERE id = ?", [$pinjaman_id]);
+    $cabang_id = is_array($pinjaman_data) && isset($pinjaman_data[0]) ? $pinjaman_data[0]['cabang_id'] : 1;
     
     for ($i = 1; $i <= $tenor; $i++) {
         switch ($frekuensi) {
@@ -859,6 +865,70 @@ function buildCabangFilter($field = 'cabang_id') {
         'clause'  => "AND $field IN ($placeholders)",
         'params'  => $ids,
     ];
+}
+
+/**
+ * Get cabang filter based on role for dashboard and pages
+ * Returns WHERE clause string for filtering data by cabang
+ */
+function getCabangFilterForRole($role, $user_cabang_id, $user_id) {
+    switch($role) {
+        case 'bos':
+            // Bos melihat semua cabang yang dia miliki
+            $owned_cabangs = getBosOwnedCabangIds();
+            if (empty($owned_cabangs)) return "";
+            return "cabang_id IN (" . implode(',', array_map('intval', $owned_cabangs)) . ")";
+        case 'manager_pusat':
+            // Manager pusat melihat semua cabang
+            return "";
+        default:
+            // Role lain hanya melihat cabang mereka sendiri
+            if ($user_cabang_id) {
+                return "cabang_id = " . intval($user_cabang_id);
+            }
+            return "";
+    }
+}
+
+/**
+ * Get cabang filter for page-specific tables with alias
+ * Returns WHERE clause string with table alias prefix
+ */
+function getPageCabangFilter($role, $user_cabang_id, $user_id, $table_alias = '') {
+    $prefix = $table_alias ? $table_alias . '.' : '';
+    switch($role) {
+        case 'bos':
+            $owned_cabangs = getBosOwnedCabangIds();
+            if (empty($owned_cabangs)) return "";
+            return "{$prefix}cabang_id IN (" . implode(',', array_map('intval', $owned_cabangs)) . ")";
+        case 'manager_pusat':
+            return "";
+        default:
+            if ($user_cabang_id) {
+                return "{$prefix}cabang_id = " . intval($user_cabang_id);
+            }
+            return "";
+    }
+}
+
+/**
+ * Get cabang filter for reports
+ * Returns array of cabang IDs or null
+ */
+function getReportCabangFilter($role, $user_cabang_id, $user_id) {
+    switch($role) {
+        case 'bos':
+            $owned_cabangs = getBosOwnedCabangIds();
+            if (empty($owned_cabangs)) return null;
+            return $owned_cabangs;
+        case 'manager_pusat':
+            return null; // All branches
+        default:
+            if ($user_cabang_id) {
+                return [$user_cabang_id];
+            }
+            return null;
+    }
 }
 
 // ============================================

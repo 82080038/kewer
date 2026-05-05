@@ -3,10 +3,19 @@ require_once __DIR__ . '/../../config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
 
-$kantor_id = 1; // Single office
+$user = getCurrentUser();
+$role = $user['role'];
+$user_cabang_id = $user['cabang_id'] ?? null;
+
 $search = $_GET['search'] ?? '';
 $status = $_GET['status'] ?? '';
 $bulan = $_GET['bulan'] ?? date('Y-m');
+
+// Get cabang filter based on role (using shared function from includes/functions.php)
+$cabang_filter = getPageCabangFilter($role, $user_cabang_id, $user['id'], 'p');
+if ($cabang_filter) {
+    $cabang_filter = "AND " . $cabang_filter;
+}
 
 // Build query
 $where = ["1=1"];
@@ -30,6 +39,11 @@ if ($bulan) {
     $params[] = $bulan;
 }
 
+// Add cabang filter
+if ($cabang_filter) {
+    $where[] = ltrim($cabang_filter, 'AND ');
+}
+
 $where_clause = "WHERE " . implode(" AND ", $where);
 
 // Get angsuran data
@@ -47,7 +61,20 @@ if (!is_array($angsuran)) {
     $angsuran = [];
 }
 
-// Get statistics
+// Get statistics with cabang filter (need to join through pinjaman)
+$stats_where = "";
+if ($cabang_filter) {
+    // Transform filter for angsuran table (need to join through pinjaman)
+    if ($role === 'bos') {
+        $owned_cabangs = getBosOwnedCabangIds();
+        if (!empty($owned_cabangs)) {
+            $stats_where = "WHERE a.pinjaman_id IN (SELECT id FROM pinjaman WHERE cabang_id IN (" . implode(',', array_map('intval', $owned_cabangs)) . "))";
+        }
+    } elseif ($user_cabang_id) {
+        $stats_where = "WHERE a.pinjaman_id IN (SELECT id FROM pinjaman WHERE cabang_id = " . intval($user_cabang_id) . ")";
+    }
+}
+
 $stats_result = query("
     SELECT
         COUNT(*) as total,
@@ -57,11 +84,12 @@ $stats_result = query("
         SUM(total_angsuran) as total_tagihan,
         SUM(total_bayar) as total_dibayar,
         SUM(denda) as total_denda
-    FROM angsuran
+    FROM angsuran a
+    $stats_where
 ");
 $stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] : ['total' => 0, 'belum' => 0, 'lunas' => 0, 'telat' => 0, 'total_tagihan' => 0, 'total_dibayar' => 0, 'total_denda' => 0];
 
-// Get late payments
+// Get late payments with cabang filter
 $late_payments = checkLatePayments();
 ?>
 
@@ -81,19 +109,9 @@ $late_payments = checkLatePayments();
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="../../dashboard.php">Dashboard</a>
-                <a class="nav-link" href="../../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
     <div class="main-container">
         <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
-        
+
         <main class="content-area">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Data Angsuran</h1>

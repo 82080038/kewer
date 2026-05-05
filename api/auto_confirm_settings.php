@@ -5,8 +5,7 @@ ini_set('display_errors', 0);
 
 try {
     require_once __DIR__ . '/../config/path.php';
-    require_once BASE_PATH . '/config/database.php';
-    require_once BASE_PATH . '/config/session.php';
+    require_once BASE_PATH . '/includes/functions.php';
     require_once BASE_PATH . '/includes/auto_confirm.php';
 } catch (Exception $e) {
     http_response_code(500);

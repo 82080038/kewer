@@ -9,10 +9,15 @@ if (!hasPermission('manage_kas_bon') && !hasPermission('view_kas_bon')) {
     exit();
 }
 
-$kantor_id = 1; // Single office
+$user = getCurrentUser();
+$role = $user['role'];
+$user_cabang_id = $user['cabang_id'] ?? null;
+$kantor_id = $user_cabang_id ?? 1; // Use user's cabang_id or default to 1
+
 require_once BASE_PATH . '/includes/kas_bon.php';
 $kasBon = new KasBon($kantor_id);
 
+$search = $_GET['search'] ?? '';
 $status = $_GET['status'] ?? '';
 $kasbons = $kasBon->getAll(['status' => $status]);
 if (!is_array($kasbons)) {
@@ -37,19 +42,9 @@ $stats = $kasBon->getStatistics();
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="../../dashboard.php">Dashboard</a>
-                <a class="nav-link" href="../../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
     <div class="main-container">
         <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
-        
+
         <main class="content-area">
             <div class="col-md-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">

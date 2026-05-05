@@ -10,3 +10,6 @@ simulation/logs/
 simulation/screenshots/
 composer-setup.php
 .windsurf/credentials.env
+cookies*.txt
+*.pyc
+/tmp/

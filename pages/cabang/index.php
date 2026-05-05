@@ -19,9 +19,17 @@ if ($currentUser['role'] === 'bos') {
 } elseif (in_array($currentUser['role'], ['manager_pusat', 'admin_pusat'])) {
     // Manager/Admin pusat can see all branches
     $cabang = query("SELECT c.*, u.nama as owner_name FROM cabang c LEFT JOIN users u ON c.owner_bos_id = u.id ORDER BY c.is_headquarters DESC, c.created_at DESC");
+} elseif (in_array($currentUser['role'], ['manager_cabang', 'admin_cabang', 'petugas_pusat', 'petugas_cabang', 'karyawan'])) {
+    // Other roles can only see their assigned branch
+    $user_cabang_id = $currentUser['cabang_id'] ?? null;
+    if ($user_cabang_id) {
+        $cabang = query("SELECT c.*, u.nama as owner_name FROM cabang c LEFT JOIN users u ON c.owner_bos_id = u.id WHERE c.id = ? ORDER BY c.is_headquarters DESC, c.created_at DESC", [$user_cabang_id]);
+    } else {
+        $cabang = [];
+    }
 } else {
-    // Other roles can see their assigned branch or all if they have permission
-    $cabang = query("SELECT c.*, u.nama as owner_name FROM cabang c LEFT JOIN users u ON c.owner_bos_id = u.id ORDER BY c.is_headquarters DESC, c.created_at DESC");
+    // Default: no access
+    $cabang = [];
 }
 
 if (!is_array($cabang)) {
@@ -44,16 +52,6 @@ if (!is_array($cabang)) {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="../../dashboard.php"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="../../dashboard.php">Dashboard</a>
-                <a class="nav-link" href="../../logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
     <div class="main-container">
         <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
         

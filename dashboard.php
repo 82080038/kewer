@@ -6,6 +6,7 @@ requireLogin();
 
 $user = getCurrentUser();
 $role = $user['role'];
+$user_cabang_id = $user['cabang_id'] ?? null;
 
 // appOwner has their own dashboard — redirect
 if ($role === 'appOwner') {
@@ -13,17 +14,33 @@ if ($role === 'appOwner') {
     exit();
 }
 
-// Single office model - get consolidated stats for all data
-$nasabah_result = query("SELECT COUNT(*) as total FROM nasabah WHERE status = 'aktif'");
+// Get cabang filter based on role
+$cabang_filter = getCabangFilterForRole($role, $user_cabang_id, $user['id']);
+if ($cabang_filter) {
+    $cabang_filter = "AND " . $cabang_filter;
+}
+
+// Get stats with cabang filter
+$nasabah_result = query("SELECT COUNT(*) as total FROM nasabah WHERE status = 'aktif' $cabang_filter");
 $total_nasabah = is_array($nasabah_result) && isset($nasabah_result[0]) ? $nasabah_result[0]['total'] : 0;
 
-$pinjaman_result = query("SELECT COUNT(*) as total FROM pinjaman WHERE status = 'aktif'");
+$pinjaman_result = query("SELECT COUNT(*) as total FROM pinjaman WHERE status = 'aktif' $cabang_filter");
 $total_pinjaman = is_array($pinjaman_result) && isset($pinjaman_result[0]) ? $pinjaman_result[0]['total'] : 0;
 
-$outstanding_result = query("SELECT SUM(plafon) as total FROM pinjaman WHERE status = 'aktif'");
-$outstanding = is_array($outstanding_result) && isset($outstanding_result[0]) ? $outstanding_result[0]['total'] : 0;
+$outstanding_result = query("SELECT SUM(plafon) as total FROM pinjaman WHERE status = 'aktif' $cabang_filter");
+$outstanding = is_array($outstanding_result) && isset($outstanding_result[0]) ? ($outstanding_result[0]['total'] ?? 0) : 0;
 
-$late_payments = count(checkLatePayments());
+// Get late payments with cabang filter
+$late_payments_result = query("SELECT COUNT(*) as total FROM pinjaman WHERE status = 'aktif' AND tanggal_jatuh_tempo < CURDATE() $cabang_filter");
+$late_payments = is_array($late_payments_result) && isset($late_payments_result[0]) ? $late_payments_result[0]['total'] : 0;
+
+// Get today's payments (for petugas)
+$today_payments_result = query("SELECT COUNT(*) as total FROM pembayaran WHERE DATE(created_at) = CURDATE() $cabang_filter");
+$today_payments = is_array($today_payments_result) && isset($today_payments_result[0]) ? $today_payments_result[0]['total'] : 0;
+
+// Get pending approvals (for bos/manager)
+$pending_approvals_result = query("SELECT COUNT(*) as total FROM pinjaman WHERE status = 'pengajuan' $cabang_filter");
+$pending_approvals = is_array($pending_approvals_result) && isset($pending_approvals_result[0]) ? $pending_approvals_result[0]['total'] : 0;
 
 // Get recent activities from audit_log
 $recent_activities = query("
@@ -68,21 +85,9 @@ if (!is_array($recent_activities)) {
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#"><?php echo APP_NAME; ?></a>
-            <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
-                    <i class="bi bi-person-circle"></i> <?php echo $user['nama']; ?>
-                </span>
-                <a class="nav-link" href="logout.php">Logout</a>
-            </div>
-        </div>
-    </nav>
-    
     <div class="main-container">
         <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
-        
+
         <main class="content-area">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Dashboard</h1>
@@ -90,13 +95,21 @@ if (!is_array($recent_activities)) {
                         <select class="form-select" id="cabangSelector" style="width: 200px;">
                             <option value="">Semua Cabang</option>
                             <?php
-                            $cabangs = query("SELECT * FROM cabang WHERE status = 'aktif'");
-                            foreach ($cabangs as $cabang):
+                            // Only show cabangs owned by this bos
+                            $owned_cabangs = getBosOwnedCabangIds();
+                            if (!empty($owned_cabangs)) {
+                                $placeholders = implode(',', array_fill(0, count($owned_cabangs), '?'));
+                                $cabangs = query("SELECT * FROM cabang WHERE status = 'aktif' AND id IN ($placeholders)", $owned_cabangs);
+                                if (is_array($cabangs)) {
+                                    foreach ($cabangs as $cabang):
+                                    ?>
+                                        <option value="<?php echo $cabang['id']; ?>">
+                                            <?php echo $cabang['nama_cabang']; ?>
+                                        </option>
+                                    <?php endforeach;
+                                }
+                            }
                             ?>
-                                <option value="<?php echo $cabang['id']; ?>">
-                                    <?php echo $cabang['nama_cabang']; ?>
-                                </option>
-                            <?php endforeach; ?>
                         </select>
                     <?php endif; ?>
                 </div>
@@ -122,7 +135,6 @@ if (!is_array($recent_activities)) {
                             </div>
                         </div>
                     </div>
-                    
                     <div class="col-xl-3 col-md-6 mb-4">
                         <div class="card border-left-success shadow h-100 py-2">
                             <div class="card-body">
@@ -142,7 +154,6 @@ if (!is_array($recent_activities)) {
                             </div>
                         </div>
                     </div>
-                    
                     <div class="col-xl-3 col-md-6 mb-4">
                         <div class="card border-left-info shadow h-100 py-2">
                             <div class="card-body">
@@ -152,24 +163,23 @@ if (!is_array($recent_activities)) {
                                             Outstanding
                                         </div>
                                         <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                            <?php echo formatRupiah($outstanding); ?>
+                                            Rp <?php echo number_format($outstanding, 0, ',', '.'); ?>
                                         </div>
                                     </div>
                                     <div class="col-auto">
-                                        <i class="bi bi-credit-card fa-2x text-gray-300"></i>
+                                        <i class="bi bi-currency-dollar fa-2x text-gray-300"></i>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
                     <div class="col-xl-3 col-md-6 mb-4">
                         <div class="card border-left-warning shadow h-100 py-2">
                             <div class="card-body">
                                 <div class="row no-gutters align-items-center">
                                     <div class="col mr-2">
                                         <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                            Tunggakan
+                                            Telat Bayar
                                         </div>
                                         <div class="h5 mb-0 font-weight-bold text-gray-800">
                                             <?php echo $late_payments; ?>
@@ -184,6 +194,128 @@ if (!is_array($recent_activities)) {
                     </div>
                 </div>
                 
+                <!-- Additional Stats for Petugas -->
+                <?php if (in_array($role, ['petugas_pusat', 'petugas_cabang'])): ?>
+                <div class="row mb-4">
+                    <div class="col-xl-6 col-md-6 mb-4">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            Pembayaran Hari Ini
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <?php echo $today_payments; ?>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-calendar-check fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-6 col-md-6 mb-4">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            Aktivitas Lapangan
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <?php echo $today_payments; ?> Kunjungan
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-geo-alt fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <!-- Additional Stats for Bos/Manager -->
+                <?php if (in_array($role, ['bos', 'manager_pusat'])): ?>
+                <div class="row mb-4">
+                    <div class="col-xl-6 col-md-6 mb-4">
+                        <div class="card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                            Menunggu Approval
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <?php echo $pending_approvals; ?>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-clock fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-6 col-md-6 mb-4">
+                        <div class="card border-left-danger shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                            Total Cabang
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            <?php 
+                                            if ($role === 'bos') {
+                                                echo count(getBosOwnedCabangIds());
+                                            } else {
+                                                $cabang_count = query("SELECT COUNT(*) as total FROM cabang WHERE status = 'aktif'");
+                                                echo $cabang_count[0]['total'] ?? 0;
+                                            }
+                                            ?>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-building fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Recent Activities -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Aktivitas Terbaru</h6>
+                            </div>
+                            <div class="card-body">
+                                <?php if (is_array($recent_activities) && count($recent_activities) > 0): ?>
+                                    <div class="list-group">
+                                        <?php foreach ($recent_activities as $activity): ?>
+                                            <div class="list-group-item">
+                                                <div class="d-flex w-100 justify-content-between">
+                                                    <h6 class="mb-1"><?php echo htmlspecialchars($activity['activity']); ?></h6>
+                                                    <small><?php echo date('d/m/Y H:i', strtotime($activity['created_at'])); ?></small>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <p class="text-muted">Belum ada aktivitas.</p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Charts Row -->
                 <div class="row mb-4">
                     <div class="col-md-6">
@@ -252,22 +384,22 @@ if (!is_array($recent_activities)) {
 
         // Get chart data from PHP
         const chartData = <?php
-            // Monthly loan data for last 6 months
+            // Monthly loan data for last 6 months with cabang filter
             $monthly_loans = [];
             for ($i = 5; $i >= 0; $i--) {
                 $month = date('Y-m', strtotime("-$i months"));
                 $month_name = formatDate(strtotime("-$i months"), 'M Y');
-                
-                $count = query("SELECT COUNT(*) as total FROM pinjaman WHERE DATE_FORMAT(created_at, '%Y-%m') = ?", [$month]);
-                
+
+                $count = query("SELECT COUNT(*) as total FROM pinjaman WHERE DATE_FORMAT(created_at, '%Y-%m') = ? $cabang_filter", [$month]);
+
                 $monthly_loans[] = [
                     'month' => $month_name,
                     'count' => is_array($count) && isset($count[0]) ? $count[0]['total'] : 0
                 ];
             }
 
-            // Loan status distribution
-            $status_data = query("SELECT status, COUNT(*) as total FROM pinjaman GROUP BY status");
+            // Loan status distribution with cabang filter
+            $status_data = query("SELECT status, COUNT(*) as total FROM pinjaman WHERE 1=1 $cabang_filter GROUP BY status");
 
             $status_labels = [];
             $status_counts = [];
@@ -356,16 +488,8 @@ if (!is_array($recent_activities)) {
             }
         });
 
-        <?php if (isFeatureEnabled('pwa')): ?>
-        // PWA: Register Service Worker
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/kewer/service-worker.js')
-                    .then(reg => console.log('SW registered:', reg.scope))
-                    .catch(err => console.warn('SW registration failed:', err));
-            });
-        }
-        <?php endif; ?>
+        // Service worker disabled to prevent MIME type errors
+        // If PWA is needed in production, re-enable with proper configuration
     </script>
 </body>
 </html>
