@@ -43,11 +43,11 @@ cd /opt/lampp/htdocs/kewer
 
 ### Cek Database Status
 ```bash
-# Cek jumlah tabel ketiga database
+# Cek jumlah tabel ketiga database (base tables only)
 /opt/lampp/bin/mysql -u root -proot -e "
-SELECT 'kewer' as db, COUNT(*) as tables FROM information_schema.TABLES WHERE TABLE_SCHEMA='kewer'
-UNION ALL SELECT 'db_alamat_simple', COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='db_alamat_simple'
-UNION ALL SELECT 'db_orang', COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='db_orang';
+SELECT 'kewer' as db, COUNT(*) as tables FROM information_schema.TABLES WHERE TABLE_SCHEMA='kewer' AND TABLE_TYPE='BASE TABLE'
+UNION ALL SELECT 'db_alamat_simple', COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='db_alamat_simple' AND TABLE_TYPE='BASE TABLE'
+UNION ALL SELECT 'db_orang', COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='db_orang' AND TABLE_TYPE='BASE TABLE';
 "
 
 # Cek data utama
@@ -77,7 +77,7 @@ UNION ALL SELECT 'addresses', COUNT(*) FROM db_orang.addresses;
 ```
 
 ### Database Files (database/)
-- `kewer.sql` — Full export kewer (49 tabel + 3 views + data)
+- `kewer.sql` — Full export kewer (64 tabel + 3 views + data)
 - `db_alamat_simple.sql` — Referensi lokasi Sumut (4 tabel, 1 prov + 33 kab + 448 kec + 6.101 desa)
 - `db_orang.sql` — Identitas orang + geospasial nasional (19 tabel + 6 views)
 

@@ -4,6 +4,8 @@ description: Impact Check Rule for Application Development
 
 # Impact Check Rule
 
+> **Terakhir diperbarui**: 7 Mei 2026
+
 ## Purpose
 When fixing or modifying one part of the application, always check for impacts on other parts that may be affected.
 

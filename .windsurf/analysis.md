@@ -1,6 +1,6 @@
 # Kewer Application Analysis
 
-> **Terakhir diperbarui**: 6 Mei 2026
+> **Terakhir diperbarui**: 7 Mei 2026
 > **Versi Aplikasi**: v2.3.1 (Feature Flags + Layout Consistency)
 
 ## Overview
@@ -129,7 +129,7 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 12. Credit Scoring Sederhana
 13. Integrasi Pembayaran Digital
 
-## Database Schema — kewer (49 base tables + 3 views)
+## Database Schema — kewer (64 base tables + 3 views)
 
 ### Operational Tables
 | # | Tabel | Fungsi |
@@ -156,6 +156,15 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 | 20 | transaksi_log | Log transaksi |
 | 21 | blacklist_log | Log blacklist nasabah |
 | 22 | nasabah_orang_mapping | Mapping nasabah ↔ db_orang |
+| 23 | ahli_waris | Data ahli waris nasabah |
+| 24 | jurnal_kas | Jurnal kas |
+| 25 | kelebihan_bayar | Kelebihan pembayaran |
+| 26 | pembayaran_offline_queue | Antrian pembayaran offline |
+| 27 | pengganti_petugas | Pengganti petugas |
+| 28 | restrukturisasi | Restrukturisasi pinjaman |
+| 29 | riwayat_skor_kredit | Riwayat skor kredit nasabah |
+| 30 | write_off | Write-off pinjaman bermasalah |
+| 31 | notifikasi | Notifikasi sistem |
 
 ### Organizational & Auth Tables
 | # | Tabel | Fungsi |
@@ -247,7 +256,7 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 
 ## Application Structure
 
-### API Endpoints (30+ files)
+### API Endpoints (32 files)
 | File | Fungsi |
 |------|--------|
 | alamat.php | Cascade dropdown lokasi (db_alamat_simple) |
@@ -278,9 +287,11 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 | roles.php | Manajemen role & permission |
 | setting_bunga.php | Setting bunga |
 | target_petugas.php | Target petugas (v2.3.1) |
-| wa_notifikasi.php | WA notifikasi via Fonnte (v2.3.1) | |
+| wa_notifikasi.php | WA notifikasi via Fonnte (v2.3.1) |
+| business.php | Business logic operations |
+| transfer_karyawan.php | Transfer karyawan antar cabang |
 
-### Includes (26+ files)
+### Includes (27 files)
 | File | Fungsi |
 |------|--------|
 | functions.php | Core business logic |
@@ -308,10 +319,11 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 | auto_confirm.php | Auto-confirm logic |
 | sidebar.php | Dynamic sidebar rendering |
 | feature_flags.php | Feature flags helper (v2.3.1) |
-| wa_notifikasi.php | WA notification via Fonnte (v2.3.1) | |
+| wa_notifikasi.php | WA notification via Fonnte (v2.3.1) |
+| business_logic.php | Business logic operations |
 
-### Page Modules (24 directories)
-angsuran, app_owner, audit, auto_confirm, bos, cabang, cash_reconciliation, family_risk, field_activities, jaminan, kas_bon, kas_petugas, kinerja, laporan, nasabah, pembayaran, pengeluaran, permissions, petugas, pinjaman, rute_harian, setting_bunga, superadmin, users
+### Page Modules (25 directories)
+angsuran, app_owner, audit, auto_confirm, bos, cabang, cash_reconciliation, family_risk, field_activities, jaminan, kas_bon, kas_petugas, kinerja, laporan, nasabah, notifikasi, pembayaran, pengeluaran, permissions, petugas, pinjaman, rute_harian, setting_bunga, superadmin, users
 
 ### appOwner Pages (8)
 dashboard, approvals, koperasi, billing, usage, ai_advisor, settings, features

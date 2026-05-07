@@ -33,11 +33,11 @@ cd /opt/lampp/htdocs/kewer
 
 ### 4. Verifikasi Database
 ```bash
-# Cek jumlah tabel (kewer: 52, alamat: 4, orang: 25)
+# Cek jumlah tabel (kewer: 64 tables + 3 views, alamat: 4, orang: 19 tables + 6 views)
 /opt/lampp/bin/mysql -u root -proot -e "
-SELECT 'kewer' as db, COUNT(*) as tables FROM information_schema.TABLES WHERE TABLE_SCHEMA='kewer'
-UNION ALL SELECT 'db_alamat_simple', COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='db_alamat_simple'
-UNION ALL SELECT 'db_orang', COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='db_orang';
+SELECT 'kewer' as db, COUNT(*) as tables FROM information_schema.TABLES WHERE TABLE_SCHEMA='kewer' AND TABLE_TYPE='BASE TABLE'
+UNION ALL SELECT 'db_alamat_simple', COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='db_alamat_simple' AND TABLE_TYPE='BASE TABLE'
+UNION ALL SELECT 'db_orang', COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='db_orang' AND TABLE_TYPE='BASE TABLE';
 "
 ```
 
