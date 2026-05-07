@@ -26,7 +26,7 @@ if (!$pinjaman || empty($pinjaman)) {
     die('Data pinjaman tidak ditemukan');
 }
 $loan = $pinjaman[0];
-$frek = $loan['frekuensi'] ?? 'bulanan';
+$frek = $loan['frekuensi_id'] ?? $loan['frekuensi'] ?? 'bulanan';
 
 // Get installment schedule
 $angsuran = query("

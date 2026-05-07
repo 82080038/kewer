@@ -110,32 +110,28 @@ switch ($method) {
         
         // Get angsuran data with loan info
         $angsuran = query("
-            SELECT a.*, p.frekuensi, p.nasabah_id, p.id as pinjaman_id
+            SELECT a.*, p.frekuensi_id, p.nasabah_id, p.id as pinjaman_id
             FROM angsuran a 
             JOIN pinjaman p ON a.pinjaman_id = p.id 
             WHERE a.id = ?", [$input['angsuran_id']]);
         
         if (!is_array($angsuran) || empty($angsuran)) {
             http_response_code(404);
-            echo json_encode(['error' => 'Angsuran not found']);
-            exit();
+            echo json_encode(['success' => false, 'error' => 'Angsuran tidak ditemukan']);
+            break;
         }
-        $angsuran = $angsuran[0];
         
-        // Check if already paid
-        if ($angsuran['status'] == 'lunas') {
-            http_response_code(400);
-            echo json_encode(['error' => 'Angsuran sudah lunas']);
-            exit();
-        }
+        // Use frekuensi_id
+        $frekuensi_value = $angsuran['frekuensi_id'];
+        $frekuensi_code = getFrequencyCode($frekuensi_value);
         
         // Calculate denda if not provided
         $tanggal_bayar = $input['tanggal_bayar'] ?? date('Y-m-d');
         $hari_telat = max(0, (strtotime($tanggal_bayar) - strtotime($angsuran['jatuh_tempo'])) / 86400);
         
         // Get denda settings
-        $denda_settings = query("SELECT * FROM setting_denda WHERE frekuensi = ? AND is_active = 1", 
-            [$angsuran['frekuensi']]);
+        $denda_settings = query("SELECT * FROM setting_denda WHERE frekuensi_id = ? AND is_active = 1", 
+            [$frekuensi_value]);
         $denda_settings = (is_array($denda_settings) && !empty($denda_settings)) ? $denda_settings[0] : null;
         
         $grace_period = $denda_settings['grace_period'] ?? 0;
@@ -146,9 +142,9 @@ switch ($method) {
         if ($hari_telat_efektif > 0 && $denda_settings) {
             if ($denda_settings['tipe_denda'] == 'persentase') {
                 $denda_per_period = $angsuran['total_angsuran'] * ($denda_settings['nilai_denda'] / 100);
-                if ($angsuran['frekuensi'] == 'harian') {
+                if ($frekuensi_code == 'HARIAN' || $frekuensi_code == 'harian') {
                     $denda_per_hari = $denda_per_period;
-                } elseif ($angsuran['frekuensi'] == 'mingguan') {
+                } elseif ($frekuensi_code == 'MINGGUAN' || $frekuensi_code == 'mingguan') {
                     $denda_per_hari = $denda_per_period / 7;
                 } else {
                     $denda_per_hari = $denda_per_period / 30;
@@ -263,6 +259,29 @@ switch ($method) {
                     [$tanggal_bayar, $angsuran['pinjaman_id']]
                 );
             }
+            
+            // ── Penagihan System Integration ─────────────────────
+            // Update penagihan status if exists
+            $existing_penagihan = query("SELECT id, status FROM penagihan WHERE angsuran_id = ? AND status IN ('pending', 'dalam_proses')", [$input['angsuran_id']]);
+            if ($existing_penagihan && is_array($existing_penagahan) && !empty($existing_penagahan)) {
+                $penagihan_id = $existing_penagihan[0]['id'];
+                query("UPDATE penagihan SET status = 'berhasil', tanggal_penagihan = ?, hasil = 'Pembayaran berhasil diterima', petugas_id = ?, updated_at = NOW() WHERE id = ?", 
+                    [$tanggal_bayar, getCurrentUser()['id'], $penagihan_id]);
+                
+                // Log penagihan activity
+                query("INSERT INTO penagihan_log (penagihan_id, aksi, hasil, petugas_id) VALUES (?, 'pembayaran', 'Pembayaran diterima: Rp " . formatRupiah($total_pembayaran) . "', ?)", 
+                    [$penagihan_id, getCurrentUser()['id']]);
+            } else {
+                // Create penagihan record if doesn't exist
+                $jenis_penagihan_id = 1; // Default to JATUH_TEMPO
+                query("INSERT INTO penagihan (pinjaman_id, angsuran_id, jenis_penagihan_id, status, tanggal_jatuh_tempo, tanggal_penagihan, petugas_id, hasil) VALUES (?, ?, ?, 'berhasil', ?, ?, ?, 'Pembayaran berhasil diterima')", 
+                    [$angsuran['pinjaman_id'], $input['angsuran_id'], $jenis_penagihan_id, $angsuran['jatuh_tempo'], $tanggal_bayar, getCurrentUser()['id']]);
+                
+                $new_penagihan_id = query("SELECT LAST_INSERT_ID() as id")[0]['id'];
+                query("INSERT INTO penagihan_log (penagihan_id, aksi, hasil, petugas_id) VALUES (?, 'pembayaran', 'Pembayaran diterima: Rp " . formatRupiah($total_pembayaran) . "', ?)", 
+                    [$new_penagihan_id, getCurrentUser()['id']]);
+            }
+            // ─────────────────────────────────────────────────────
             
             // Post accounting journal entry
             if (function_exists('postJurnalPembayaran')) {

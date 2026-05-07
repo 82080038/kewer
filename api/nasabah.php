@@ -12,6 +12,8 @@ try {
     require_once __DIR__ . '/../config/path.php';
     require_once BASE_PATH . '/includes/functions.php';
     require_once BASE_PATH . '/includes/business_logic.php';
+    require_once BASE_PATH . '/includes/people_helper.php';
+    require_once BASE_PATH . '/models/Nasabah.php';
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['error' => 'Configuration error: ' . $e->getMessage()]);
@@ -130,8 +132,22 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $village_id = $input['village_id'] ?? '';
         $ktp = $input['ktp'] ?? '';
         $telp = $input['telp'] ?? '';
+        $email = $input['email'] ?? '';
         $jenis_usaha = $input['jenis_usaha'] ?? '';
         $lokasi_pasar = $input['lokasi_pasar'] ?? '';
+        
+        // Support new fields from db_orang structure
+        $nama_depan = $input['nama_depan'] ?? null;
+        $nama_tengah = $input['nama_tengah'] ?? null;
+        $nama_belakang = $input['nama_belakang'] ?? null;
+        $jenis_kelamin = $input['jenis_kelamin'] ?? null;
+        $tanggal_lahir = $input['tanggal_lahir'] ?? null;
+        $tempat_lahir = $input['tempat_lahir'] ?? null;
+        $agama = $input['agama'] ?? null;
+        $golongan_darah_id = $input['golongan_darah_id'] ?? null;
+        $suku_id = $input['suku_id'] ?? null;
+        $status_perkawinan_id = $input['status_perkawinan_id'] ?? null;
+        $catatan = $input['catatan'] ?? null;
         
         // Validation
         if (!validateKTP($ktp)) {
@@ -175,15 +191,75 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
         $cabang_id_insert = $req_cabang ?: $kantor_id;
 
-        // Insert nasabah dengan owner_bos_id dan skor_kredit default
-        $result = query("INSERT INTO nasabah (cabang_id, owner_bos_id, kode_nasabah, nama, alamat, province_id, regency_id, district_id, village_id, ktp, telp, jenis_usaha, lokasi_pasar, skor_kredit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+        // Use Nasabah model which integrates with db_orang
+        $nasabahModel = new Nasabah();
+        $nasabahData = [
+            'kode_nasabah' => $kode_nasabah,
+            'nama' => $nama,
+            'nama_depan' => $nama_depan,
+            'nama_tengah' => $nama_tengah,
+            'nama_belakang' => $nama_belakang,
+            'alamat' => $alamat,
+            'province_id' => $province_id ?: null,
+            'regency_id' => $regency_id ?: null,
+            'district_id' => $district_id ?: null,
+            'village_id' => $village_id ?: null,
+            'ktp' => $ktp,
+            'telp' => $telp,
+            'email' => $email,
+            'jenis_usaha' => $jenis_usaha,
+            'lokasi_pasar' => $lokasi_pasar,
+            'jenis_kelamin' => $jenis_kelamin,
+            'tanggal_lahir' => $tanggal_lahir,
+            'tempat_lahir' => $tempat_lahir,
+            'agama' => $agama,
+            'golongan_darah_id' => $golongan_darah_id,
+            'suku_id' => $suku_id,
+            'status_perkawinan_id' => $status_perkawinan_id,
+            'catatan' => $catatan,
+            'status' => 'aktif'
+        ];
+        
+        // Note: We still need to insert directly to nasabah table for owner_bos_id and cabang_id
+        // The model creates person in db_orang, but we need to add the nasabah record
+        $result = query("INSERT INTO nasabah (cabang_id, owner_bos_id, kode_nasabah, nama, alamat, province_id, regency_id, district_id, village_id, ktp, telp, email, jenis_usaha, lokasi_pasar, skor_kredit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", [
             $cabang_id_insert, $owner_bos, $kode_nasabah, $nama, $alamat,
             $province_id ?: null, $regency_id ?: null, $district_id ?: null, $village_id ?: null,
-            $ktp, $telp, $jenis_usaha, $lokasi_pasar, 100
+            $ktp, $telp, $email, $jenis_usaha, $lokasi_pasar, 100
         ]);
         
         if ($result) {
-            $new_nasabah = query("SELECT * FROM nasabah WHERE id = LAST_INSERT_ID()")[0];
+            $nasabah_id = query("SELECT LAST_INSERT_ID() as id")[0]['id'];
+            
+            // Now create/update person in db_orang with the new fields
+            if ($nasabah_id) {
+                $person_data = array_merge($nasabahData, [
+                    'kewer_nasabah_id' => $nasabah_id
+                ]);
+                $person_id = createPerson($person_data);
+                
+                if ($person_id) {
+                    // Update nasabah with db_orang_user_id
+                    query("UPDATE nasabah SET db_orang_user_id = ? WHERE id = ?", [$person_id, $nasabah_id]);
+                    
+                    // Create address in db_orang
+                    if (!empty($alamat) || !empty($province_id)) {
+                        $address_data = [
+                            'label' => 'rumah',
+                            'street_address' => $alamat,
+                            'province_id' => $province_id ?: null,
+                            'regency_id' => $regency_id ?: null,
+                            'district_id' => $district_id ?: null,
+                            'village_id' => $village_id ?: null,
+                            'postal_code' => $input['kode_pos'] ?? null,
+                            'is_primary' => 1
+                        ];
+                        createPersonAddress($person_id, $address_data);
+                    }
+                }
+            }
+            
+            $new_nasabah = query("SELECT * FROM nasabah WHERE id = ?", [$nasabah_id])[0];
             echo json_encode([
                 'success' => true,
                 'message' => 'Nasabah berhasil ditambahkan',
@@ -227,7 +303,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
             break;
         }
 
-        $updatable_fields = ['nama', 'alamat', 'province_id', 'regency_id', 'district_id', 'village_id', 'telp', 'jenis_usaha', 'lokasi_pasar', 'status', 'catatan_risiko', 'alamat_rumah'];
+        $updatable_fields = ['nama', 'alamat', 'province_id', 'regency_id', 'district_id', 'village_id', 'telp', 'email', 'jenis_usaha', 'lokasi_pasar', 'status', 'catatan_risiko', 'alamat_rumah'];
         
         foreach ($updatable_fields as $field) {
             if (isset($input[$field])) {
@@ -245,6 +321,70 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $params[] = $nasabah_id;
         
         $result = query("UPDATE nasabah SET " . implode(', ', $fields) . " WHERE id = ?", $params);
+        
+        // Update person data in db_orang if db_orang_user_id exists
+        if ($result && $nasabah_existing['db_orang_user_id']) {
+            $person_fields = [];
+            $person_params = [];
+            
+            $person_updatable = [
+                'nama', 'nama_depan', 'nama_tengah', 'nama_belakang',
+                'telp', 'email', 'jenis_kelamin', 'tanggal_lahir', 'tempat_lahir',
+                'agama', 'pekerjaan', 'golongan_darah_id', 'suku_id', 'status_perkawinan_id', 'catatan'
+            ];
+            
+            foreach ($person_updatable as $field) {
+                if (isset($input[$field])) {
+                    $person_fields[] = "$field = ?";
+                    $person_params[] = $input[$field];
+                }
+            }
+            
+            if (!empty($person_fields)) {
+                $person_params[] = $nasabah_existing['db_orang_user_id'];
+                query_orang("UPDATE people SET " . implode(', ', $person_fields) . ", updated_at = CURRENT_TIMESTAMP WHERE id = ?", $person_params);
+            }
+            
+            // Update address in db_orang if address data changed
+            if (isset($input['alamat']) || isset($input['province_id'])) {
+                $address = getPrimaryAddress($nasabah_existing['db_orang_user_id']);
+                if ($address) {
+                    $addr_fields = [];
+                    $addr_params = [];
+                    
+                    if (isset($input['alamat'])) {
+                        $addr_fields[] = "street_address = ?";
+                        $addr_params[] = $input['alamat'];
+                    }
+                    if (isset($input['province_id'])) {
+                        $addr_fields[] = "province_id = ?";
+                        $addr_params[] = $input['province_id'];
+                    }
+                    if (isset($input['regency_id'])) {
+                        $addr_fields[] = "regency_id = ?";
+                        $addr_params[] = $input['regency_id'];
+                    }
+                    if (isset($input['district_id'])) {
+                        $addr_fields[] = "district_id = ?";
+                        $addr_params[] = $input['district_id'];
+                    }
+                    if (isset($input['village_id'])) {
+                        $addr_fields[] = "village_id = ?";
+                        $addr_params[] = $input['village_id'];
+                    }
+                    if (isset($input['kode_pos'])) {
+                        $addr_fields[] = "postal_code = ?";
+                        $addr_params[] = $input['kode_pos'];
+                    }
+                    
+                    if (!empty($addr_fields)) {
+                        $addr_fields[] = "updated_at = CURRENT_TIMESTAMP";
+                        $addr_params[] = $address['id'];
+                        query_orang("UPDATE addresses SET " . implode(', ', $addr_fields) . " WHERE id = ?", $addr_params);
+                    }
+                }
+            }
+        }
         
         if ($result) {
             $updated_nasabah_result = query("SELECT * FROM nasabah WHERE id = ?", [$nasabah_id]);

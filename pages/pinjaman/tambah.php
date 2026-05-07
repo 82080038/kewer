@@ -39,14 +39,18 @@ if ($_POST) {
     $jaminan_tipe = $_POST['jaminan_tipe'] ?? 'tanpa';
     $jaminan_nilai = str_replace(['.', ','], '', $_POST['jaminan_nilai'] ?? '0');
     
+    // Convert frequency to ID if it's a code
+    $frekuensi_id = getFrequencyId($frekuensi);
+    
     // Validate frekuensi
-    if (!in_array($frekuensi, ['harian', 'mingguan', 'bulanan'])) {
+    if (!in_array($frekuensi, ['harian', 'mingguan', 'bulanan', 'HARIAN', 'MINGGUAN', 'BULANAN']) && !is_numeric($frekuensi)) {
         $frekuensi = 'bulanan';
+        $frekuensi_id = 3;
     }
     
     // Validation
-    $max_tenor = getMaxTenor($frekuensi);
-    $period_label = getFrequencyPeriodLabel($frekuensi);
+    $max_tenor = getMaxTenor($frekuensi_id);
+    $period_label = getFrequencyPeriodLabel($frekuensi_id);
     
     if (!$nasabah_id || !$plafon || !$tenor || !$bunga_per_bulan || !$tanggal_akad) {
         $error = 'Semua field wajib diisi';
@@ -54,30 +58,25 @@ if ($_POST) {
         $error = 'Plafon harus berupa angka positif';
     } elseif (!is_numeric($tenor) || $tenor <= 0 || $tenor > $max_tenor) {
         $error = "Tenor harus antara 1-$max_tenor $period_label";
-    } elseif (!is_numeric($bunga_per_bulan) || $bunga_per_bulan < 0 || $bunga_per_bulan > 10) {
-        $error = 'Bunga harus antara 0-10%';
     } else {
-        // Check if nasabah is blacklisted
-        $nasabah_status = query("SELECT status FROM nasabah WHERE id = ?", [$nasabah_id]);
-        if ($nasabah_status && $nasabah_status[0]['status'] === 'blacklist') {
-            $error = 'Nasabah dalam status blacklist, tidak dapat mengajukan pinjaman';
-        }
         // Check if nasabah has active loan
-        elseif (($active_loan = query("SELECT id FROM pinjaman WHERE nasabah_id = ? AND status IN ('disetujui', 'aktif')", [$nasabah_id]))) {
+        $active_loan = query("SELECT COUNT(*) as count FROM pinjaman WHERE nasabah_id = ? AND status IN ('aktif','disetujui','pengajuan')", [$nasabah_id]);
+        if (is_array($active_loan) && isset($active_loan[0]) && $active_loan[0]['count'] > 0) {
             $error = 'Nasabah masih memiliki pinjaman aktif';
         } else {
             // Calculate loan
-            $calc = calculateLoan($plafon, $tenor, $bunga_per_bulan, $frekuensi);
+            $calc = calculateLoan($plafon, $tenor, $bunga_per_bulan, $frekuensi_id);
             
             // Generate kode pinjaman
             $kode_pinjaman = generateKode('PNJ', 'pinjaman', 'kode_pinjaman');
             
             // Calculate due date based on frequency
-            switch ($frekuensi) {
-                case 'harian':
+            $frekuensi_code = getFrequencyCode($frekuensi_id);
+            switch ($frekuensi_code) {
+                case 'HARIAN':
                     $tanggal_jatuh_tempo = date('Y-m-d', strtotime("+$tenor day", strtotime($tanggal_akad)));
                     break;
-                case 'mingguan':
+                case 'MINGGUAN':
                     $tanggal_jatuh_tempo = date('Y-m-d', strtotime("+$tenor week", strtotime($tanggal_akad)));
                     break;
                 default:
@@ -86,30 +85,17 @@ if ($_POST) {
             }
             
             // Insert pinjaman with transaction
-            $result = crudTransaction(function() use ($user_cabang_id, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi, $bunga_per_bulan, $calc, $tanggal_akad, $tanggal_jatuh_tempo, $tujuan_pinjaman, $jaminan, $jaminan_tipe, $jaminan_nilai) {
+            $result = crudTransaction(function() use ($user_cabang_id, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi_id, $bunga_per_bulan, $calc, $tanggal_akad, $tanggal_jatuh_tempo, $tujuan_pinjaman, $jaminan, $jaminan_tipe, $jaminan_nilai) {
                 $result = query("INSERT INTO pinjaman (
-                    cabang_id, kode_pinjaman, nasabah_id, plafon, tenor, frekuensi, bunga_per_bulan, 
+                    cabang_id, kode_pinjaman, nasabah_id, plafon, tenor, frekuensi_id, bunga_per_bulan, 
                     total_bunga, total_pembayaran, angsuran_pokok, angsuran_bunga, angsuran_total,
                     tanggal_akad, tanggal_jatuh_tempo, tujuan_pinjaman, jaminan, jaminan_tipe, jaminan_nilai, status, petugas_id
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pengajuan', ?)", [
-                    $user_cabang_id, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi, $bunga_per_bulan,
+                    $user_cabang_id, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi_id, $bunga_per_bulan,
                     $calc['total_bunga'], $calc['total_pembayaran'], $calc['angsuran_pokok'], 
                     $calc['angsuran_bunga'], $calc['angsuran_total'], $tanggal_akad, 
                     $tanggal_jatuh_tempo, $tujuan_pinjaman, $jaminan, $jaminan_tipe, $jaminan_nilai ?: null, getCurrentUser()['id']
                 ]);
-                
-                if ($result) {
-                    // Log the CRUD operation
-                    $pinjaman_id = query("SELECT LAST_INSERT_ID() as id")[0]['id'];
-                    logCrudOperation('pinjaman', 'CREATE', $pinjaman_id, null, [
-                        'cabang_id' => $user_cabang_id,
-                        'kode_pinjaman' => $kode_pinjaman,
-                        'nasabah_id' => $nasabah_id,
-                        'plafon' => $plafon,
-                        'tenor' => $tenor,
-                        'status' => 'pengajuan'
-                    ]);
-                }
                 
                 return $result;
             });
@@ -150,13 +136,25 @@ if ($_POST) {
         };
         
         function updateFrequencyUI() {
-            const frek = document.getElementById('frekuensi').value;
-            const cfg = freqConfig[frek];
-            document.getElementById('tenorLabel').textContent = cfg.label;
-            document.getElementById('tenor').max = cfg.max;
-            // Reset tenor if over max
-            const tenorEl = document.getElementById('tenor');
-            if (parseInt(tenorEl.value) > cfg.max) tenorEl.value = cfg.max;
+            const frekSelect = document.getElementById('frekuensi');
+            const selectedOption = frekSelect.options[frekSelect.selectedIndex];
+            const maxTenor = parseInt(selectedOption.getAttribute('data-max')) || 24;
+            const period = parseInt(selectedOption.getAttribute('data-period')) || 30;
+            
+            let label = 'bulan';
+            let help = 'Harian: 1-365 | Mingguan: 1-52 | Bulanan: 1-24';
+            if (period === 1) {
+                label = 'hari';
+                help = 'Maksimal 365 hari';
+            } else if (period === 7) {
+                label = 'minggu';
+                help = 'Maksimal 52 minggu';
+            }
+            
+            document.getElementById('tenorLabel').textContent = label;
+            document.getElementById('tenor').max = maxTenor;
+            document.getElementById('tenorHelp').textContent = help;
+            
             calculatePreview();
         }
         
@@ -164,11 +162,22 @@ if ($_POST) {
             const plafon = parseFloat(document.getElementById('plafon').value.replace(/[^\d]/g, '')) || 0;
             const tenor = parseInt(document.getElementById('tenor').value) || 0;
             const bungaBulanan = parseFloat(document.getElementById('bunga').value) || 0;
-            const frek = document.getElementById('frekuensi').value;
-            const cfg = freqConfig[frek];
+            const frekSelect = document.getElementById('frekuensi');
+            const selectedOption = frekSelect.options[frekSelect.selectedIndex];
+            const period = parseInt(selectedOption.getAttribute('data-period')) || 30;
+            
+            let bungaDivisor = 1;
+            let periodLabel = 'Bulan';
+            if (period === 1) {
+                bungaDivisor = 30;
+                periodLabel = 'Hari';
+            } else if (period === 7) {
+                bungaDivisor = 4;
+                periodLabel = 'Minggu';
+            }
             
             // Convert monthly rate to per-period rate
-            const bungaPerPeriod = bungaBulanan / cfg.bungaDivisor;
+            const bungaPerPeriod = bungaBulanan / bungaDivisor;
             
             if (plafon > 0 && tenor > 0 && bungaBulanan >= 0) {
                 const totalBunga = plafon * (bungaPerPeriod / 100) * tenor;
@@ -181,7 +190,7 @@ if ($_POST) {
                     <table class="table table-sm">
                         <tr>
                             <td>Frekuensi:</td>
-                            <td class="text-end"><span class="badge bg-primary">${cfg.periodLabel}</span></td>
+                            <td class="text-end"><span class="badge bg-primary">${periodLabel}</span></td>
                         </tr>
                         <tr>
                             <td>Total Pinjaman:</td>
@@ -192,19 +201,19 @@ if ($_POST) {
                             <td class="text-end">Rp ${formatRupiah(totalBunga)}</td>
                         </tr>
                         <tr>
-                            <td>Angsuran/${cfg.periodLabel}:</td>
+                            <td>Angsuran/${periodLabel}:</td>
                             <td class="text-end fw-bold">Rp ${formatRupiah(angsuranTotal)}</td>
                         </tr>
                         <tr>
-                            <td>Pokok/${cfg.periodLabel}:</td>
+                            <td>Pokok/${periodLabel}:</td>
                             <td class="text-end">Rp ${formatRupiah(angsuranPokok)}</td>
                         </tr>
                         <tr>
-                            <td>Bunga/${cfg.periodLabel}:</td>
+                            <td>Bunga/${periodLabel}:</td>
                             <td class="text-end">Rp ${formatRupiah(angsuranBunga)}</td>
                         </tr>
                         <tr>
-                            <td>Bunga per ${cfg.label}:</td>
+                            <td>Bunga per ${label}:</td>
                             <td class="text-end">${bungaPerPeriod.toFixed(4)}%</td>
                         </tr>
                     </table>
@@ -325,9 +334,19 @@ if ($_POST) {
                                     <div class="mb-3">
                                         <label class="form-label">Frekuensi Angsuran *</label>
                                         <select name="frekuensi" class="form-select" id="frekuensi" required>
+                                            <?php
+                                            $active_frequencies = getActiveFrequencies();
+                                            if ($active_frequencies && is_array($active_frequencies)):
+                                                foreach ($active_frequencies as $freq):
+                                            ?>
+                                            <option value="<?= $freq['kode'] ?>" data-id="<?= $freq['id'] ?>" data-max="<?= $freq['tenor_max'] ?>" data-period="<?= $freq['hari_per_periode'] ?>" <?php echo ($_POST['frekuensi'] ?? '') === $freq['kode'] ? 'selected' : ''; ?>>
+                                                <?= $freq['nama'] ?> (Max: <?= $freq['tenor_max'] ?>)
+                                            </option>
+                                            <?php endforeach; else: ?>
                                             <option value="harian" <?php echo ($_POST['frekuensi'] ?? '') === 'harian' ? 'selected' : ''; ?>>Harian</option>
                                             <option value="mingguan" <?php echo ($_POST['frekuensi'] ?? '') === 'mingguan' ? 'selected' : ''; ?>>Mingguan</option>
                                             <option value="bulanan" <?php echo ($_POST['frekuensi'] ?? 'bulanan') === 'bulanan' ? 'selected' : ''; ?>>Bulanan</option>
+                                            <?php endif; ?>
                                         </select>
                                     </div>
                                     

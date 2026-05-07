@@ -29,8 +29,11 @@ if ($status) {
 }
 
 if ($frekuensi_filter) {
-    $where[] = "p.frekuensi = ?";
-    $params[] = $frekuensi_filter;
+    // Use frekuensi_id only (enum column dropped in migration 024)
+    if (is_numeric($frekuensi_filter)) {
+        $where[] = "p.frekuensi_id = ?";
+        $params[] = $frekuensi_filter;
+    }
 }
 
 $where_clause = "WHERE " . implode(" AND ", $where);
@@ -48,7 +51,7 @@ if (!is_array($pinjaman)) {
     $pinjaman = [];
 }
 
-// Get statistics by frekuensi
+// Get statistics by frekuensi - use frekuensi_id only
 $stats_result = query("
     SELECT 
         COUNT(*) as total,
@@ -56,9 +59,9 @@ $stats_result = query("
         SUM(CASE WHEN status = 'disetujui' THEN 1 ELSE 0 END) as disetujui,
         SUM(CASE WHEN status = 'aktif' THEN 1 ELSE 0 END) as aktif,
         SUM(CASE WHEN status = 'lunas' THEN 1 ELSE 0 END) as lunas,
-        SUM(CASE WHEN frekuensi = 'harian' THEN 1 ELSE 0 END) as count_harian,
-        SUM(CASE WHEN frekuensi = 'mingguan' THEN 1 ELSE 0 END) as count_mingguan,
-        SUM(CASE WHEN frekuensi = 'bulanan' THEN 1 ELSE 0 END) as count_bulanan,
+        SUM(CASE WHEN frekuensi_id = 1 THEN 1 ELSE 0 END) as count_harian,
+        SUM(CASE WHEN frekuensi_id = 2 THEN 1 ELSE 0 END) as count_mingguan,
+        SUM(CASE WHEN frekuensi_id = 3 THEN 1 ELSE 0 END) as count_bulanan,
         SUM(plafon) as total_plafon
     FROM pinjaman
 ");
@@ -83,13 +86,23 @@ if (!is_array($nasabah_list)) {
 // Format currency helper
 
 // Format frekuensi badge
-function getFrekuensiBadge($frek) {
-    $badges = [
-        'harian' => '<span class="badge bg-warning text-dark"><i class="bi bi-sun"></i> Harian</span>',
-        'mingguan' => '<span class="badge bg-info"><i class="bi bi-calendar-week"></i> Mingguan</span>',
-        'bulanan' => '<span class="badge bg-primary"><i class="bi bi-calendar-month"></i> Bulanan</span>'
-    ];
-    return $badges[$frek] ?? $badges['bulanan'];
+function getFrekuensiBadge($frek_id) {
+    // Use frekuensi_id only (enum column dropped in migration 024)
+    $frek = $frek_id ?? 3; // Default to bulanan (id 3)
+    $label = getFrequencyLabel($frek);
+    $code = getFrequencyCode($frek);
+    
+    $icon = 'calendar-month';
+    $class = 'primary';
+    if ($code == 'HARIAN' || $code == 'harian') {
+        $icon = 'sun';
+        $class = 'warning text-dark';
+    } elseif ($code == 'MINGGUAN' || $code == 'mingguan') {
+        $icon = 'calendar-week';
+        $class = 'info';
+    }
+    
+    return "<span class=\"badge bg-{$class}\"><i class=\"bi bi-{$icon}\"></i> {$label}</span>";
 }
 
 // Format status badge
@@ -196,6 +209,28 @@ function getStatusBadge($status) {
                 <div class="d-flex flex-wrap gap-2 align-items-center frekuensi-filter">
                     <span class="me-2 text-muted"><i class="bi bi-funnel"></i> Filter:</span>
                     <a href="?" class="btn btn-sm <?= !$frekuensi_filter ? 'btn-dark' : 'btn-outline-secondary' ?>">Semua</a>
+                    <?php
+                    $active_frequencies = getActiveFrequencies();
+                    if ($active_frequencies && is_array($active_frequencies)):
+                        foreach ($active_frequencies as $freq):
+                            $freq_code = $freq['kode'];
+                            $freq_id = $freq['id'];
+                            $count_key = '';
+                            if ($freq_code == 'HARIAN') $count_key = 'count_harian';
+                            elseif ($freq_code == 'MINGGUAN') $count_key = 'count_mingguan';
+                            else $count_key = 'count_bulanan';
+                            
+                            $is_active = ($frekuensi_filter == $freq_id || $frekuensi_filter == strtolower($freq_code));
+                            $btn_class = '';
+                            if ($freq_code == 'HARIAN') $btn_class = $is_active ? 'btn-warning' : 'btn-outline-warning';
+                            elseif ($freq_code == 'MINGGUAN') $btn_class = $is_active ? 'btn-info' : 'btn-outline-info';
+                            else $btn_class = $is_active ? 'btn-primary' : 'btn-outline-primary';
+                    ?>
+                    <a href="?frekuensi=<?= $freq_id ?>" class="btn btn-sm <?= $btn_class ?>">
+                        <i class="bi bi-<?= $freq_code == 'HARIAN' ? 'sun' : ($freq_code == 'MINGGUAN' ? 'calendar-week' : 'calendar-month') ?>"></i> 
+                        <?= $freq['nama'] ?> (<?= $stats[$count_key] ?? 0 ?>)
+                    </a>
+                    <?php endforeach; else: ?>
                     <a href="?frekuensi=harian" class="btn btn-sm <?= $frekuensi_filter == 'harian' ? 'btn-warning' : 'btn-outline-warning' ?>">
                         <i class="bi bi-sun"></i> Harian (<?= $stats['count_harian'] ?>)
                     </a>
@@ -205,6 +240,7 @@ function getStatusBadge($status) {
                     <a href="?frekuensi=bulanan" class="btn btn-sm <?= $frekuensi_filter == 'bulanan' ? 'btn-primary' : 'btn-outline-primary' ?>">
                         <i class="bi bi-calendar-month"></i> Bulanan (<?= $stats['count_bulanan'] ?>)
                     </a>
+                    <?php endif; ?>
                     
                     <div class="ms-auto d-flex gap-2">
                         <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Cari nasabah..." value="<?= htmlspecialchars($search) ?>">
@@ -247,7 +283,7 @@ function getStatusBadge($status) {
                                     <strong><?= htmlspecialchars($p['nama'] ?? '-') ?></strong>
                                     <br><small class="text-muted"><?= htmlspecialchars($p['kode_nasabah'] ?? '-') ?></small>
                                 </td>
-                                <td><?= getFrekuensiBadge($p['frekuensi'] ?? 'bulanan') ?></td>
+                                <td><?= getFrekuensiBadge($p['frekuensi_id']) ?></td>
                                 <td class="text-end fw-bold"><?= formatRupiah($p['plafon']) ?></td>
                                 <td class="text-center"><?= $p['tenor'] ?>x</td>
                                 <td class="text-end"><?= formatRupiah($p['angsuran_total']) ?></td>
@@ -304,6 +340,23 @@ function getStatusBadge($status) {
                             <div class="col-md-6">
                                 <label class="form-label">Frekuensi Angsuran <span class="text-danger">*</span></label>
                                 <div class="d-flex gap-2">
+                                    <?php
+                                    $active_frequencies = getActiveFrequencies();
+                                    if ($active_frequencies && is_array($active_frequencies)):
+                                        foreach ($active_frequencies as $freq):
+                                            $freq_code = $freq['kode'];
+                                            $freq_id = $freq['id'];
+                                            $checked = ($freq_code == 'BULANAN') ? 'checked' : '';
+                                            $btn_class = '';
+                                            if ($freq_code == 'HARIAN') $btn_class = 'btn-outline-warning';
+                                            elseif ($freq_code == 'MINGGUAN') $btn_class = 'btn-outline-info';
+                                            else $btn_class = 'btn-outline-primary';
+                                    ?>
+                                    <input type="radio" class="btn-check" name="frekuensi" id="freq_<?= strtolower($freq_code) ?>" value="<?= $freq_code ?>" data-id="<?= $freq_id ?>" data-max="<?= $freq['tenor_max'] ?>" data-period="<?= $freq['hari_per_periode'] ?>" autocomplete="off" <?= $checked ?>>
+                                    <label class="btn <?= $btn_class ?> flex-fill" for="freq_<?= strtolower($freq_code) ?>">
+                                        <i class="bi bi-<?= $freq_code == 'HARIAN' ? 'sun' : ($freq_code == 'MINGGUAN' ? 'calendar-week' : 'calendar-month') ?>"></i> <?= $freq['nama'] ?>
+                                    </label>
+                                    <?php endforeach; else: ?>
                                     <input type="radio" class="btn-check" name="frekuensi" id="freq_harian" value="harian" autocomplete="off">
                                     <label class="btn btn-outline-warning flex-fill" for="freq_harian">
                                         <i class="bi bi-sun"></i> Harian
@@ -318,6 +371,7 @@ function getStatusBadge($status) {
                                     <label class="btn btn-outline-primary flex-fill" for="freq_bulanan">
                                         <i class="bi bi-calendar-month"></i> Bulanan
                                     </label>
+                                    <?php endif; ?>
                                 </div>
                             </div>
 
@@ -447,20 +501,25 @@ function getStatusBadge($status) {
             defaultDate: new Date()
         });
 
-        // Frekuensi change handler
-        const tenorLimits = {
-            'harian': { max: 100, label: 'hari', helper: 'Maksimal 100 hari (±3 bulan)' },
-            'mingguan': { max: 52, label: 'minggu', helper: 'Maksimal 52 minggu (1 tahun)' },
-            'bulanan': { max: 24, label: 'bulan', helper: 'Maksimal 24 bulan (2 tahun)' }
-        };
-
+        // Frekuensi change handler - use data attributes from ref_frekuensi_angsuran
         $('input[name="frekuensi"]').change(function() {
-            const frek = $(this).val();
-            const limit = tenorLimits[frek];
+            const selectedRadio = $(this);
+            const maxTenor = parseInt(selectedRadio.attr('data-max')) || 24;
+            const period = parseInt(selectedRadio.attr('data-period')) || 30;
             
-            $('#inputTenor').attr('max', limit.max).val('');
-            $('#labelTenor').text(limit.label);
-            $('#helperTenor').text(limit.helper);
+            let label = 'bulan';
+            let helper = 'Maksimal 24 bulan (2 tahun)';
+            if (period === 1) {
+                label = 'hari';
+                helper = 'Maksimal 100 hari (±3 bulan)';
+            } else if (period === 7) {
+                label = 'minggu';
+                helper = 'Maksimal 52 minggu (1 tahun)';
+            }
+            
+            $('#inputTenor').attr('max', maxTenor).val('');
+            $('#labelTenor').text(label);
+            $('#tenorHelp').text(helper);
         });
 
         // Form submission

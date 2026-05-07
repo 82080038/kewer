@@ -1,6 +1,6 @@
 # Dokumentasi Role — Aplikasi Kewer
 
-**Terakhir Diperbarui:** 2026-05-03  
+**Terakhir Diperbarui:** 2026-05-08  
 **Struktur:** Single Office (kantor_id = 1)
 
 ---
@@ -47,13 +47,17 @@ admin_pusat (level 5)
   — Input nasabah, pinjaman, angsuran, laporan
   — Login: adm_pusat / Kewer2024!
 
+admin_cabang (level 6)
+  — Input nasabah, pinjaman, angsuran cabang
+  — Login: adm_cabang / Kewer2024!
+
 petugas_pusat (level 7)
   — Koleksi angsuran lapangan, kas petugas
   — Login: ptr_pngr1 / Kewer2024!
 
 petugas_cabang (level 8)
   — Koleksi angsuran lapangan, aktivitas lapangan
-  — Login: ptr_pngr2 / Kewer2024!
+  — Login: ptr_blg1 / Kewer2024!
 
 karyawan (level 9)
   — Dukungan administratif, rekonsiliasi kas
@@ -121,26 +125,26 @@ karyawan (level 9)
 
 ## Matriks Akses Modul
 
-| Modul | appOwner | bos | mgr_pusat | mgr_cabang | adm_pusat | ptr_pusat | ptr_cabang | karyawan |
-|-------|----------|-----|-----------|------------|-----------|-----------|------------|----------|
-| Dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Nasabah | ❌ | ✅ | ✅ | ✅ | ✅ | 👁 | 👁 | 👁 |
-| Pinjaman | ❌ | ✅+✓ | ✅+✓ | ✅+✓ | ✅ | 👁 | 👁 | 👁 |
-| Angsuran | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁 |
-| Aktivitas Lapangan | ❌ | 👁 | 👁 | 👁 | 👁 | ✅ | ✅ | ❌ |
-| Kas Petugas | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Rekonsiliasi Kas | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
-| Auto-Confirm | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Users | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Cabang | ❌ | ❌ | ❌ | ❌ | 👁 | ❌ | ❌ | ❌ |
-| Laporan | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Pengeluaran | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | 👁 |
-| Kas Bon | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Setting Bunga | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Family Risk | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Petugas | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Audit | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Platform Mgmt | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Modul | appOwner | bos | mgr_pusat | mgr_cabang | adm_pusat | adm_cabang | ptr_pusat | ptr_cabang | karyawan |
+|-------|----------|-----|-----------|------------|-----------|-----------|-----------|------------|----------|
+| Dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Nasabah | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁 | 👁 | 👁 |
+| Pinjaman | ❌ | ✅+✓ | ✅+✓ | ✅+✓ | ✅ | ✅ | 👁 | 👁 | 👁 |
+| Angsuran | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 👁 |
+| Aktivitas Lapangan | ❌ | 👁 | 👁 | 👁 | 👁 | 👁 | ✅ | ✅ | ❌ |
+| Kas Petugas | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Rekonsiliasi Kas | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Auto-Confirm | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Users | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Cabang | ❌ | ❌ | ❌ | ❌ | 👁 | 👁 | ❌ | ❌ | ❌ |
+| Laporan | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Pengeluaran | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | 👁 |
+| Kas Bon | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Setting Bunga | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Family Risk | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Petugas | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Audit | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Platform Mgmt | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 **Keterangan:** ✅ akses penuh | 👁 read-only | ✓ approve | ❌ tidak ada akses
 
@@ -159,6 +163,55 @@ karyawan (level 9)
 
 ---
 
+## Permission Codes
+
+### Nasabah
+- `nasabah.read` - Lihat data nasabah
+- `manage_nasabah` - Kelola data nasabah (CRUD)
+- `manage_blacklist` - Kelola blacklist nasabah
+
+### Pinjaman
+- `pinjaman.read` - Lihat data pinjaman
+- `manage_pinjaman` - Kelola pinjaman (CRUD)
+- `pinjaman.approve` - Approve/reject pinjaman
+- `pinjaman.auto_confirm` - Kelola auto-confirm settings
+
+### Angsuran & Pembayaran
+- `angsuran.read` - Lihat jadwal angsuran
+- `manage_pembayaran` - Catat pembayaran
+- `manage_denda` - Kelola denda (waive, edit)
+
+### Kas & Keuangan
+- `kas.read` - Lihat data kas
+- `kas.update` - Update data kas
+- `kas_petugas.read` - Lihat kas petugas
+- `kas_petugas.update` - Update kas petugas
+- `manage_pengeluaran` - Kelola pengeluaran
+- `view_pengeluaran` - Lihat pengeluaran
+- `manage_kas_bon` - Kelola kas bon
+- `view_kas_bon` - Lihat kas bon
+
+### Users & Permissions
+- `users.create` - Buat user baru
+- `users.read` - Lihat data user
+- `manage_users` - Kelola user (CRUD)
+- `assign_permissions` - Assign permission ke user
+
+### Laporan & Audit
+- `view_laporan` - Lihat laporan
+- `view_settings` - Lihat pengaturan
+- `manage_bunga` - Kelola setting bunga
+
+### Platform (appOwner only)
+- `manage_app` - Kelola platform
+- `approve_bos` - Approve registrasi bos
+- `view_koperasi` - Lihat data koperasi
+- `suspend_koperasi` - Suspend koperasi
+- `manage_billing` - Kelola billing
+- `view_billing` - Lihat billing
+
+---
+
 ## Catatan Penting
 
 1. **Single Office:** Aplikasi saat ini dikonfigurasi untuk satu kantor (`kantor_id = 1`). Tidak ada fitur multi-cabang aktif.
@@ -166,3 +219,4 @@ karyawan (level 9)
 3. **Delegated Permissions:** Karyawan mendapatkan permission melalui tabel `delegated_permissions` — bisa berbeda antar karyawan.
 4. **Quick Login:** Hanya aktif saat `APP_ENV=development` di file `.env`.
 5. **Password:** Semua user koperasi: `Kewer2024!` | appOwner: `AppOwner2024!`
+

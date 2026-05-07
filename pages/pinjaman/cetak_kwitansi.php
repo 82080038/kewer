@@ -14,7 +14,7 @@ if (!$pembayaran_id && !$angsuran_id) {
 if ($pembayaran_id) {
     $pembayaran = query("
         SELECT pb.*, a.no_angsuran, a.jatuh_tempo, a.pokok, a.bunga, a.total_angsuran, a.denda,
-               p.kode_pinjaman, p.plafon, p.tenor, p.frekuensi, p.nasabah_id,
+               p.kode_pinjaman, p.plafon, p.tenor, p.frekuensi_id, p.nasabah_id,
                n.nama as nama_nasabah, n.kode_nasabah, n.alamat, n.telp,
                c.nama_cabang, c.alamat as alamat_cabang, c.telp as telp_cabang,
                u.nama as nama_petugas
@@ -30,7 +30,7 @@ if ($pembayaran_id) {
     $pembayaran = query("
         SELECT a.id as angsuran_id, a.pinjaman_id, a.no_angsuran, a.jatuh_tempo, a.pokok, a.bunga, 
                a.total_angsuran, a.denda, a.total_bayar, a.tanggal_bayar, a.status, a.cara_bayar,
-               p.kode_pinjaman, p.plafon, p.tenor, p.frekuensi, p.nasabah_id,
+               p.kode_pinjaman, p.plafon, p.tenor, p.frekuensi_id, p.nasabah_id,
                n.nama as nama_nasabah, n.kode_nasabah, n.alamat, n.telp,
                c.nama_cabang, c.alamat as alamat_cabang, c.telp as telp_cabang
         FROM angsuran a
@@ -45,7 +45,7 @@ if (!$pembayaran || empty($pembayaran)) {
     die('Data pembayaran tidak ditemukan');
 }
 $data = $pembayaran[0];
-$frek = $data['frekuensi'] ?? 'bulanan';
+$frek = $data['frekuensi_id'] ?? $data['frekuensi'] ?? 'bulanan';
 
 // Get app settings
 $settings = query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('app_name', 'company_name')");

@@ -588,11 +588,11 @@ if ($loan_nasabah_id) {
     
     if ($pinjaman_id) {
         // Verify initial status
-        $pinjaman = testQuery("SELECT status, plafon, tenor, frekuensi FROM pinjaman WHERE id = ?", [$pinjaman_id]);
+        $pinjaman = testQuery("SELECT status, plafon, tenor, frekuensi_id FROM pinjaman WHERE id = ?", [$pinjaman_id]);
         $t->assert($pinjaman[0]['status'] === 'pengajuan', "Pinjaman status = pengajuan");
         $t->assert($pinjaman[0]['plafon'] == 5000000, "Pinjaman plafon = 5M");
         $t->assert($pinjaman[0]['tenor'] == 6, "Pinjaman tenor = 6");
-        $t->assert($pinjaman[0]['frekuensi'] === 'bulanan', "Pinjaman frekuensi = bulanan");
+        $t->assert($pinjaman[0]['frekuensi_id'] == 3, "Pinjaman frekuensi_id = 3 (bulanan)");
         
         // Approve pinjaman
         $r = httpRequest("$BASE/api/pinjaman.php?id=$pinjaman_id&action=approve", 'PUT', [], $bos_cookie);

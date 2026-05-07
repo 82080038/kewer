@@ -65,14 +65,15 @@ $denda = 0;
 $grace_period = 0;
 if ($angsuran['jatuh_tempo'] < date('Y-m-d')) {
     // Get loan frequency
-    $pinjaman_info = query("SELECT frekuensi FROM pinjaman WHERE id = ?", [$angsuran['pinjaman_id']]);
-    $frekuensi = $pinjaman_info[0]['frekuensi'] ?? 'bulanan';
+    $pinjaman_info = query("SELECT frekuensi_id FROM pinjaman WHERE id = ?", [$angsuran['pinjaman_id']]);
+    $frekuensi_value = $pinjaman_info[0]['frekuensi_id'];
+    $frekuensi_code = getFrequencyCode($frekuensi_value);
     
     // Get denda settings for this frequency and branch
-    $denda_setting = query("SELECT * FROM denda_settings 
-                           WHERE frekuensi = ? AND status = 'aktif' 
+    $denda_setting = query("SELECT * FROM setting_denda 
+                           WHERE frekuensi_id = ? AND is_active = 1 
                            AND (cabang_id = ? OR cabang_id IS NULL)
-                           ORDER BY cabang_id DESC LIMIT 1", [$frekuensi, $kantor_id]);
+                           ORDER BY cabang_id DESC LIMIT 1", [$frekuensi_value, $kantor_id]);
     
     if ($denda_setting && is_array($denda_setting)) {
         $s = $denda_setting[0];

@@ -14,7 +14,7 @@ if (!$angsuran_id) {
 $data = query("
     SELECT 
         a.*,
-        p.kode_pinjaman, p.frekuensi, p.plafon as total_pinjaman,
+        p.kode_pinjaman, p.frekuensi_id, p.plafon as total_pinjaman,
         n.nama as nasabah_nama, n.telp as nasabah_telp, n.alamat as nasabah_alamat,
         c.nama_cabang as cabang_nama, c.alamat as cabang_alamat, c.telp as cabang_telp,
         byr.kode_pembayaran, byr.tanggal_bayar, byr.cara_bayar as metode,
@@ -34,13 +34,8 @@ if (!$data || empty($data)) {
 
 $d = $data[0];
 
-
-// Format frequency label
-$freq_label = [
-    'harian' => 'Hari',
-    'mingguan' => 'Minggu',
-    'bulanan' => 'Bulan'
-][$d['frekuensi']] ?? 'Bulan';
+$frek = $d['frekuensi_id'] ?? $d['frekuensi'] ?? 'bulanan';
+$period_label = getFrequencyPeriodLabel($frek);
 
 $print_date = date('d/m/Y H:i:s');
 ?>

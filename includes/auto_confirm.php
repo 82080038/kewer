@@ -139,7 +139,7 @@ function applyAutoConfirm($pinjaman_id, $user_id) {
     
     // Create loan schedule
     require_once __DIR__ . '/functions.php';
-    $frek = $pinjaman['frekuensi'] ?? 'bulanan';
+    $frek = $pinjaman['frekuensi_id'] ?? $pinjaman['frekuensi'] ?? 'bulanan';
     $scheduleResult = createLoanSchedule($pinjaman_id, $pinjaman['plafon'], $pinjaman['tenor'], $pinjaman['bunga_per_bulan'], $pinjaman['tanggal_akad'], $frek);
     
     // Update to aktif

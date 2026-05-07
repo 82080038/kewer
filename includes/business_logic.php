@@ -354,18 +354,21 @@ function _regenerasiAngsuranSisa($pinjaman_id, $sisa_pokok, $data) {
 
     if (!$bunga_per_angsuran) {
         // Ambil dari pinjaman
-        $p = query("SELECT bunga_per_bulan, frekuensi FROM pinjaman WHERE id = ?", [$pinjaman_id]);
+        $p = query("SELECT bunga_per_bulan, frekuensi_id FROM pinjaman WHERE id = ?", [$pinjaman_id]);
         $bunga_per_angsuran = floatval($p[0]['bunga_per_bulan'] ?? 0);
-        if (!$frekuensi) $frekuensi = $p[0]['frekuensi'];
+        if (!$frekuensi) $frekuensi = $p[0]['frekuensi_id'] ?? 3;
     }
 
     $pokok_per_angsuran = $sisa_pokok / $tenor_baru;
     $bunga_per_angsuran_val = $sisa_pokok * ($bunga_per_angsuran / 100);
     $total_per_angsuran = $pokok_per_angsuran + $bunga_per_angsuran_val;
 
-    $interval = match($frekuensi) {
-        'harian'   => '+1 day',
-        'mingguan' => '+1 week',
+    // Convert frequency ID to code if needed
+    $frekuensi_code = getFrequencyCode($frekuensi);
+
+    $interval = match($frekuensi_code) {
+        'HARIAN'   => '+1 day',
+        'MINGGUAN' => '+1 week',
         default    => '+1 month',
     };
 
@@ -883,4 +886,64 @@ function getRealisasiVsTarget(int $petugas_id, string $bulan): array {
         'target_collection_rate' => floatval($t['target_collection_rate']),
         'realisasi_collection_rate' => $col_rate,
     ];
+}
+
+// ================================================================
+// G. PENAGIHAN SYSTEM INTEGRATION
+// ================================================================
+
+/**
+ * Auto-create penagihan records for overdue installments
+ * This function should be called by a scheduled task (cron job)
+ */
+function autoCreatePenagihanOverdue() {
+    // Get overdue installments that don't have penagihan records
+    $overdue = query("
+        SELECT a.id, a.pinjaman_id, a.no_angsuran, a.jatuh_tempo, a.total_angsuran,
+               p.kode_pinjaman, n.nama as nama_nasabah, n.telp, n.alamat
+        FROM angsuran a
+        JOIN pinjaman p ON a.pinjaman_id = p.id
+        JOIN nasabah n ON p.nasabah_id = n.id
+        WHERE a.status != 'lunas'
+        AND a.jatuh_tempo < CURDATE()
+        AND NOT EXISTS (
+            SELECT 1 FROM penagihan pen WHERE pen.angsuran_id = a.id
+        )
+        ORDER BY a.jatuh_tempo ASC
+    ");
+    
+    if (!$overdue || !is_array($overdue) || empty($overdue)) {
+        return ['success' => true, 'message' => 'No overdue installments found', 'count' => 0];
+    }
+    
+    $created = 0;
+    foreach ($overdue as $item) {
+        // Calculate days overdue
+        $hari_telat = (strtotime(date('Y-m-d')) - strtotime($item['jatuh_tempo'])) / 86400;
+        
+        // Determine jenis_penagihan_id based on days overdue
+        if ($hari_telat <= 7) {
+            $jenis_penagihan_id = 2; // TELAT_1_7
+        } elseif ($hari_telat <= 14) {
+            $jenis_penagihan_id = 3; // TELAT_8_14
+        } elseif ($hari_telat <= 30) {
+            $jenis_penagihan_id = 4; // TELAT_15_30
+        } else {
+            $jenis_penagihan_id = 5; // TELAT_30_PLUS
+        }
+        
+        // Create penagihan record
+        query("INSERT INTO penagihan (pinjaman_id, angsuran_id, jenis_penagihan_id, status, tanggal_jatuh_tempo, hasil) VALUES (?, ?, ?, 'pending', ?, 'Angsuran jatuh tempo - belum dibayar')", 
+            [$item['pinjaman_id'], $item['id'], $jenis_penagihan_id, $item['jatuh_tempo']]);
+        
+        $penagihan_id = query("SELECT LAST_INSERT_ID() as id")[0]['id'];
+        
+        // Log creation
+        query("INSERT INTO penagihan_log (penagihan_id, aksi, hasil) VALUES (?, 'auto_create', 'Auto-created penagihan record for overdue installment: " . $hari_telat . " days late')", 
+            [$penagihan_id]);
+        
+        $created++;
+    }
+    
+    return ['success' => true, 'message' => "Created {$created} penagihan records", 'count' => $created];
 }

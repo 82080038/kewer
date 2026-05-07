@@ -303,10 +303,10 @@ $riwayat_skor  = query("SELECT * FROM riwayat_skor_kredit WHERE nasabah_id = ? O
                                                 <td><?php echo $p['kode_pinjaman']; ?></td>
                                                 <td><?php echo formatRupiah($p['plafon']); ?></td>
                                                 <td>
-                                                    <?php $pfrek = $p['frekuensi'] ?? 'bulanan'; ?>
-                                                    <span class="badge bg-<?php echo ['harian'=>'warning','mingguan'=>'info','bulanan'=>'primary'][$pfrek] ?? 'primary'; ?>">
-                                                        <?php echo getFrequencyLabel($pfrek); ?>
-                                                    </span>
+                                                    <?php 
+                                                    $pfrek = $p['frekuensi_id'] ?? $p['frekuensi'] ?? 'bulanan';
+                                                    echo getFrequencyLabel($pfrek);
+                                                    ?>
                                                 </td>
                                                 <td><?php echo $p['tenor']; ?> <?php echo getFrequencyPeriodLabel($pfrek); ?></td>
                                                 <td><?php echo $p['bunga_per_bulan']; ?>%</td>

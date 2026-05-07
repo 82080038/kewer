@@ -22,7 +22,7 @@
 ## Architecture
 - **Backend**: PHP 8.2 with MySQL/MariaDB
 - **Frontend**: Bootstrap 5.3 + Vanilla JavaScript
-- **Database**: 3 database terpisah (kewer, db_alamat_simple, db_orang)
+- **Database**: 3 database terpisah (kewer, db_alamat, db_orang)
 - **Authentication**: Session-based with role-based permissions
 - **Platform**: appOwner layer (billing, usage tracking, AI advisor)
 - **Audit Trail**: CRUD operations logged to audit_log table
@@ -48,20 +48,37 @@
          │ province_id, regency_id, district_id, village_id
          ▼
 ┌─────────────────────────────────┐
-│  db_alamat_simple (4 tabel)     │  Referensi lokasi Sumatera Utara
+│  db_alamat (24 tabel)           │  Referensi lokasi nasional + geospasial
 │  $conn_alamat → query_alamat()  │
-│  └── provinces → regencies      │  1 provinsi, 33 kab, 448 kec, 6.101 desa
-│      → districts → villages     │
+│  ├── provinces → regencies      │  38 prov, 541 kab, 7,938 kec, 80,937 desa
+│  │   → districts → villages     │
+│  ├── GPS, boundaries, metadata  │  Geospasial
+│  └── POI, infrastructure       │  Data tambahan
 └─────────────────────────────────┘
          ▲ cross-DB JOIN
-┌────────┴────────────────────────┐
-│  db_orang (19 tabel + 6 view)   │  Identitas orang + geospasial nasional
+┌─────────────────────────────────┐
+│  db_orang (20 tabel)            │  Identitas orang + alamat + master data + relasi + audit
 │  $conn_orang → query_orang()    │
 │  ├── people                     │  Data orang (link ke kewer.users/nasabah)
-│  ├── addresses                  │  Alamat per orang
-│  ├── provinces → regencies      │  38 prov, 541 kab, 8K kec, 81K desa
-│  │   → districts → villages     │
-│  └── GPS, boundaries, metadata  │  Geospasial
+│  ├── addresses                  │  Alamat per orang (ref lokasi → db_alamat)
+│  ├── people_phones              │  Multiple phone numbers per orang
+│  ├── people_emails              │  Multiple emails per orang
+│  ├── people_documents           │  Dokumen identitas per orang
+│  ├── family_relations           │  Relasi keluarga per orang
+│  ├── people_audit_log           │  Audit trail perubahan data orang
+│  ├── ref_agama                  │  Master agama (6 agama resmi Indonesia)
+│  ├── ref_jenis_kelamin          │  Master jenis kelamin
+│  ├── ref_golongan_darah         │  Master golongan darah
+│  ├── ref_status_perkawinan      │  Master status perkawinan
+│  ├── ref_suku                   │  Master suku bangsa (20 suku utama)
+│  ├── ref_pekerjaan              │  Master pekerjaan
+│  ├── ref_jenis_alamat           │  Master jenis alamat (rumah, kantor, kos, dll)
+│  ├── ref_jenis_identitas        │  Master jenis identitas (KTP, SIM, Paspor, dll)
+│  ├── ref_jenis_telepon          │  Master jenis telepon
+│  ├── ref_jenis_email            │  Master jenis email
+│  ├── ref_jenis_gelar            │  Master gelar
+│  ├── ref_jenis_relasi           │  Master jenis relasi keluarga
+│  └── ref_jenis_properti         │  Master jenis properti
 └─────────────────────────────────┘
 ```
 
@@ -69,10 +86,8 @@
 - `kewer.users.db_orang_person_id` → `db_orang.people.id`
 - `kewer.nasabah.db_orang_user_id` → `db_orang.people.id`
 - `kewer.cabang.db_orang_person_id` → `db_orang.people.id`
-- Models (Nasabah.php, Cabang.php) use `LEFT JOIN db_alamat_simple.provinces` etc.
-
-### db_alamat_simple Notes
-- Sumatera Utara: **id=3** (code=12). Semua regencies punya province_id=3.
+- `db_orang.addresses` → `db_alamat.provinces/regencies/districts/villages`
+- Models (Nasabah.php, Cabang.php) use `LEFT JOIN db_alamat.provinces` etc.
 
 ---
 

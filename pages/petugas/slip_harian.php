@@ -31,7 +31,7 @@ $petugas = $petugas[0];
 // Kutipan hari ini oleh petugas
 $pembayaran = query(
     "SELECT py.*, n.nama as nama_nasabah, n.kode_nasabah,
-            p.kode_pinjaman, p.frekuensi,
+            p.kode_pinjaman, p.frekuensi_id,
             a.no_angsuran as angsuran_ke
      FROM pembayaran py
      JOIN pinjaman p ON py.pinjaman_id = p.id

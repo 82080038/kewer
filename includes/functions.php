@@ -162,12 +162,15 @@ function generateKode($prefix, $table, $field) {
 
 // Calculate loan interest (Flat Rate) - supports harian/mingguan/bulanan
 function calculateLoan($plafon, $tenor, $bunga_per_bulan, $frekuensi = 'bulanan') {
+    // Convert frequency ID to code if needed
+    $frekuensi_code = getFrequencyCode($frekuensi);
+    
     // Convert monthly rate to per-period rate
-    switch ($frekuensi) {
-        case 'harian':
+    switch ($frekuensi_code) {
+        case 'HARIAN':
             $bunga_per_period = $bunga_per_bulan / 30; // daily rate from monthly
             break;
-        case 'mingguan':
+        case 'MINGGUAN':
             $bunga_per_period = $bunga_per_bulan / 4; // weekly rate from monthly
             break;
         default: // bulanan
@@ -214,6 +217,9 @@ function calculateLoanDinamis($plafon, $tenor, $jenis_pinjaman, $nasabah_id = nu
 function createLoanSchedule($pinjaman_id, $plafon, $tenor, $bunga_per_bulan, $tanggal_akad, $frekuensi = 'bulanan') {
     $calc = calculateLoan($plafon, $tenor, $bunga_per_bulan, $frekuensi);
     
+    // Convert frequency ID to code if needed
+    $frekuensi_code = getFrequencyCode($frekuensi);
+    
     // Get cabang_id from pinjaman record
     $pinjaman_data = query("SELECT cabang_id FROM pinjaman WHERE id = ?", [$pinjaman_id]);
     $cabang_id = is_array($pinjaman_data) && isset($pinjaman_data[0]) ? $pinjaman_data[0]['cabang_id'] : 1;
@@ -221,11 +227,11 @@ function createLoanSchedule($pinjaman_id, $plafon, $tenor, $bunga_per_bulan, $ta
     $success_count = 0;
     
     for ($i = 1; $i <= $tenor; $i++) {
-        switch ($frekuensi) {
-            case 'harian':
+        switch ($frekuensi_code) {
+            case 'HARIAN':
                 $jatuh_tempo = date('Y-m-d', strtotime("+$i day", strtotime($tanggal_akad)));
                 break;
-            case 'mingguan':
+            case 'MINGGUAN':
                 $jatuh_tempo = date('Y-m-d', strtotime("+$i week", strtotime($tanggal_akad)));
                 break;
             default: // bulanan
@@ -295,7 +301,7 @@ function checkLatePayments() {
     calculateAutoDenda($kantor_id);
     
     // Get list of late payments
-    return query("SELECT a.*, n.nama, n.telp, p.kode_pinjaman, p.frekuensi,
+    return query("SELECT a.*, n.nama, n.telp, p.kode_pinjaman, p.frekuensi_id,
                   DATEDIFF(CURDATE(), a.jatuh_tempo) as hari_telat
                   FROM angsuran a 
                   JOIN pinjaman p ON a.pinjaman_id = p.id 
@@ -307,20 +313,21 @@ function checkLatePayments() {
 // Auto-calculate denda for late installments
 function calculateAutoDenda($kantor_id) {
     // Get late installments without denda calculated today
-    $late = query("SELECT a.id, a.total_angsuran, a.jatuh_tempo, a.denda, p.frekuensi
+    $late = query("SELECT a.id, a.total_angsuran, a.jatuh_tempo, a.denda, p.frekuensi_id
                    FROM angsuran a
                    JOIN pinjaman p ON a.pinjaman_id = p.id
                    WHERE a.status = 'telat' AND a.jatuh_tempo < CURDATE()");
     
-    if (!is_array($late)) return;
+    if (!$late || !is_array($late) || empty($late)) return;
     
     foreach ($late as $row) {
         $hari_telat = (int)((strtotime(date('Y-m-d')) - strtotime($row['jatuh_tempo'])) / 86400);
         
         // Get denda settings for this frekuensi
+        $frekuensi_value = $row['frekuensi_id'];
         $setting = query("SELECT * FROM setting_denda 
-                          WHERE is_active = 1 AND frekuensi = ? 
-                          LIMIT 1", [$row['frekuensi']]);
+                          WHERE is_active = 1 AND frekuensi_id = ? 
+                          LIMIT 1", [$frekuensi_value]);
         
         if (!$setting || !is_array($setting) || empty($setting)) continue;
         $s = $setting[0];
@@ -352,9 +359,18 @@ function calculateAutoDenda($kantor_id) {
 
 // Get frequency label in Indonesian
 function getFrequencyLabel($frekuensi) {
+    // Try to get from ref_frekuensi_angsuran table first
+    if (is_numeric($frekuensi)) {
+        $result = query("SELECT nama FROM ref_frekuensi_angsuran WHERE id = ? AND status = 'aktif'", [$frekuensi]);
+        if ($result && is_array($result) && isset($result[0])) {
+            return $result[0]['nama'];
+        }
+    }
+    
+    // Fallback to old enum-based labels for backward compatibility
     $labels = [
         'harian' => 'Harian',
-        'mingguan' => 'Mingguan',
+        'mingguan' => 'Minggu',
         'bulanan' => 'Bulanan'
     ];
     return $labels[$frekuensi] ?? 'Bulanan';
@@ -362,6 +378,19 @@ function getFrequencyLabel($frekuensi) {
 
 // Get frequency period label
 function getFrequencyPeriodLabel($frekuensi) {
+    // Try to get from ref_frekuensi_angsuran table first
+    if (is_numeric($frekuensi)) {
+        $result = query("SELECT nama, hari_per_periode FROM ref_frekuensi_angsuran WHERE id = ? AND status = 'aktif'", [$frekuensi]);
+        if ($result && is_array($result) && isset($result[0])) {
+            $freq = $result[0];
+            if ($freq['hari_per_periode'] === 1) return 'Hari';
+            if ($freq['hari_per_periode'] === 7) return 'Minggu';
+            if ($freq['hari_per_periode'] === 30) return 'Bulan';
+            return 'Periode';
+        }
+    }
+    
+    // Fallback to old enum-based labels for backward compatibility
     $labels = [
         'harian' => 'Hari',
         'mingguan' => 'Minggu',
@@ -372,12 +401,53 @@ function getFrequencyPeriodLabel($frekuensi) {
 
 // Get max tenor by frequency
 function getMaxTenor($frekuensi) {
+    // Try to get from ref_frekuensi_angsuran table first
+    if (is_numeric($frekuensi)) {
+        $result = query("SELECT tenor_max FROM ref_frekuensi_angsuran WHERE id = ? AND status = 'aktif'", [$frekuensi]);
+        if ($result && is_array($result) && isset($result[0])) {
+            return (int)$result[0]['tenor_max'];
+        }
+    }
+    
+    // Fallback to old enum-based labels for backward compatibility
     $max = [
         'harian' => 365,
         'mingguan' => 52,
         'bulanan' => 24
     ];
     return $max[$frekuensi] ?? 24;
+}
+
+// Get frequency code from ID (for backward compatibility)
+function getFrequencyCode($frekuensi_id) {
+    if (is_numeric($frekuensi_id)) {
+        $result = query("SELECT kode FROM ref_frekuensi_angsuran WHERE id = ? AND status = 'aktif'", [$frekuensi_id]);
+        if ($result && is_array($result) && isset($result[0])) {
+            return $result[0]['kode'];
+        }
+    }
+    return 'bulanan';
+}
+
+// Get frequency ID from code (for backward compatibility)
+function getFrequencyId($frekuensi_code) {
+    if (is_numeric($frekuensi_code)) {
+        return $frekuensi_code; // Already an ID
+    }
+    
+    $result = query("SELECT id FROM ref_frekuensi_angsuran WHERE kode = ? AND status = 'aktif'", [$frekuensi_code]);
+    if ($result && is_array($result) && isset($result[0])) {
+        return $result[0]['id'];
+    }
+    
+    // Default to bulanan (id 3)
+    return 3;
+}
+
+// Get all active frequencies for dropdown
+function getActiveFrequencies() {
+    $result = query("SELECT id, kode, nama, hari_per_periode, tenor_min, tenor_max FROM ref_frekuensi_angsuran WHERE status = 'aktif' ORDER BY urutan_tampil");
+    return $result ?? [];
 }
 
 // Blacklist / unblacklist nasabah

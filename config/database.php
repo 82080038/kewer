@@ -10,7 +10,7 @@ if (!defined('DB_PASS')) define('DB_PASS', 'root');
 
 // Multi-Database Configuration
 if (!defined('DB_ALAMAT_HOST')) define('DB_ALAMAT_HOST', 'localhost');
-if (!defined('DB_ALAMAT_NAME')) define('DB_ALAMAT_NAME', 'db_alamat_simple');
+if (!defined('DB_ALAMAT_NAME')) define('DB_ALAMAT_NAME', 'db_alamat');
 if (!defined('DB_ALAMAT_USER')) define('DB_ALAMAT_USER', 'root');
 if (!defined('DB_ALAMAT_PASS')) define('DB_ALAMAT_PASS', 'root');
 
@@ -24,8 +24,11 @@ if (!defined('DB_KEWER_NAME')) define('DB_KEWER_NAME', 'kewer');
 if (!defined('DB_KEWER_USER')) define('DB_KEWER_USER', 'root');
 if (!defined('DB_KEWER_PASS')) define('DB_KEWER_PASS', 'root');
 
+// Determine MySQL socket based on OS
+$mysql_socket = PHP_OS === 'WINNT' ? null : '/opt/lampp/var/mysql/mysql.sock';
+
 // Create main connection (kewer - transactions)
-$conn = new mysqli(DB_KEWER_HOST, DB_KEWER_USER, DB_KEWER_PASS, DB_KEWER_NAME, 3306, '/opt/lampp/var/mysql/mysql.sock');
+$conn = new mysqli(DB_KEWER_HOST, DB_KEWER_USER, DB_KEWER_PASS, DB_KEWER_NAME, 3306, $mysql_socket);
 
 // Check connection
 if ($conn->connect_error) {
@@ -36,14 +39,14 @@ if ($conn->connect_error) {
 $conn->set_charset("utf8mb4");
 
 // Create address database connection
-$conn_alamat = new mysqli(DB_ALAMAT_HOST, DB_ALAMAT_USER, DB_ALAMAT_PASS, DB_ALAMAT_NAME, 3306, '/opt/lampp/var/mysql/mysql.sock');
+$conn_alamat = new mysqli(DB_ALAMAT_HOST, DB_ALAMAT_USER, DB_ALAMAT_PASS, DB_ALAMAT_NAME, 3306, $mysql_socket);
 if ($conn_alamat->connect_error) {
     die("Address database connection failed: " . $conn_alamat->connect_error);
 }
 $conn_alamat->set_charset("utf8mb4");
 
 // Create people database connection
-$conn_orang = new mysqli(DB_ORANG_HOST, DB_ORANG_USER, DB_ORANG_PASS, DB_ORANG_NAME, 3306, '/opt/lampp/var/mysql/mysql.sock');
+$conn_orang = new mysqli(DB_ORANG_HOST, DB_ORANG_USER, DB_ORANG_PASS, DB_ORANG_NAME, 3306, $mysql_socket);
 if ($conn_orang->connect_error) {
     die("People database connection failed: " . $conn_orang->connect_error);
 }

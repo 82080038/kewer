@@ -146,12 +146,9 @@ $stats = query("
                                         <td><strong>Frekuensi:</strong></td>
                                         <td>
                                             <?php
-                                            $frek = $pinjaman['frekuensi'] ?? 'bulanan';
-                                            $freq_class = ['harian' => 'warning', 'mingguan' => 'info', 'bulanan' => 'primary'];
+                                            $frek = $pinjaman['frekuensi_id'] ?? $pinjaman['frekuensi'] ?? 'bulanan';
+                                            echo getFrequencyLabel($frek);
                                             ?>
-                                            <span class="badge bg-<?php echo $freq_class[$frek] ?? 'primary'; ?>">
-                                                <?php echo getFrequencyLabel($frek); ?>
-                                            </span>
                                         </td>
                                     </tr>
                                     <tr>

@@ -20,18 +20,49 @@ class BungaCalculator {
     }
     
     /**
+     * Get interest rate by frequency ID
+     */
+    private function getBungaByFrekuensi($frekuensi_id) {
+        $result = query("SELECT * FROM setting_bunga WHERE frekuensi_id = ? AND is_active = 1 LIMIT 1", [$frekuensi_id]);
+        if ($result && is_array($result) && !empty($result)) {
+            return $result[0];
+        }
+        return null;
+    }
+    
+    /**
      * Get default interest rate for loan type and tenor
      */
     public function getBungaDasar($jenisPinjaman, $tenor, $frekuensi = 'bulanan') {
+        // Support both frekuensi_id (numeric) and frekuensi enum (string)
+        $frekuensi_id = null;
+        if (is_numeric($frekuensi)) {
+            $frekuensi_id = $frekuensi;
+            $frekuensi = getFrequencyCode($frekuensi_id);
+        }
+        
         $sql = "SELECT bunga_default, bunga_min, bunga_max 
                 FROM setting_bunga 
                 WHERE jenis_pinjaman = ? 
                 AND tenor_min <= ? 
                 AND tenor_max >= ? 
-                AND frekuensi = ?
+                AND frekuensi_id = ?
                 AND status = 'aktif'
                 AND cabang_id IS NULL";
-        $result = $this->db->selectOne($sql, [$jenisPinjaman, $tenor, $tenor, $frekuensi]);
+        $result = $this->db->selectOne($sql, [$jenisPinjaman, $tenor, $tenor, $frekuensi_id]);
+        
+        // Fallback: try with frekuensi_id if available
+        if (!$result && $frekuensi_id) {
+            $sql3 = "SELECT bunga_default, bunga_min, bunga_max 
+                    FROM setting_bunga 
+                    WHERE jenis_pinjaman = ? 
+                    AND tenor_min <= ? 
+                    AND tenor_max >= ? 
+                    AND frekuensi_id = ?
+                    AND status = 'aktif'
+                    AND cabang_id IS NULL";
+            $result = $this->db->selectOne($sql3, [$jenisPinjaman, $tenor, $tenor, $frekuensi_id]);
+        }
         
         // Fallback: try without frekuensi filter (backward compat)
         if (!$result) {
@@ -111,14 +142,14 @@ class BungaCalculator {
      * Calculate final interest rate
      */
     public function hitungBungaDinamis($jenisPinjaman, $tenor, $nasabahId = null, $jaminanTipe = 'tanpa', $frekuensi = 'bulanan') {
+        // Support both frekuensi_id (numeric) and frekuensi enum (string)
+        $frekuensi_code = getFrequencyCode($frekuensi);
+        
         $bungaDasar = $this->getBungaDasar($jenisPinjaman, $tenor, $frekuensi);
         $risikoAdjustment = $nasabahId ? $this->getRisikoAdjustment($nasabahId) : 1.0;
         $jaminanAdjustment = $this->getJaminanAdjustment($jaminanTipe);
         
         $sukuBunga = $bungaDasar['bunga_default'] + $risikoAdjustment + $jaminanAdjustment;
-        
-        // Ensure within min/max bounds
-        $sukuBunga = max($bungaDasar['bunga_min'], min($bungaDasar['bunga_max'], $sukuBunga));
         
         return [
             'suku_bunga' => round($sukuBunga, 2),
@@ -127,7 +158,7 @@ class BungaCalculator {
             'jaminan_adjustment' => $jaminanAdjustment,
             'jenis_pinjaman' => $jenisPinjaman,
             'tenor' => $tenor,
-            'frekuensi' => $frekuensi
+            'frekuensi' => $frekuensi_code
         ];
     }
     
@@ -135,15 +166,18 @@ class BungaCalculator {
      * Calculate loan schedule with dynamic interest
      */
     public function hitungAngsuran($pokok, $tenor, $sukuBunga, $metode = 'flat', $frekuensi = 'bulanan') {
+        // Support both frekuensi_id (numeric) and frekuensi enum (string)
+        $frekuensi_code = getFrequencyCode($frekuensi);
+        
         $totalBunga = 0;
         $angsuranPokok = 0;
         $angsuranBunga = 0;
         $angsuranTotal = 0;
         
         // Convert monthly rate to per-period rate
-        switch ($frekuensi) {
-            case 'harian':  $bungaPerPeriod = $sukuBunga / 30; break;
-            case 'mingguan': $bungaPerPeriod = $sukuBunga / 4; break;
+        switch ($frekuensi_code) {
+            case 'HARIAN':  $bungaPerPeriod = $sukuBunga / 30; break;
+            case 'MINGGUAN': $bungaPerPeriod = $sukuBunga / 4; break;
             default:         $bungaPerPeriod = $sukuBunga; break;
         }
         
@@ -231,14 +265,23 @@ class BungaCalculator {
      * Create new interest rate setting
      */
     public function createSetting($data) {
+        // Support both frekuensi_id (numeric) and frekuensi enum (string)
+        $frekuensi_id = null;
+        $frekuensi = $data['frekuensi'] ?? 'bulanan';
+        if (is_numeric($frekuensi)) {
+            $frekuensi_id = $frekuensi;
+            $frekuensi = getFrequencyCode($frekuensi_id);
+        }
+        
         $sql = "INSERT INTO setting_bunga 
-                (cabang_id, jenis_pinjaman, frekuensi, tenor_min, tenor_max, bunga_default, bunga_min, bunga_max, faktor_risiko, jaminan_adjustment)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                (cabang_id, jenis_pinjaman, frekuensi_id, frekuensi, tenor_min, tenor_max, bunga_default, bunga_min, bunga_max, faktor_risiko, jaminan_adjustment)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         return $this->db->insert($sql, [
             null, // Single office - always null (global)
             $data['jenis_pinjaman'],
-            $data['frekuensi'] ?? 'bulanan',
+            $frekuensi_id,
+            $frekuensi,
             $data['tenor_min'],
             $data['tenor_max'],
             $data['bunga_default'],

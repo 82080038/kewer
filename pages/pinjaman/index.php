@@ -228,8 +228,8 @@ if (!is_array($nasabah_list)) {
                                                 <td><?php echo formatRupiah($p['plafon']); ?></td>
                                                 <td>
                                                     <?php
-                                                    $freq_class = ['harian' => 'warning', 'mingguan' => 'info', 'bulanan' => 'primary'];
-                                                    $frek = $p['frekuensi'] ?? 'bulanan';
+                                                    $freq_class = ['harian' => 'warning', 'mingguan' => 'info', 'bulanan' => 'primary', 'HARIAN' => 'warning', 'MINGGUAN' => 'info', 'BULANAN' => 'primary'];
+                                                    $frek = $p['frekuensi_id'] ?? $p['frekuensi'] ?? 'bulanan';
                                                     ?>
                                                     <span class="badge bg-<?php echo $freq_class[$frek] ?? 'primary'; ?>">
                                                         <?php echo getFrequencyLabel($frek); ?>
@@ -320,9 +320,22 @@ if (!is_array($nasabah_list)) {
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Frekuensi Angsuran *</label>
                                 <select name="frekuensi" class="form-select" id="frekuensi" required>
+                                    <?php
+                                    $active_frequencies = getActiveFrequencies();
+                                    if ($active_frequencies && is_array($active_frequencies)):
+                                        foreach ($active_frequencies as $freq):
+                                    ?>
+                                    <option value="<?= $freq['kode'] ?>" data-id="<?= $freq['id'] ?>" data-max="<?= $freq['tenor_max'] ?>" data-period="<?= $freq['hari_per_periode'] ?>">
+                                        <?= $freq['nama'] ?> (Max: <?= $freq['tenor_max'] ?>)
+                                    </option>
+                                    <?php
+                                        endforeach;
+                                    else:
+                                    ?>
                                     <option value="harian">Harian</option>
                                     <option value="mingguan">Mingguan</option>
                                     <option value="bulanan" selected>Bulanan</option>
+                                    <?php endif; ?>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
@@ -454,12 +467,22 @@ if (!is_array($nasabah_list)) {
         };
         
         function updateFrequencyUI() {
-            const frek = document.getElementById('frekuensi').value;
-            const cfg = freqConfig[frek];
-            document.getElementById('tenorLabel').textContent = cfg.label;
-            document.getElementById('tenor').max = cfg.max;
+            const frekSelect = document.getElementById('frekuensi');
+            const selectedOption = frekSelect.options[frekSelect.selectedIndex];
+            const maxTenor = parseInt(selectedOption.getAttribute('data-max')) || 24;
+            const period = parseInt(selectedOption.getAttribute('data-period')) || 30;
+            
+            let label = 'bulan';
+            if (period === 1) label = 'hari';
+            else if (period === 7) label = 'minggu';
+            
+            document.getElementById('tenorLabel').textContent = label;
+            document.getElementById('tenor').max = maxTenor;
+            document.getElementById('tenorHelp').textContent = `Maksimal: ${maxTenor} ${label}`;
+            
             const tenorEl = document.getElementById('tenor');
-            if (parseInt(tenorEl.value) > cfg.max) tenorEl.value = cfg.max;
+            if (parseInt(tenorEl.value) > maxTenor) tenorEl.value = maxTenor;
+            
             calculatePreview();
         }
         
@@ -467,10 +490,21 @@ if (!is_array($nasabah_list)) {
             const plafon = parseFloat(document.getElementById('plafon').value.replace(/[^\d]/g, '')) || 0;
             const tenor = parseInt(document.getElementById('tenor').value) || 0;
             const bungaBulanan = parseFloat(document.getElementById('bunga').value) || 0;
-            const frek = document.getElementById('frekuensi').value;
-            const cfg = freqConfig[frek];
+            const frekSelect = document.getElementById('frekuensi');
+            const selectedOption = frekSelect.options[frekSelect.selectedIndex];
+            const period = parseInt(selectedOption.getAttribute('data-period')) || 30;
             
-            const bungaPerPeriod = bungaBulanan / cfg.bungaDivisor;
+            let bungaDivisor = 1;
+            let periodLabel = 'Bulan';
+            if (period === 1) {
+                bungaDivisor = 30;
+                periodLabel = 'Hari';
+            } else if (period === 7) {
+                bungaDivisor = 4;
+                periodLabel = 'Minggu';
+            }
+            
+            const bungaPerPeriod = bungaBulanan / bungaDivisor;
             
             if (plafon > 0 && tenor > 0 && bungaBulanan >= 0) {
                 const totalBunga = plafon * (bungaPerPeriod / 100) * tenor;
@@ -481,13 +515,13 @@ if (!is_array($nasabah_list)) {
                 
                 document.getElementById('loanPreview').innerHTML = `
                     <table class="table table-sm">
-                        <tr><td>Frekuensi:</td><td class="text-end"><span class="badge bg-primary">${cfg.periodLabel}</span></td></tr>
+                        <tr><td>Frekuensi:</td><td class="text-end"><span class="badge bg-primary">${periodLabel}</span></td></tr>
                         <tr><td>Total Pinjaman:</td><td class="text-end">Rp ${formatRupiah(totalPembayaran)}</td></tr>
                         <tr><td>Total Bunga:</td><td class="text-end">Rp ${formatRupiah(totalBunga)}</td></tr>
-                        <tr><td>Angsuran/${cfg.periodLabel}:</td><td class="text-end fw-bold">Rp ${formatRupiah(angsuranTotal)}</td></tr>
-                        <tr><td>Pokok/${cfg.periodLabel}:</td><td class="text-end">Rp ${formatRupiah(angsuranPokok)}</td></tr>
-                        <tr><td>Bunga/${cfg.periodLabel}:</td><td class="text-end">Rp ${formatRupiah(angsuranBunga)}</td></tr>
-                        <tr><td>Bunga per ${cfg.label}:</td><td class="text-end">${bungaPerPeriod.toFixed(4)}%</td></tr>
+                        <tr><td>Angsuran/${periodLabel}:</td><td class="text-end fw-bold">Rp ${formatRupiah(angsuranTotal)}</td></tr>
+                        <tr><td>Pokok/${periodLabel}:</td><td class="text-end">Rp ${formatRupiah(angsuranPokok)}</td></tr>
+                        <tr><td>Bunga/${periodLabel}:</td><td class="text-end">Rp ${formatRupiah(angsuranBunga)}</td></tr>
+                        <tr><td>Bunga per ${periodLabel.toLowerCase()}:</td><td class="text-end">${bungaPerPeriod.toFixed(4)}%</td></tr>
                     </table>
                 `;
             } else {

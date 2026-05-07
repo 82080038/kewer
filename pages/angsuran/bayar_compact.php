@@ -15,29 +15,39 @@ if (!$angsuran_id) {
 $angsuran = query("
     SELECT 
         a.*, 
-        p.kode_pinjaman, p.frekuensi, p.nasabah_id,
+        p.kode_pinjaman, p.frekuensi_id, p.nasabah_id,
         n.nama as nasabah_nama, n.telp as nasabah_telp, n.alamat,
         DATEDIFF(CURDATE(), a.jatuh_tempo) as hari_telat_sekarang,
-        CASE 
-            WHEN a.status = 'lunas' THEN a.denda_terhitung
-            WHEN a.jatuh_tempo < CURDATE() THEN 
-                COALESCE(a.denda_terhitung, 
-                    CASE 
-                        WHEN sd.tipe_denda = 'persentase' THEN 
-                            a.total_angsuran * (sd.nilai_denda / 100) * GREATEST(DATEDIFF(CURDATE(), a.jatuh_tempo) - sd.grace_period, 0)
-                        ELSE 
-                            sd.nilai_denda * GREATEST(DATEDIFF(CURDATE(), a.jatuh_tempo) - sd.grace_period, 0)
-                    END
-                )
-            ELSE 0
-        END as denda_hitung_sekarang,
-        sd.nilai_denda as denda_rate,
-        sd.grace_period,
-        sd.bisa_waive
+        COALESCE(
+            (SELECT 
+                CASE 
+                    WHEN sd.tipe_denda = 'persentase' THEN
+                        (a.total_angsuran * sd.nilai_denda / 100) * 
+                        CASE 
+                            WHEN p.frekuensi_id = 1 THEN 1
+                            WHEN p.frekuensi_id = 2 THEN 1/7
+                            ELSE 1/30
+                        END * GREATEST(0, DATEDIFF(CURDATE(), a.jatuh_tempo) - COALESCE(sd.grace_period, 0))
+                    ELSE
+                        sd.nilai_denda * GREATEST(0, DATEDIFF(CURDATE(), a.jatuh_tempo) - COALESCE(sd.grace_period, 0))
+                END
+            FROM setting_denda sd 
+            WHERE sd.frekuensi_id = p.frekuensi_id AND sd.is_active = 1 
+            AND (sd.cabang_id = a.cabang_id OR sd.cabang_id IS NULL)
+            ORDER BY sd.cabang_id DESC LIMIT 1),
+            0
+        ) as denda_terhitung,
+        COALESCE(
+            (SELECT COALESCE(sd.grace_period, 0)
+            FROM setting_denda sd 
+            WHERE sd.frekuensi_id = p.frekuensi_id AND sd.is_active = 1 
+            AND (sd.cabang_id = a.cabang_id OR sd.cabang_id IS NULL)
+            ORDER BY sd.cabang_id DESC LIMIT 1),
+            0
+        ) as grace_period
     FROM angsuran a
     JOIN pinjaman p ON a.pinjaman_id = p.id
     JOIN nasabah n ON p.nasabah_id = n.id
-    LEFT JOIN setting_denda sd ON a.cabang_id = sd.cabang_id AND p.frekuensi = sd.frekuensi AND sd.is_active = 1
     WHERE a.id = ? AND a.cabang_id = ?
 ", [$angsuran_id, $cabang_id]);
 
@@ -59,9 +69,13 @@ $hari_telat = max(0, $a['hari_telat_sekarang'] ?? 0);
 $grace = $a['grace_period'] ?? 0;
 $hari_telat_efektif = max(0, $hari_telat - $grace);
 
-if ($a['frekuensi'] == 'harian') {
+// Use frekuensi_id only (enum column dropped in migration 024)
+$frekuensi_value = $a['frekuensi_id'];
+$frekuensi_code = getFrequencyCode($frekuensi_value);
+
+if ($frekuensi_code == 'HARIAN' || $frekuensi_code == 'harian') {
     $denda_per_hari = ($a['total_angsuran'] * ($a['denda_rate'] ?? 0.5)) / 100;
-} elseif ($a['frekuensi'] == 'mingguan') {
+} elseif ($frekuensi_code == 'MINGGUAN' || $frekuensi_code == 'mingguan') {
     $denda_per_hari = ($a['total_angsuran'] * ($a['denda_rate'] ?? 2.0)) / 100 / 7;
 } else {
     $denda_per_hari = ($a['total_angsuran'] * ($a['denda_rate'] ?? 5.0)) / 100 / 30;
@@ -121,7 +135,7 @@ $metode_list = ['Tunai', 'Transfer Bank', 'QRIS', 'Debit', 'Lainnya'];
                             <div class="col-md-6 text-md-end">
                                 <small class="text-muted">Pinjaman</small>
                                 <h5 class="mb-0"><?= htmlspecialchars($a['kode_pinjaman']) ?></h5>
-                                <small>Angsuran ke-<?= $a['no_angsuran'] ?> - <?= ucfirst($a['frekuensi']) ?></small>
+                                <small>Angsuran ke-<?= $a['no_angsuran'] ?> - <?= getFrequencyLabel($frekuensi_value) ?></small>
                             </div>
                         </div>
                     </div>

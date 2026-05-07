@@ -56,7 +56,7 @@ switch ($action) {
                     
                     if ($result) {
                         // Create loan schedule
-                        $frek = $pinjaman['frekuensi'] ?? 'bulanan';
+                        $frek = $pinjaman['frekuensi_id'] ?? $pinjaman['frekuensi'] ?? 'bulanan';
                         createLoanSchedule($id, $pinjaman['plafon'], $pinjaman['tenor'], $pinjaman['bunga_per_bulan'], $pinjaman['tanggal_akad'], $frek);
                         
                         // Update to aktif

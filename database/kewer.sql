@@ -1,4 +1,4 @@
--- MariaDB dump 10.19  Distrib 10.4.32-MariaDB, for Linux (x86_64)
+-- MariaDB dump 10.19  Distrib 10.4.32-MariaDB, for Win64 (AMD64)
 --
 -- Host: localhost    Database: kewer
 -- ------------------------------------------------------
@@ -122,9 +122,9 @@ DROP TABLE IF EXISTS `angsuran`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `angsuran` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `frekuensi_id` int(11) DEFAULT NULL,
   `cabang_id` int(11) DEFAULT 1,
   `pinjaman_id` int(11) NOT NULL,
-  `frekuensi` enum('harian','mingguan','bulanan') DEFAULT NULL,
   `no_angsuran` int(11) NOT NULL,
   `jatuh_tempo` date NOT NULL,
   `pokok` decimal(12,2) NOT NULL,
@@ -151,9 +151,13 @@ CREATE TABLE `angsuran` (
   KEY `idx_angsuran_jatuh_tempo` (`jatuh_tempo`),
   KEY `idx_angsuran_pinjaman_status` (`pinjaman_id`,`status`),
   KEY `idx_angsuran_cabang_status` (`status`),
-  KEY `idx_angsuran_frekuensi` (`frekuensi`),
   KEY `idx_angsuran_jatuh_tempo_status` (`jatuh_tempo`,`status`),
-  CONSTRAINT `angsuran_ibfk_2` FOREIGN KEY (`pinjaman_id`) REFERENCES `pinjaman` (`id`)
+  KEY `fk_angsuran_frekuensi` (`frekuensi_id`),
+  KEY `idx_angsuran_status` (`status`),
+  KEY `idx_angsuran_status_jatuh_tempo` (`status`,`jatuh_tempo`),
+  CONSTRAINT `angsuran_ibfk_2` FOREIGN KEY (`pinjaman_id`) REFERENCES `pinjaman` (`id`),
+  CONSTRAINT `fk_angsuran_frekuensi` FOREIGN KEY (`frekuensi_id`) REFERENCES `ref_frekuensi_angsuran` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  CONSTRAINT `fk_angsuran_pinjaman` FOREIGN KEY (`pinjaman_id`) REFERENCES `pinjaman` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -163,7 +167,7 @@ CREATE TABLE `angsuran` (
 
 LOCK TABLES `angsuran` WRITE;
 /*!40000 ALTER TABLE `angsuran` DISABLE KEYS */;
-INSERT INTO `angsuran` VALUES (1,1,1,NULL,1,'2026-06-02',833333.33,100000.00,933333.33,0.00,0.00,'lunas','2026-05-02','tunai','2026-05-02 14:20:40','2026-05-02 14:34:59',NULL,0.00,0.00,NULL,NULL,NULL,0,933333.33,NULL),(2,1,1,NULL,2,'2026-07-02',833333.33,100000.00,933333.33,0.00,0.00,'lunas','2026-05-02','tunai','2026-05-02 14:20:40','2026-05-02 14:35:10',NULL,0.00,0.00,NULL,NULL,NULL,0,933333.33,NULL),(3,1,1,NULL,3,'2026-08-02',833333.33,100000.00,933333.33,0.00,0.00,'lunas','2026-05-02','tunai','2026-05-02 14:20:40','2026-05-02 14:35:10',NULL,0.00,0.00,NULL,NULL,NULL,0,933333.33,NULL),(4,1,1,NULL,4,'2026-09-02',833333.33,100000.00,933333.33,0.00,0.00,'lunas','2026-05-02','tunai','2026-05-02 14:20:40','2026-05-02 14:35:11',NULL,0.00,0.00,NULL,NULL,NULL,0,933333.33,NULL),(5,1,1,NULL,5,'2026-10-02',833333.33,100000.00,933333.33,0.00,0.00,'lunas','2026-05-02','tunai','2026-05-02 14:20:40','2026-05-02 14:35:11',NULL,0.00,0.00,NULL,NULL,NULL,0,933333.33,NULL),(6,1,1,NULL,6,'2026-11-02',833333.33,100000.00,933333.33,0.00,0.00,'lunas','2026-05-02','tunai','2026-05-02 14:20:40','2026-05-02 14:35:11',NULL,0.00,0.00,NULL,NULL,NULL,0,933333.33,NULL);
+INSERT INTO `angsuran` VALUES (1,3,1,1,1,'2026-06-02',833333.33,100000.00,933333.33,0.00,0.00,'lunas','2026-05-02','tunai','2026-05-02 14:20:40','2026-05-07 17:37:13',NULL,0.00,0.00,NULL,NULL,NULL,0,933333.33,NULL),(2,3,1,1,2,'2026-07-02',833333.33,100000.00,933333.33,0.00,0.00,'lunas','2026-05-02','tunai','2026-05-02 14:20:40','2026-05-07 17:37:13',NULL,0.00,0.00,NULL,NULL,NULL,0,933333.33,NULL),(3,3,1,1,3,'2026-08-02',833333.33,100000.00,933333.33,0.00,0.00,'lunas','2026-05-02','tunai','2026-05-02 14:20:40','2026-05-07 17:37:13',NULL,0.00,0.00,NULL,NULL,NULL,0,933333.33,NULL),(4,3,1,1,4,'2026-09-02',833333.33,100000.00,933333.33,0.00,0.00,'lunas','2026-05-02','tunai','2026-05-02 14:20:40','2026-05-07 17:37:13',NULL,0.00,0.00,NULL,NULL,NULL,0,933333.33,NULL),(5,3,1,1,5,'2026-10-02',833333.33,100000.00,933333.33,0.00,0.00,'lunas','2026-05-02','tunai','2026-05-02 14:20:40','2026-05-07 17:37:13',NULL,0.00,0.00,NULL,NULL,NULL,0,933333.33,NULL),(6,3,1,1,6,'2026-11-02',833333.33,100000.00,933333.33,0.00,0.00,'lunas','2026-05-02','tunai','2026-05-02 14:20:40','2026-05-07 17:37:13',NULL,0.00,0.00,NULL,NULL,NULL,0,933333.33,NULL);
 /*!40000 ALTER TABLE `angsuran` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -388,7 +392,10 @@ CREATE TABLE `cabang` (
   KEY `idx_created_by_user_id` (`created_by_user_id`),
   KEY `idx_cooperative_id` (`cooperative_id`),
   KEY `idx_headquarters_id` (`headquarters_id`),
-  KEY `idx_db_orang_person` (`db_orang_person_id`)
+  KEY `idx_db_orang_person` (`db_orang_person_id`),
+  KEY `idx_cabang_owner_bos` (`owner_bos_id`),
+  KEY `idx_cabang_id` (`id`),
+  CONSTRAINT `fk_cabang_db_orang_person` FOREIGN KEY (`db_orang_person_id`) REFERENCES `db_orang`.`people` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -665,7 +672,8 @@ CREATE TABLE `jurnal` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `nomor_jurnal` (`nomor_jurnal`),
   KEY `idx_nomor_jurnal` (`nomor_jurnal`),
-  KEY `idx_tanggal` (`tanggal_jurnal`)
+  KEY `idx_tanggal` (`tanggal_jurnal`),
+  KEY `idx_jurnal_tanggal` (`tanggal_jurnal`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -783,6 +791,7 @@ CREATE TABLE `kas_bon` (
   KEY `idx_kasbon_karyawan` (`karyawan_id`),
   KEY `idx_kasbon_status` (`status`),
   KEY `idx_kasbon_tanggal` (`tanggal_pengajuan`),
+  KEY `idx_kasbon_tanggal_pengajuan` (`tanggal_pengajuan`),
   CONSTRAINT `kas_bon_ibfk_2` FOREIGN KEY (`karyawan_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `kas_bon_ibfk_3` FOREIGN KEY (`disetujui_oleh`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -1252,7 +1261,15 @@ CREATE TABLE `nasabah` (
   KEY `idx_district_id` (`district_id`),
   KEY `idx_village_id` (`village_id`),
   KEY `idx_db_orang_user` (`db_orang_user_id`),
-  KEY `idx_db_orang_address` (`db_orang_address_id`)
+  KEY `idx_db_orang_address` (`db_orang_address_id`),
+  KEY `idx_nasabah_cabang` (`cabang_id`),
+  KEY `idx_nasabah_owner_bos` (`owner_bos_id`),
+  KEY `idx_nasabah_status` (`status`),
+  KEY `idx_nasabah_platform_blacklist` (`platform_blacklist`),
+  CONSTRAINT `fk_nasabah_cabang` FOREIGN KEY (`cabang_id`) REFERENCES `cabang` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_nasabah_db_orang_address` FOREIGN KEY (`db_orang_address_id`) REFERENCES `db_orang`.`addresses` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_nasabah_db_orang_user` FOREIGN KEY (`db_orang_user_id`) REFERENCES `db_orang`.`people` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_nasabah_referensi` FOREIGN KEY (`referensi_nasabah_id`) REFERENCES `nasabah` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1440,6 +1457,10 @@ CREATE TABLE `pembayaran` (
   KEY `petugas_id` (`petugas_id`),
   KEY `idx_pembayaran_pinjaman` (`pinjaman_id`),
   KEY `idx_pembayaran_pinjaman_tanggal` (`pinjaman_id`,`tanggal_bayar`),
+  KEY `idx_pembayaran_angsuran` (`angsuran_id`),
+  KEY `idx_pembayaran_tanggal` (`tanggal_bayar`),
+  KEY `idx_pembayaran_petugas` (`petugas_id`),
+  CONSTRAINT `fk_pembayaran_pinjaman` FOREIGN KEY (`pinjaman_id`) REFERENCES `pinjaman` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
   CONSTRAINT `pembayaran_ibfk_2` FOREIGN KEY (`pinjaman_id`) REFERENCES `pinjaman` (`id`),
   CONSTRAINT `pembayaran_ibfk_3` FOREIGN KEY (`angsuran_id`) REFERENCES `angsuran` (`id`),
   CONSTRAINT `pembayaran_ibfk_4` FOREIGN KEY (`petugas_id`) REFERENCES `users` (`id`)
@@ -1494,6 +1515,82 @@ CREATE TABLE `pembayaran_offline_queue` (
 LOCK TABLES `pembayaran_offline_queue` WRITE;
 /*!40000 ALTER TABLE `pembayaran_offline_queue` DISABLE KEYS */;
 /*!40000 ALTER TABLE `pembayaran_offline_queue` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `penagihan`
+--
+
+DROP TABLE IF EXISTS `penagihan`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `penagihan` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `pinjaman_id` int(11) NOT NULL,
+  `angsuran_id` int(11) DEFAULT NULL,
+  `jenis` enum('jatuh_tempo','telat','macet','follow_up') NOT NULL DEFAULT 'jatuh_tempo',
+  `jenis_penagihan_id` int(11) DEFAULT NULL,
+  `status` enum('pending','dalam_proses','berhasil','gagal','diabaikan') DEFAULT 'pending',
+  `tanggal_jatuh_tempo` date NOT NULL,
+  `tanggal_penagihan` date DEFAULT NULL,
+  `petugas_id` int(11) DEFAULT NULL,
+  `hasil` text DEFAULT NULL,
+  `tindakan` text DEFAULT NULL,
+  `catatan` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `angsuran_id` (`angsuran_id`),
+  KEY `idx_pinjaman_status` (`pinjaman_id`,`status`),
+  KEY `idx_petugas_tanggal` (`petugas_id`,`tanggal_penagihan`),
+  KEY `idx_jenis_status` (`jenis`,`status`),
+  KEY `idx_tanggal_jatuh_tempo` (`tanggal_jatuh_tempo`),
+  KEY `fk_penagihan_jenis` (`jenis_penagihan_id`),
+  CONSTRAINT `fk_penagihan_jenis` FOREIGN KEY (`jenis_penagihan_id`) REFERENCES `ref_jenis_penagihan` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  CONSTRAINT `penagihan_ibfk_1` FOREIGN KEY (`pinjaman_id`) REFERENCES `pinjaman` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `penagihan_ibfk_2` FOREIGN KEY (`angsuran_id`) REFERENCES `angsuran` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `penagihan_ibfk_3` FOREIGN KEY (`petugas_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `penagihan`
+--
+
+LOCK TABLES `penagihan` WRITE;
+/*!40000 ALTER TABLE `penagihan` DISABLE KEYS */;
+/*!40000 ALTER TABLE `penagihan` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `penagihan_log`
+--
+
+DROP TABLE IF EXISTS `penagihan_log`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `penagihan_log` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `penagihan_id` bigint(20) NOT NULL,
+  `aksi` varchar(100) NOT NULL,
+  `hasil` text DEFAULT NULL,
+  `petugas_id` int(11) DEFAULT NULL,
+  `tanggal` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_penagihan_id` (`penagihan_id`),
+  KEY `idx_petugas_tanggal` (`petugas_id`,`tanggal`),
+  CONSTRAINT `penagihan_log_ibfk_1` FOREIGN KEY (`penagihan_id`) REFERENCES `penagihan` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `penagihan_log_ibfk_2` FOREIGN KEY (`petugas_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `penagihan_log`
+--
+
+LOCK TABLES `penagihan_log` WRITE;
+/*!40000 ALTER TABLE `penagihan_log` DISABLE KEYS */;
+/*!40000 ALTER TABLE `penagihan_log` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1692,11 +1789,12 @@ DROP TABLE IF EXISTS `pinjaman`;
 CREATE TABLE `pinjaman` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `cabang_id` int(11) DEFAULT 1,
+  `frekuensi_id` int(11) DEFAULT NULL,
+  `produk_pinjaman_id` int(11) DEFAULT NULL,
   `kode_pinjaman` varchar(20) NOT NULL,
   `nasabah_id` int(11) NOT NULL,
   `plafon` decimal(12,2) NOT NULL,
   `tenor` int(11) NOT NULL COMMENT 'Tenor: harian (max 100), mingguan (max 52), bulanan (max 12)',
-  `frekuensi` enum('harian','mingguan','bulanan') NOT NULL DEFAULT 'bulanan',
   `bunga_per_bulan` decimal(5,2) NOT NULL,
   `total_bunga` decimal(12,2) NOT NULL,
   `total_pembayaran` decimal(12,2) NOT NULL,
@@ -1741,8 +1839,16 @@ CREATE TABLE `pinjaman` (
   KEY `idx_pinjaman_cabang_status` (`status`),
   KEY `idx_pinjaman_nasabah_status` (`nasabah_id`,`status`),
   KEY `auto_confirmed_by` (`auto_confirmed_by`),
-  KEY `idx_pinjaman_frekuensi` (`frekuensi`),
-  KEY `idx_pinjaman_frekuensi_status` (`frekuensi`,`status`),
+  KEY `idx_pinjaman_frekuensi_status` (`status`),
+  KEY `idx_pinjaman_status` (`status`),
+  KEY `idx_pinjaman_petugas` (`petugas_id`),
+  KEY `idx_pinjaman_tanggal_jatuh_tempo` (`tanggal_jatuh_tempo`),
+  KEY `idx_pinjaman_status_jatuh_tempo` (`status`,`tanggal_jatuh_tempo`),
+  KEY `fk_pinjaman_produk` (`produk_pinjaman_id`),
+  KEY `fk_pinjaman_frekuensi` (`frekuensi_id`),
+  CONSTRAINT `fk_pinjaman_frekuensi` FOREIGN KEY (`frekuensi_id`) REFERENCES `ref_frekuensi_angsuran` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  CONSTRAINT `fk_pinjaman_nasabah` FOREIGN KEY (`nasabah_id`) REFERENCES `nasabah` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  CONSTRAINT `fk_pinjaman_produk` FOREIGN KEY (`produk_pinjaman_id`) REFERENCES `ref_produk_pinjaman` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE,
   CONSTRAINT `pinjaman_ibfk_2` FOREIGN KEY (`nasabah_id`) REFERENCES `nasabah` (`id`),
   CONSTRAINT `pinjaman_ibfk_3` FOREIGN KEY (`petugas_id`) REFERENCES `users` (`id`),
   CONSTRAINT `pinjaman_ibfk_4` FOREIGN KEY (`auto_confirmed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
@@ -1755,7 +1861,7 @@ CREATE TABLE `pinjaman` (
 
 LOCK TABLES `pinjaman` WRITE;
 /*!40000 ALTER TABLE `pinjaman` DISABLE KEYS */;
-INSERT INTO `pinjaman` VALUES (1,1,'PNJ001',1,5000000.00,6,'bulanan',2.00,600000.00,5600000.00,833333.33,100000.00,933333.33,'2026-05-02','2026-11-02','Modal usaha warung','BPKB Motor','tanpa',NULL,NULL,'aktif','lunas',NULL,0,NULL,0.00,NULL,NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,'2026-05-02',0,NULL,NULL,19,'2026-05-02 14:20:20','2026-05-02 14:35:11',1,0);
+INSERT INTO `pinjaman` VALUES (1,1,3,5,'PNJ001',1,5000000.00,6,2.00,600000.00,5600000.00,833333.33,100000.00,933333.33,'2026-05-02','2026-11-02','Modal usaha warung','BPKB Motor','tanpa',NULL,NULL,'aktif','lunas',NULL,0,NULL,0.00,NULL,NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,'2026-05-02',0,NULL,NULL,19,'2026-05-02 14:20:20','2026-05-07 17:16:07',1,0);
 /*!40000 ALTER TABLE `pinjaman` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
@@ -1821,6 +1927,47 @@ DELIMITER ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
 
 --
+-- Table structure for table `pinjaman_jaminan`
+--
+
+DROP TABLE IF EXISTS `pinjaman_jaminan`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `pinjaman_jaminan` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `pinjaman_id` int(11) NOT NULL,
+  `jaminan_tipe_id` int(11) NOT NULL,
+  `deskripsi` text DEFAULT NULL,
+  `nilai_taksiran` decimal(12,0) DEFAULT 0,
+  `nomor_dokumen` varchar(50) DEFAULT NULL,
+  `file_dokumen` varchar(255) DEFAULT NULL,
+  `status` enum('aktif','dilepas','terjual','hilang') DEFAULT 'aktif',
+  `tanggal_dilepas` date DEFAULT NULL,
+  `dilepas_oleh` int(11) DEFAULT NULL,
+  `catatan` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `dilepas_oleh` (`dilepas_oleh`),
+  KEY `idx_pinjaman_id` (`pinjaman_id`),
+  KEY `idx_jaminan_tipe_id` (`jaminan_tipe_id`),
+  KEY `idx_status` (`status`),
+  CONSTRAINT `pinjaman_jaminan_ibfk_1` FOREIGN KEY (`pinjaman_id`) REFERENCES `pinjaman` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `pinjaman_jaminan_ibfk_2` FOREIGN KEY (`jaminan_tipe_id`) REFERENCES `ref_jaminan_tipe` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `pinjaman_jaminan_ibfk_3` FOREIGN KEY (`dilepas_oleh`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `pinjaman_jaminan`
+--
+
+LOCK TABLES `pinjaman_jaminan` WRITE;
+/*!40000 ALTER TABLE `pinjaman_jaminan` DISABLE KEYS */;
+/*!40000 ALTER TABLE `pinjaman_jaminan` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `platform_features`
 --
 
@@ -1853,6 +2000,42 @@ INSERT INTO `platform_features` VALUES (1,'wa_notifikasi','WhatsApp Notifikasi',
 UNLOCK TABLES;
 
 --
+-- Table structure for table `ref_frekuensi_angsuran`
+--
+
+DROP TABLE IF EXISTS `ref_frekuensi_angsuran`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ref_frekuensi_angsuran` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `kode` varchar(20) NOT NULL,
+  `nama` varchar(50) NOT NULL,
+  `hari_per_periode` int(11) NOT NULL COMMENT 'Jumlah hari dalam satu periode',
+  `tenor_default` int(11) NOT NULL COMMENT 'Tenor default untuk frekuensi ini',
+  `tenor_min` int(11) NOT NULL COMMENT 'Tenor minimum',
+  `tenor_max` int(11) NOT NULL COMMENT 'Tenor maximum',
+  `urutan_tampil` int(11) DEFAULT 0,
+  `status` enum('aktif','nonaktif') DEFAULT 'aktif',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `kode` (`kode`),
+  KEY `idx_status` (`status`),
+  KEY `idx_urutan` (`urutan_tampil`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ref_frekuensi_angsuran`
+--
+
+LOCK TABLES `ref_frekuensi_angsuran` WRITE;
+/*!40000 ALTER TABLE `ref_frekuensi_angsuran` DISABLE KEYS */;
+INSERT INTO `ref_frekuensi_angsuran` VALUES (1,'HARIAN','Harian',1,30,1,100,1,'aktif','2026-05-07 17:09:03','2026-05-07 17:09:03'),(2,'MINGGUAN','Mingguan',7,12,1,52,2,'aktif','2026-05-07 17:09:03','2026-05-07 17:09:03'),(3,'BULANAN','Bulanan',30,12,1,36,3,'aktif','2026-05-07 17:09:03','2026-05-07 17:09:03');
+/*!40000 ALTER TABLE `ref_frekuensi_angsuran` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `ref_jaminan_tipe`
 --
 
@@ -1880,6 +2063,39 @@ LOCK TABLES `ref_jaminan_tipe` WRITE;
 /*!40000 ALTER TABLE `ref_jaminan_tipe` DISABLE KEYS */;
 INSERT INTO `ref_jaminan_tipe` VALUES (6,'JAM001','Tanpa Jaminan','Pinjaman tanpa jaminan','aktif','2026-04-29 16:58:42','2026-04-29 16:58:42'),(7,'JAM002','BPKB Kendaraan','Jaminan BPKB kendaraan bermotor','aktif','2026-04-29 16:58:42','2026-04-29 16:58:42'),(8,'JAM003','SHM Tanah/Rumah','Sertifikat Hak Milik tanah atau rumah','aktif','2026-04-29 16:58:42','2026-04-29 16:58:42'),(9,'JAM004','AJB','Akta Jual Beli','aktif','2026-04-29 16:58:42','2026-04-29 16:58:42'),(10,'JAM005','Tabungan','Jaminan tabungan','aktif','2026-04-29 16:58:42','2026-04-29 16:58:42'),(11,'JAM006','SK Kerja','Surat Keterangan Kerja','aktif','2026-04-29 16:58:42','2026-04-29 16:58:42'),(12,'JAM007','Lainnya','Jaminan lainnya','aktif','2026-04-29 16:58:42','2026-04-29 16:58:42');
 /*!40000 ALTER TABLE `ref_jaminan_tipe` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `ref_jenis_penagihan`
+--
+
+DROP TABLE IF EXISTS `ref_jenis_penagihan`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ref_jenis_penagihan` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `kode` varchar(20) NOT NULL,
+  `nama` varchar(100) NOT NULL,
+  `deskripsi` text DEFAULT NULL,
+  `urutan_tampil` int(11) DEFAULT 0,
+  `status` enum('aktif','nonaktif') DEFAULT 'aktif',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `kode` (`kode`),
+  KEY `idx_status` (`status`),
+  KEY `idx_urutan` (`urutan_tampil`)
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ref_jenis_penagihan`
+--
+
+LOCK TABLES `ref_jenis_penagihan` WRITE;
+/*!40000 ALTER TABLE `ref_jenis_penagihan` DISABLE KEYS */;
+INSERT INTO `ref_jenis_penagihan` VALUES (1,'JATUH_TEMPO','Jatuh Tempo','Penagihan rutin saat jatuh tempo',1,'aktif','2026-05-07 17:11:04','2026-05-07 17:11:04'),(2,'TELAT_1_7','Telat 1-7 Hari','Penagihan untuk keterlambatan 1-7 hari',2,'aktif','2026-05-07 17:11:04','2026-05-07 17:11:04'),(3,'TELAT_8_14','Telat 8-14 Hari','Penagihan untuk keterlambatan 8-14 hari',3,'aktif','2026-05-07 17:11:04','2026-05-07 17:11:04'),(4,'TELAT_15_30','Telat 15-30 Hari','Penagihan untuk keterlambatan 15-30 hari',4,'aktif','2026-05-07 17:11:04','2026-05-07 17:11:04'),(5,'TELAT_30_PLUS','Telat 30+ Hari','Penagihan untuk keterlambatan lebih dari 30 hari',5,'aktif','2026-05-07 17:11:04','2026-05-07 17:11:04'),(6,'MACET','Macet','Penagihan untuk pinjaman yang macet',6,'aktif','2026-05-07 17:11:04','2026-05-07 17:11:04'),(7,'FOLLOW_UP','Follow Up','Follow up setelah penagihan',7,'aktif','2026-05-07 17:11:04','2026-05-07 17:11:04');
+/*!40000 ALTER TABLE `ref_jenis_penagihan` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1971,6 +2187,54 @@ LOCK TABLES `ref_metode_pembayaran` WRITE;
 /*!40000 ALTER TABLE `ref_metode_pembayaran` DISABLE KEYS */;
 INSERT INTO `ref_metode_pembayaran` VALUES (4,'MET001','Tunai','Pembayaran tunai','aktif','2026-04-29 16:58:44','2026-04-29 16:58:44'),(5,'MET002','Transfer Bank','Transfer melalui bank','aktif','2026-04-29 16:58:44','2026-04-29 16:58:44'),(6,'MET003','QRIS','Pembayaran QRIS','aktif','2026-04-29 16:58:44','2026-04-29 16:58:44'),(7,'MET004','Debit','Kartu debit','aktif','2026-04-29 16:58:44','2026-04-29 16:58:44'),(8,'MET005','Kredit','Kartu kredit','aktif','2026-04-29 16:58:44','2026-04-29 16:58:44'),(9,'MET006','E-Wallet','Dompet elektronik','aktif','2026-04-29 16:58:44','2026-04-29 16:58:44'),(10,'MET007','Cek','Pembayaran dengan cek','aktif','2026-04-29 16:58:44','2026-04-29 16:58:44'),(11,'MET008','Lainnya','Metode pembayaran lainnya','aktif','2026-04-29 16:58:44','2026-04-29 16:58:44');
 /*!40000 ALTER TABLE `ref_metode_pembayaran` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `ref_produk_pinjaman`
+--
+
+DROP TABLE IF EXISTS `ref_produk_pinjaman`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ref_produk_pinjaman` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `kode` varchar(20) NOT NULL,
+  `nama` varchar(100) NOT NULL,
+  `deskripsi` text DEFAULT NULL,
+  `frekuensi_id` int(11) NOT NULL COMMENT 'Foreign key ke ref_frekuensi_angsuran',
+  `tenor_min` int(11) NOT NULL COMMENT 'Tenor minimum dalam periode',
+  `tenor_max` int(11) NOT NULL COMMENT 'Tenor maximum dalam periode',
+  `jumlah_min` decimal(15,2) NOT NULL COMMENT 'Jumlah pinjaman minimum',
+  `jumlah_max` decimal(15,2) NOT NULL COMMENT 'Jumlah pinjaman maximum',
+  `bunga_default` decimal(5,2) NOT NULL COMMENT 'Bunga default dalam persen',
+  `bunga_min` decimal(5,2) DEFAULT NULL COMMENT 'Bunga minimum dalam persen',
+  `bunga_max` decimal(5,2) DEFAULT NULL COMMENT 'Bunga maximum dalam persen',
+  `biaya_admin` decimal(15,2) DEFAULT 0.00 COMMENT 'Biaya administrasi nominal',
+  `biaya_provisi` decimal(5,2) DEFAULT 0.00 COMMENT 'Biaya provisi dalam persen',
+  `asuransi_wajib` tinyint(1) DEFAULT 0 COMMENT 'Apakah asuransi wajib',
+  `jaminan_wajib` tinyint(1) DEFAULT 0 COMMENT 'Apakah jaminan wajib',
+  `jaminan_tipe_id` int(11) DEFAULT NULL COMMENT 'Tipe jaminan yang wajib',
+  `status` enum('aktif','nonaktif') DEFAULT 'aktif',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `kode` (`kode`),
+  KEY `idx_frekuensi_id` (`frekuensi_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_jaminan_tipe_id` (`jaminan_tipe_id`),
+  CONSTRAINT `ref_produk_pinjaman_ibfk_1` FOREIGN KEY (`frekuensi_id`) REFERENCES `ref_frekuensi_angsuran` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `ref_produk_pinjaman_ibfk_2` FOREIGN KEY (`jaminan_tipe_id`) REFERENCES `ref_jaminan_tipe` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ref_produk_pinjaman`
+--
+
+LOCK TABLES `ref_produk_pinjaman` WRITE;
+/*!40000 ALTER TABLE `ref_produk_pinjaman` DISABLE KEYS */;
+INSERT INTO `ref_produk_pinjaman` VALUES (3,'PIN_HARIAN','Pinjaman Harian','Pinjaman dengan angsuran harian untuk pedagang pasar',1,1,100,500000.00,5000000.00,1.50,1.00,2.50,5000.00,0.00,0,0,NULL,'aktif','2026-05-07 17:11:01','2026-05-07 17:11:01'),(4,'PIN_HARIAN_JAMINAN','Pinjaman Harian dengan Jaminan','Pinjaman harian dengan jaminan untuk plafon lebih tinggi',1,1,100,500000.00,10000000.00,1.20,0.80,2.00,10000.00,0.00,0,1,NULL,'aktif','2026-05-07 17:11:01','2026-05-07 17:11:01'),(5,'PIN_MINGGUAN','Pinjaman Mingguan','Pinjaman dengan angsuran mingguan',2,1,52,300000.00,10000000.00,1.00,0.50,1.50,10000.00,0.00,0,0,NULL,'aktif','2026-05-07 17:11:01','2026-05-07 17:11:01'),(6,'PIN_MINGGUAN_KEMAS','Pinjaman Mingguan Kemas','Pinjaman mingguan tenor 11 minggu (Koperasi Sentra Dana style)',2,11,11,300000.00,3500000.00,1.00,0.50,1.50,10000.00,0.00,0,0,NULL,'aktif','2026-05-07 17:11:01','2026-05-07 17:11:01'),(7,'PIN_MINGGUAN_ASA','Pinjaman Mingguan ASA','Pinjaman mingguan tenor 8 minggu (Koperasi ASA style)',2,8,8,300000.00,3500000.00,1.00,0.50,1.50,10000.00,0.00,0,0,NULL,'aktif','2026-05-07 17:11:01','2026-05-07 17:11:01'),(8,'PIN_BULANAN','Pinjaman Bulanan','Pinjaman dengan angsuran bulanan',3,1,36,500000.00,50000000.00,0.50,0.30,1.00,25000.00,1.00,1,1,NULL,'aktif','2026-05-07 17:11:01','2026-05-07 17:11:01');
+/*!40000 ALTER TABLE `ref_produk_pinjaman` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -2146,9 +2410,9 @@ DROP TABLE IF EXISTS `setting_bunga`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `setting_bunga` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `frekuensi_id` int(11) DEFAULT NULL,
   `cabang_id` int(11) DEFAULT NULL,
   `jenis_pinjaman` varchar(50) NOT NULL,
-  `frekuensi` enum('harian','mingguan','bulanan') NOT NULL DEFAULT 'bulanan',
   `tenor_min` int(11) NOT NULL DEFAULT 1,
   `tenor_max` int(11) NOT NULL DEFAULT 24,
   `bunga_default` decimal(5,2) NOT NULL,
@@ -2159,8 +2423,10 @@ CREATE TABLE `setting_bunga` (
   `status` enum('aktif','nonaktif') DEFAULT 'aktif',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  PRIMARY KEY (`id`),
+  KEY `fk_setting_bunga_frekuensi` (`frekuensi_id`),
+  CONSTRAINT `fk_setting_bunga_frekuensi` FOREIGN KEY (`frekuensi_id`) REFERENCES `ref_frekuensi_angsuran` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2169,6 +2435,7 @@ CREATE TABLE `setting_bunga` (
 
 LOCK TABLES `setting_bunga` WRITE;
 /*!40000 ALTER TABLE `setting_bunga` DISABLE KEYS */;
+INSERT INTO `setting_bunga` VALUES (1,1,NULL,'umum',1,100,0.50,0.30,1.00,0.00,0.00,'aktif','2026-05-07 17:41:38','2026-05-07 17:41:38'),(2,2,NULL,'umum',1,52,1.00,0.50,2.00,0.00,0.00,'aktif','2026-05-07 17:41:38','2026-05-07 17:41:38'),(3,3,NULL,'umum',1,36,2.00,1.00,3.00,0.00,0.00,'aktif','2026-05-07 17:41:38','2026-05-07 17:41:38');
 /*!40000 ALTER TABLE `setting_bunga` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2181,8 +2448,8 @@ DROP TABLE IF EXISTS `setting_denda`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `setting_denda` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `frekuensi_id` int(11) DEFAULT NULL,
   `cabang_id` int(11) DEFAULT NULL,
-  `frekuensi` enum('harian','mingguan','bulanan') NOT NULL DEFAULT 'bulanan',
   `tipe_denda` enum('persentase','nominal_tetap') NOT NULL DEFAULT 'persentase',
   `nilai_denda` decimal(8,4) NOT NULL DEFAULT 0.5000 COMMENT 'Persentase per hari (%) atau nominal tetap',
   `denda_maksimal` decimal(12,2) DEFAULT NULL COMMENT 'Batas maksimal denda (NULL = tidak ada batas)',
@@ -2194,8 +2461,10 @@ CREATE TABLE `setting_denda` (
   `updated_by` int(11) DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
-  KEY `idx_is_active` (`is_active`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `idx_is_active` (`is_active`),
+  KEY `fk_setting_denda_frekuensi` (`frekuensi_id`),
+  CONSTRAINT `fk_setting_denda_frekuensi` FOREIGN KEY (`frekuensi_id`) REFERENCES `ref_frekuensi_angsuran` (`id`) ON DELETE NO ACTION ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2204,6 +2473,7 @@ CREATE TABLE `setting_denda` (
 
 LOCK TABLES `setting_denda` WRITE;
 /*!40000 ALTER TABLE `setting_denda` DISABLE KEYS */;
+INSERT INTO `setting_denda` VALUES (1,1,NULL,'persentase',0.1000,100000.00,0,1,'2026-05-07 17:41:38','2026-05-07 17:41:38',NULL,NULL,1),(2,2,NULL,'persentase',0.0500,200000.00,3,1,'2026-05-07 17:41:38','2026-05-07 17:41:38',NULL,NULL,1),(3,3,NULL,'persentase',0.0300,500000.00,7,1,'2026-05-07 17:41:38','2026-05-07 17:41:38',NULL,NULL,1);
 /*!40000 ALTER TABLE `setting_denda` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2446,7 +2716,13 @@ CREATE TABLE `users` (
   UNIQUE KEY `username` (`username`),
   KEY `idx_owner_bos_id` (`owner_bos_id`),
   KEY `idx_db_orang_person` (`db_orang_person_id`),
-  KEY `idx_users_ktp` (`ktp`)
+  KEY `idx_users_ktp` (`ktp`),
+  KEY `idx_users_cabang` (`cabang_id`),
+  KEY `idx_users_owner_bos` (`owner_bos_id`),
+  KEY `idx_users_role_status` (`role`,`status`),
+  KEY `idx_users_id` (`id`),
+  CONSTRAINT `fk_users_cabang` FOREIGN KEY (`cabang_id`) REFERENCES `cabang` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_users_db_orang_person` FOREIGN KEY (`db_orang_person_id`) REFERENCES `db_orang`.`people` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -2459,6 +2735,37 @@ LOCK TABLES `users` WRITE;
 INSERT INTO `users` VALUES (1,'patri','$2y$10$zucy/tAcsiUBX5OqgemSgud7V8Kyd5kuiryiABLy1.Rux68v5JC0.','Patri Sihaloho',NULL,'patri@kewer.co.id','081234567890','bos',NULL,1,NULL,'aktif','2026-05-02 14:17:07','2026-05-02 15:34:24',0,0,NULL,NULL,3,NULL,0,NULL,NULL),(2,'mgr_pusat','$2y$10$uGH5./H5aYqFVBMWUB.p/Oh3EQhw4ejNLM6Pz9ALxZpfuHTViZ4qO','Sondang Silaban',NULL,'','','manager_pusat',1,1,NULL,'aktif','2026-05-02 14:18:26','2026-05-02 15:34:24',0,0,NULL,NULL,4,NULL,0,NULL,NULL),(18,'mgr_balige','$2y$10$M3T60PI35ooIbe7AJTFG.eEUvuuqtgSoayMu2yvpsN6yR6b6zTHFu','Roswita Nainggolan',NULL,'mgr_balige@kewer.co.id',NULL,'manager_cabang',1,2,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,5,NULL,0,NULL,NULL),(19,'adm_pusat','$2y$10$0NOdONMqf3C2krjFnXaDVujJj6jybgKQ.HF5mbnnuHijJQ2CdaWyi','Melvina Hutabarat',NULL,'adm_pusat@kewer.co.id',NULL,'admin_pusat',1,1,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,6,NULL,0,NULL,NULL),(20,'adm_balige','$2y$10$kvbrWAiSVSdYfgfdcJGpK.qGYjopxzgL8HZd/vuJT3Vz1SI6i5UCC','Ruli Sirait',NULL,'adm_balige@kewer.co.id',NULL,'admin_cabang',1,2,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,7,NULL,0,NULL,NULL),(21,'ptr_pusat','$2y$10$MLr90EoeRX1o2pD7qS4pwODQ2rX/WI9Nwm2dKfjvIga5khYdQ9tO6','Darwin Sinaga',NULL,'ptr_pusat@kewer.co.id',NULL,'petugas_pusat',1,1,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,8,NULL,0,NULL,NULL),(22,'ptr_balige','$2y$10$RoBvhk/8HBof0rZmYYXxmuEtnpS2aXZ2/1OxohVXGIFHtKAjAOv16','Markus Situmorang',NULL,'ptr_balige@kewer.co.id',NULL,'petugas_cabang',1,2,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,9,NULL,0,NULL,NULL),(23,'krw_pusat','$2y$10$JOIggChOhqoxkU1capAwG./eELKhgkl0HTpy4Qgx90ejPuolVFDAm','Susi Aritonang',NULL,'krw_pusat@kewer.co.id',NULL,'karyawan',1,1,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,10,NULL,0,NULL,NULL),(24,'krw_balige','$2y$10$LhWlwITO.UVOYFmpymybTe5CxDIzRZyfgr0kyzXOBPRmgXfynNzBu','Petrus Hutagalung',NULL,'krw_balige@kewer.co.id',NULL,'karyawan',1,2,NULL,'aktif','2026-05-02 14:19:20','2026-05-02 15:34:24',0,0,NULL,NULL,11,NULL,0,NULL,NULL),(25,'appowner','$2y$10$CtXCJToI4qyhfCTWl7yPjOxF9fLr1rJwrT6LjD1dFvcFWJoHs2GhG','App Owner',NULL,'admin@kewer.app',NULL,'appOwner',NULL,NULL,NULL,'aktif','2026-05-02 14:44:02','2026-05-02 15:13:20',0,0,NULL,NULL,NULL,NULL,0,NULL,NULL),(26,'bos_test','$2y$10$O8sF3tlZnxzYmuAEFbdWRemzJP6ugwOYgfJWCNr8qt6c/CCNeYmWa','Test Bos Koperasi',NULL,'test@kewer.co.id','081299990000','bos',NULL,NULL,NULL,'aktif','2026-05-02 14:51:52','2026-05-02 15:34:24',0,0,NULL,NULL,12,NULL,0,NULL,NULL),(27,'bos_flow_test','$2y$10$aVKCp3ektX/ptO64NUiu.uHb0Ny.DAS1oqEtuxh4C8u271c8wjSpi','Flow Test Bos',NULL,'flow@test.co.id','081288880001','bos',NULL,NULL,NULL,'aktif','2026-05-02 14:54:15','2026-05-02 15:34:24',0,0,NULL,NULL,13,NULL,0,NULL,NULL);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Temporary table structure for view `v_penagihan_hari_ini`
+--
+
+DROP TABLE IF EXISTS `v_penagihan_hari_ini`;
+/*!50001 DROP VIEW IF EXISTS `v_penagihan_hari_ini`*/;
+SET @saved_cs_client     = @@character_set_client;
+SET character_set_client = utf8;
+/*!50001 CREATE VIEW `v_penagihan_hari_ini` AS SELECT
+ 1 AS `id`,
+  1 AS `pinjaman_id`,
+  1 AS `kode_nasabah`,
+  1 AS `nama_nasabah`,
+  1 AS `telp`,
+  1 AS `alamat`,
+  1 AS `province_id`,
+  1 AS `regency_id`,
+  1 AS `district_id`,
+  1 AS `village_id`,
+  1 AS `no_angsuran`,
+  1 AS `jatuh_tempo`,
+  1 AS `total_angsuran`,
+  1 AS `total_bayar`,
+  1 AS `status_angsuran`,
+  1 AS `jenis`,
+  1 AS `status_penagihan`,
+  1 AS `petugas_id`,
+  1 AS `nama_petugas`,
+  1 AS `catatan` */;
+SET character_set_client = @saved_cs_client;
 
 --
 -- Table structure for table `wa_log`
@@ -2583,6 +2890,24 @@ UNLOCK TABLES;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
+
+--
+-- Final view structure for view `v_penagihan_hari_ini`
+--
+
+/*!50001 DROP VIEW IF EXISTS `v_penagihan_hari_ini`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = cp850 */;
+/*!50001 SET character_set_results     = cp850 */;
+/*!50001 SET collation_connection      = cp850_general_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `v_penagihan_hari_ini` AS select `p`.`id` AS `id`,`p`.`pinjaman_id` AS `pinjaman_id`,`n`.`kode_nasabah` AS `kode_nasabah`,`n`.`nama` AS `nama_nasabah`,`n`.`telp` AS `telp`,`n`.`alamat` AS `alamat`,`n`.`province_id` AS `province_id`,`n`.`regency_id` AS `regency_id`,`n`.`district_id` AS `district_id`,`n`.`village_id` AS `village_id`,`a`.`no_angsuran` AS `no_angsuran`,`a`.`jatuh_tempo` AS `jatuh_tempo`,`a`.`total_angsuran` AS `total_angsuran`,`a`.`total_bayar` AS `total_bayar`,`a`.`status` AS `status_angsuran`,`p`.`jenis` AS `jenis`,`p`.`status` AS `status_penagihan`,`p`.`petugas_id` AS `petugas_id`,`u`.`nama` AS `nama_petugas`,`p`.`catatan` AS `catatan` from ((((`penagihan` `p` join `pinjaman` `pin` on(`p`.`pinjaman_id` = `pin`.`id`)) join `nasabah` `n` on(`pin`.`nasabah_id` = `n`.`id`)) left join `angsuran` `a` on(`p`.`angsuran_id` = `a`.`id`)) left join `users` `u` on(`p`.`petugas_id` = `u`.`id`)) where `p`.`status` in ('pending','dalam_proses') order by `p`.`tanggal_jatuh_tempo` */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -2593,4 +2918,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-05-06  0:04:18
+-- Dump completed on 2026-05-08  0:57:49

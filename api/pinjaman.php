@@ -129,9 +129,13 @@ switch ($_SERVER['REQUEST_METHOD']) {
         $tujuan_pinjaman = $input['tujuan_pinjaman'] ?? '';
         $jaminan = $input['jaminan'] ?? '';
         
+        // Convert frequency to ID if it's a code
+        $frekuensi_id = getFrequencyId($frekuensi);
+        
         // Validate frekuensi
-        if (!in_array($frekuensi, ['harian', 'mingguan', 'bulanan'])) {
+        if (!in_array($frekuensi, ['harian', 'mingguan', 'bulanan', 'HARIAN', 'MINGGUAN', 'BULANAN']) && !is_numeric($frekuensi)) {
             $frekuensi = 'bulanan';
+            $frekuensi_id = 3;
         }
         
         // Validation
@@ -147,12 +151,11 @@ switch ($_SERVER['REQUEST_METHOD']) {
             break;
         }
         
-        $max_tenor = ['harian' => 365, 'mingguan' => 52, 'bulanan' => 24];
-        $max = $max_tenor[$frekuensi] ?? 24;
-        if (!is_numeric($tenor) || $tenor <= 0 || $tenor > $max) {
+        $max_tenor = getMaxTenor($frekuensi_id);
+        if (!is_numeric($tenor) || $tenor <= 0 || $tenor > $max_tenor) {
             http_response_code(400);
-            $label = ['harian' => 'hari', 'mingguan' => 'minggu', 'bulanan' => 'bulan'];
-            echo json_encode(['success' => false, 'error' => "Tenor harus antara 1-$max " . ($label[$frekuensi] ?? 'bulan')]);
+            $period_label = getFrequencyPeriodLabel($frekuensi_id);
+            echo json_encode(['success' => false, 'error' => "Tenor harus antara 1-$max_tenor $period_label"]);
             break;
         }
         
@@ -188,17 +191,18 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
         
         // Calculate loan
-        $calc = calculateLoan($plafon, $tenor, $bunga_per_bulan, $frekuensi);
+        $calc = calculateLoan($plafon, $tenor, $bunga_per_bulan, $frekuensi_id);
         
         // Generate kode pinjaman
         $kode_pinjaman = generateKode('PNJ', 'pinjaman', 'kode_pinjaman');
         
         // Calculate due date based on frequency
-        switch ($frekuensi) {
-            case 'harian':
+        $frekuensi_code = getFrequencyCode($frekuensi_id);
+        switch ($frekuensi_code) {
+            case 'HARIAN':
                 $tanggal_jatuh_tempo = date('Y-m-d', strtotime("+$tenor day", strtotime($tanggal_akad)));
                 break;
-            case 'mingguan':
+            case 'MINGGUAN':
                 $tanggal_jatuh_tempo = date('Y-m-d', strtotime("+$tenor week", strtotime($tanggal_akad)));
                 break;
             default:
@@ -217,13 +221,13 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
         // Insert pinjaman dengan field v2.2.0
         $result = query("INSERT INTO pinjaman (
-            cabang_id, kode_pinjaman, nasabah_id, plafon, tenor, frekuensi, bunga_per_bulan,
+            cabang_id, kode_pinjaman, nasabah_id, plafon, tenor, frekuensi_id, bunga_per_bulan,
             total_bunga, total_pembayaran, angsuran_pokok, angsuran_bunga, angsuran_total,
             tanggal_akad, tanggal_jatuh_tempo, tujuan_pinjaman, jaminan,
             sisa_pokok_berjalan, override_pinjaman_aktif, override_oleh, override_alasan,
             status, petugas_id
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pengajuan', ?)", [
-            $cabang_id_insert, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi, $bunga_per_bulan,
+            $cabang_id_insert, $kode_pinjaman, $nasabah_id, $plafon, $tenor, $frekuensi_id, $bunga_per_bulan,
             $calc['total_bunga'], $calc['total_pembayaran'], $calc['angsuran_pokok'],
             $calc['angsuran_bunga'], $calc['angsuran_total'],
             $tanggal_akad, $tanggal_jatuh_tempo, $tujuan_pinjaman, $jaminan,
@@ -319,7 +323,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
                 if ($result) {
                     // Create loan schedule
-                    $frek = $pinjaman['frekuensi'] ?? 'bulanan';
+                    $frek = $pinjaman['frekuensi_id'] ?? $pinjaman['frekuensi'] ?? 'bulanan';
                     createLoanSchedule($pinjaman_id, $pinjaman['plafon'], $pinjaman['tenor'], $pinjaman['bunga_per_bulan'], $pinjaman['tanggal_akad'], $frek);
 
                     // Update to aktif + set sisa_pokok_berjalan + tanggal_lunas_awal

@@ -21,7 +21,7 @@ Petugas keliling mengutip angsuran langsung ke lokasi nasabah (pasar, lapak, rum
 
 ## Arsitektur
 
-- **Backend:** PHP 8.2, MySQLi prepared statements
+- **Backend:** PHP 8.2, MySQL/MariaDB
 - **Frontend:** Bootstrap 5.3, DataTable.js, SweetAlert2, Select2, Flatpickr
 - **Database:** 3 database terpisah (lihat di bawah)
 - **Auth:** Session-based, 9 role levels + appOwner
@@ -32,18 +32,23 @@ Petugas keliling mengutip angsuran langsung ke lokasi nasabah (pasar, lapak, rum
 
 ## 3-Database Architecture
 
-### 1. `kewer` — Database Utama (49 tabel + 3 view)
+### 1. `kewer` — Database Utama (64 tabel + 3 view)
 - Transaksi koperasi: users, nasabah, pinjaman, angsuran, pembayaran, cabang
 - Platform: billing, usage, AI advisor, koperasi_activities
 - **Koneksi:** `$conn` / `query()`
 
-### 2. `db_alamat_simple` — Referensi Lokasi Sumut (4 tabel)
-- Provinsi (1), Kabupaten (33), Kecamatan (448), Desa (6.101) — Sumatera Utara
+### 2. `db_alamat` — Referensi Lokasi Nasional (24 tabel)
+- Provinsi (38), Kabupaten (541), Kecamatan (7,938), Desa (80,937) — Nasional
+- Data geospasial: GPS, boundaries, POI, infrastructure
 - **Koneksi:** `$conn_alamat` / `query_alamat()`
-- `province_id = 3` = Sumatera Utara
 
-### 3. `db_orang` — Identitas Orang Nasional (19 tabel + 6 view)
-- Data orang + alamat geospasial nasional (38 prov, 541 kab, 8K kec, 81K desa)
+### 3. `db_orang` — Identitas Orang (20 tabel)
+- Data orang (people) + alamat (addresses) + master data + relasi + audit
+- Master data: agama, jenis_kelamin, golongan_darah, status_perkawinan, suku, pekerjaan, jenis_alamat, jenis_identitas
+- Multiple: phone numbers, emails, documents, family relations
+- Audit trail untuk tracking perubahan data
+- Soft delete dengan kolom deleted_at
+- Referensi lokasi → `db_alamat.provinces/regencies/districts/villages`
 - **Koneksi:** `$conn_orang` / `query_orang()`
 - Cross-DB: `users.db_orang_person_id`, `nasabah.db_orang_user_id`, `cabang.db_orang_person_id`
 
@@ -126,14 +131,22 @@ git clone https://github.com/82080038/kewer.git /opt/lampp/htdocs/kewer
 # Buat 3 database
 /opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock -e "
   CREATE DATABASE IF NOT EXISTS kewer;
-  CREATE DATABASE IF NOT EXISTS db_alamat_simple;
+  CREATE DATABASE IF NOT EXISTS db_alamat;
   CREATE DATABASE IF NOT EXISTS db_orang;
 "
 
 # Import SQL
 /opt/lampp/bin/mysql -u root -proot kewer           < database/kewer.sql
-/opt/lampp/bin/mysql -u root -proot db_alamat_simple < database/db_alamat_simple.sql
+/opt/lampp/bin/mysql -u root -proot db_alamat      < database/db_alamat.sql
 /opt/lampp/bin/mysql -u root -proot db_orang        < database/db_orang.sql
+
+# Atau gunakan export terbaru
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock kewer      < database/kewer_export.sql
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock db_alamat < database/db_alamat_export.sql
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock db_orang   < database/db_orang_export.sql
+
+# Fresh install (reset ke kondisi awal)
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock kewer < scripts/fresh_install.sql
 ```
 
 ### 3. Konfigurasi
@@ -143,6 +156,8 @@ define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
 define('DB_PASS', 'root');
 define('DB_NAME', 'kewer');
+// Socket path untuk XAMPP Linux
+define('DB_SOCKET', '/opt/lampp/var/mysql/mysql.sock');
 ```
 
 Buat file `.env`:
@@ -172,6 +187,48 @@ npm install
 ```
 http://localhost/kewer/login.php
 ```
+
+---
+
+## Migrations
+
+Migration tersedia di `database/migrations/`:
+- `015_kewer_ref_frekuensi_angsuran.sql` - Normalisasi frekuensi angsuran
+- `017_kewer_foreign_keys.sql` - Foreign key constraints
+- `020_kewer_penagihan_system.sql` - Sistem penagihan
+- `024_kewer_drop_old_frekuensi_columns.sql` - Hapus enum columns
+- `025_kewer_populate_angsuran_frekuensi.sql` - Populate angsuran frekuensi_id
+- `026_kewer_populate_settings_frekuensi.sql` - Populate settings frekuensi_id
+- `027_kewer_insert_default_settings_frekuensi.sql` - Default settings frekuensi
+
+Migration sudah dijalankan pada v2.4.0. Untuk fresh install, gunakan:
+```bash
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock kewer < database/kewer.sql
+```
+
+---
+
+## Cron Job (Windows Task Scheduler)
+
+File scheduled task: `cron_daily_tasks.php`
+
+### Setup Windows Task Scheduler
+1. Buka Task Scheduler (`Win + R` → `taskschd.msc`)
+2. Create Basic Task: "Kewer Daily Tasks"
+3. Trigger: Daily (00:00)
+4. Action: Start a program
+   - Program: `C:\xampp\php\php.exe`
+   - Arguments: `C:\xampp\htdocs\kewer\cron_daily_tasks.php`
+   - Start in: `C:\xampp\htdocs\kewer`
+
+### Fungsi Daily Tasks
+- Auto-create penagihan untuk angsuran jatuh tempo
+- Hitung denda harian
+- Update kolektibilitas nasabah
+- Tag pinjaman macet
+- Kirim notifikasi (jika dikonfigurasi)
+
+Lihat `docs/cron_job_setup.md` untuk detail lengkap.
 
 ---
 
@@ -247,6 +304,24 @@ tail -f /opt/lampp/var/mysql/*.err
 ---
 
 ## Changelog
+
+### v2.4.0 (2026-05-08)
+- ✅ **Integrasi ref_frekuensi_angsuran** - Normalisasi frekuensi angsuran (harian, mingguan, bulanan)
+  - Tabel `ref_frekuensi_angsuran` dengan ID: 1 (Harian, max 100 hari), 2 (Mingguan, max 52 minggu), 3 (Bulanan, max 36 bulan)
+  - 20 file diperbarui untuk support frekuensi_id
+  - Setting bunga & denda per frekuensi
+  - Migration 015, 025, 026, 027, 024 (drop enum columns)
+  - Helper functions: getFrequencyLabel(), getFrequencyId(), getFrequencyCode(), getMaxTenor()
+- ✅ **Sistem Penagihan** - Penagihan system integration
+  - Tabel penagihan, penagihan_log, ref_jenis_penagihan
+  - API penagihan dan UI penagihan
+  - autoCreatePenagihanOverdue() function
+  - cron_daily_tasks.php untuk scheduled tasks
+- ✅ **Cleanup** - Hapus backward compatibility code & test files
+  - Hapus fallback ke frekuensi enum (kolom sudah di-drop)
+  - Hapus file test sementara
+  - Hapus file migration runner (sudah dijalankan)
+  - Update README.md & dokumentasi
 
 ### v2.3.1 (2026-05-06)
 - ✅ Feature Flags System — dynamic toggle semua fitur baru

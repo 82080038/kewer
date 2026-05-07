@@ -31,7 +31,7 @@ if ($petugas_filter) {
 
 $rute = query("
     SELECT a.id as angsuran_id, a.no_angsuran, a.jatuh_tempo, a.total_angsuran, a.denda, a.status,
-           p.id as pinjaman_id, p.kode_pinjaman, p.frekuensi, p.petugas_id,
+           p.id as pinjaman_id, p.kode_pinjaman, p.frekuensi_id, p.petugas_id,
            n.id as nasabah_id, n.nama as nama_nasabah, n.alamat, n.telp, n.kode_nasabah,
            u.nama as nama_petugas,
            DATEDIFF(?, a.jatuh_tempo) as hari_telat
@@ -188,7 +188,10 @@ foreach ($rute as $r) {
                                             </div>
                                             <small>
                                                 <?php echo $r['kode_pinjaman']; ?> - Ang #<?php echo $r['no_angsuran']; ?>
-                                                <span class="badge bg-<?php echo ['harian'=>'warning','mingguan'=>'info','bulanan'=>'primary'][$r['frekuensi']] ?? 'primary'; ?> ms-1"><?php echo getFrequencyLabel($r['frekuensi']); ?></span>
+                                                <?php 
+                                                $frek = $r['frekuensi_id'] ?? $r['frekuensi'] ?? 'bulanan';
+                                                echo getFrequencyLabel($frek);
+                                                ?>
                                             </small>
                                             <br>
                                             <?php if ($r['status'] === 'telat'): ?>
