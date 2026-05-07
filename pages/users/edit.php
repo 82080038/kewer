@@ -105,7 +105,7 @@ if ($_POST) {
                                     <option value="admin_cabang" <?= $user['role'] == 'admin_cabang' ? 'selected' : '' ?>>Admin Cabang</option>
                                     <option value="petugas_pusat" <?= $user['role'] == 'petugas_pusat' ? 'selected' : '' ?>>Petugas Pusat</option>
                                     <option value="petugas_cabang" <?= $user['role'] == 'petugas_cabang' ? 'selected' : '' ?>>Petugas Cabang</option>
-                                    <option value="karyawan" <?= $user['role'] == 'karyawan' ? 'selected' : '' ?>>Karyawan</option>
+                                    <option value="teller" <?= $user['role'] == 'teller' ? 'selected' : '' ?>>Teller</option>
                                 </select>
                             </div>
                             <div class="mb-3">

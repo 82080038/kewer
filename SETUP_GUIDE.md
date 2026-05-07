@@ -1,7 +1,7 @@
 # Panduan Setup Kewer — Development Environment
 
-**Versi:** 2.3.1  
-**Terakhir Diperbarui:** 2026-05-06  
+**Versi:** 2.4.0  
+**Terakhir Diperbarui:** 2026-05-07  
 **Server:** XAMPP di Linux (Apache 2.4, MariaDB 10.4, PHP 8.2)
 
 ---
@@ -59,10 +59,13 @@ npm install
   CREATE DATABASE IF NOT EXISTS db_orang;
 "
 
-# Import data
-/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock kewer           < database/kewer.sql
-/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock db_alamat_simple < database/db_alamat_simple.sql
-/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock db_orang        < database/db_orang.sql
+# Import data (gunakan export terbaru)
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock kewer           < database/kewer_export.sql
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock db_alamat_simple < database/db_alamat_simple_export.sql
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock db_orang        < database/db_orang_export.sql
+
+# Atau jalankan fresh install (reset ke kondisi awal)
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock kewer < scripts/fresh_install.sql
 
 # Verifikasi
 /opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock -e "
@@ -72,6 +75,12 @@ npm install
   GROUP BY schema_name;
 "
 ```
+
+### Migration Files
+Migration tersedia di `database/migrations/`:
+- `009_platform_features.sql` - Platform features
+- `010_v230_columns.sql` - v2.3.0 columns
+- `011_payment_methods.sql` - Payment methods support (bank, ewallet, qris, virtual_account, mobile_banking)
 
 ---
 
@@ -200,6 +209,63 @@ node simulation/run_simulation.js sim
 # Setup + simulasi sekaligus
 node simulation/run_simulation.js all
 ```
+
+---
+
+## Testing dengan Puppeteer
+
+```bash
+cd /opt/lampp/htdocs/kewer
+
+# Test payment methods feature
+node tests/puppeteer-payment-methods.test.js
+
+# Comprehensive test untuk appOwner
+node tests/puppeteer-appowner-comprehensive.test.js
+
+# Comprehensive test untuk bos
+node tests/puppeteer-bos-comprehensive.test.js
+```
+
+Screenshots disimpan di `tests/screenshots/`
+
+---
+
+## Changelog
+
+### v2.4.0 (2026-05-07)
+
+**Fitur Baru:**
+- **Payment Methods Support**: Mendukung berbagai metode pembayaran (bank, ewallet, qris, virtual_account, mobile_banking)
+  - Tambah kolom: `tipe_pembayaran`, `nomor_hp`, `qris_code`, `keterangan` pada tabel `platform_bank_accounts`
+  - Update `pages/app_owner/settings.php`: Form dinamis untuk berbagai tipe pembayaran
+  - Update `pages/app_owner/billing.php`: Tampilkan metode pembayaran utama
+  - Update `pages/bos/billing.php`: Bos dapat melihat informasi pembayaran untuk invoice
+  - API endpoint: `api/search_people.php` untuk pencarian data orang
+
+- **Auto-populate Form Nasabah**: Form nasabah otomatis terisi jika KTP/telepon ditemukan di database
+  - Input No. Telepon di atas form (wajib)
+  - Input No. KTP opsional
+  - Auto-search di `db_orang.people` saat input
+  - Form terisi otomatis jika data ditemukan
+  - Bos dapat mengedit data yang sudah diisi
+
+**Testing:**
+- Comprehensive Puppeteer test untuk appOwner (10 steps)
+- Comprehensive Puppeteer test untuk bos (6 steps)
+- Payment methods test script
+
+**Database Changes:**
+- Migration: `database/migrations/011_payment_methods.sql`
+- Fresh install updated: `scripts/fresh_install.sql`
+- Database exports: `database/*_export.sql`
+
+**File Baru:**
+- `api/search_people.php` - API untuk pencarian data orang
+- `tests/puppeteer-appowner-comprehensive.test.js`
+- `tests/puppeteer-bos-comprehensive.test.js`
+
+---
 
 ---
 

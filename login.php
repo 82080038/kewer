@@ -17,17 +17,31 @@ if (isset($_GET['timeout']) && $_GET['timeout'] == '1') {
 // Test-specific login for automated testing (GET request with credentials)
 if (isset($_GET['test_login']) && $_GET['test_login'] === 'true' && APP_ENV === 'development') {
     $username = $_GET['username'] ?? '';
-    
+
     if ($username) {
         $user = query("SELECT * FROM users WHERE username = ? AND status = 'aktif'", [$username]);
         if ($user) {
-            // For development mode, allow login without password verification
-            $_SESSION['user_id'] = $user[0]['id'];
-            $_SESSION['username'] = $user[0]['username'];
-            $_SESSION['role'] = $user[0]['role'];
-            session_write_close();
-            header('Location: /kewer/dashboard.php');
-            exit();
+            // Check if bos has active billing plan
+            if ($user[0]['role'] === 'bos') {
+                $billing = query("SELECT * FROM koperasi_billing WHERE bos_user_id = ? AND status = 'aktif' LIMIT 1", [$user[0]['id']]);
+                if (!is_array($billing) || empty($billing)) {
+                    $error = 'Akun Anda belum memiliki billing plan aktif. Silakan hubungi admin.';
+                } else {
+                    $_SESSION['user_id'] = $user[0]['id'];
+                    $_SESSION['username'] = $user[0]['username'];
+                    $_SESSION['role'] = $user[0]['role'];
+                    session_write_close();
+                    header('Location: /kewer/dashboard.php');
+                    exit();
+                }
+            } else {
+                $_SESSION['user_id'] = $user[0]['id'];
+                $_SESSION['username'] = $user[0]['username'];
+                $_SESSION['role'] = $user[0]['role'];
+                session_write_close();
+                header('Location: /kewer/dashboard.php');
+                exit();
+            }
         }
     }
 }
@@ -35,17 +49,32 @@ if (isset($_GET['test_login']) && $_GET['test_login'] === 'true' && APP_ENV === 
 if ($_POST) {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
-    
+
     // Login process — verify against database
     $user = query("SELECT * FROM users WHERE username = ? AND status = 'aktif'", [$username]);
-    
+
     if ($user && password_verify($password, $user[0]['password'])) {
-        $_SESSION['user_id'] = $user[0]['id'];
-        $_SESSION['username'] = $user[0]['username'];
-        $_SESSION['role'] = $user[0]['role'];
-        session_write_close();
-        header('Location: /kewer/dashboard.php');
-        exit();
+        // Check if bos has active billing plan
+        if ($user[0]['role'] === 'bos') {
+            $billing = query("SELECT * FROM koperasi_billing WHERE bos_user_id = ? AND status = 'aktif' LIMIT 1", [$user[0]['id']]);
+            if (!is_array($billing) || empty($billing)) {
+                $error = 'Akun Anda belum memiliki billing plan aktif. Silakan hubungi admin.';
+            } else {
+                $_SESSION['user_id'] = $user[0]['id'];
+                $_SESSION['username'] = $user[0]['username'];
+                $_SESSION['role'] = $user[0]['role'];
+                session_write_close();
+                header('Location: /kewer/dashboard.php');
+                exit();
+            }
+        } else {
+            $_SESSION['user_id'] = $user[0]['id'];
+            $_SESSION['username'] = $user[0]['username'];
+            $_SESSION['role'] = $user[0]['role'];
+            session_write_close();
+            header('Location: /kewer/dashboard.php');
+            exit();
+        }
     } else {
         $error = 'Username atau password salah';
     }
@@ -109,13 +138,13 @@ if ($_POST) {
         </form>
         
                 <?php if (APP_ENV === 'development'):
-            $dev_users = query("SELECT username, nama, role FROM users WHERE status = 'aktif' ORDER BY FIELD(role, 'appOwner','bos','manager_pusat','manager_cabang','admin_pusat','admin_cabang','petugas_pusat','petugas_cabang','karyawan'), nama");
+            $dev_users = query("SELECT username, nama, role FROM users WHERE status = 'aktif' ORDER BY FIELD(role, 'appOwner','bos','manager_pusat','manager_cabang','admin_pusat','admin_cabang','petugas_pusat','petugas_cabang','teller'), nama");
             if (is_array($dev_users) && count($dev_users) > 0):
                 $role_colors = [
                     'appOwner' => 'danger', 'bos' => 'dark', 'manager_pusat' => 'primary', 'manager_cabang' => 'info',
                     'admin_pusat' => 'secondary', 'admin_cabang' => 'success',
                     'petugas_pusat' => 'warning', 'petugas_cabang' => 'warning',
-                    'karyawan' => 'light border'
+                    'teller' => 'light border'
                 ];
         ?>
         <div class="mt-3">

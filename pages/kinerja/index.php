@@ -9,7 +9,7 @@ $user = getCurrentUser();
 $kantor_id = 1; // Single office
 
 // Only manager+ can view
-if (in_array($user['role'], ['karyawan'])) {
+if (in_array($user['role'], ['teller'])) {
     header('Location: ' . baseUrl('dashboard.php'));
     exit();
 }

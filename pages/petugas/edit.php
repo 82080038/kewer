@@ -163,7 +163,7 @@ if ($_POST) {
                                             <option value="admin_cabang" <?php echo $petugas['role'] === 'admin_cabang' ? 'selected' : ''; ?>>Admin Cabang</option>
                                             <option value="petugas_pusat" <?php echo $petugas['role'] === 'petugas_pusat' ? 'selected' : ''; ?>>Petugas Pusat</option>
                                             <option value="petugas_cabang" <?php echo $petugas['role'] === 'petugas_cabang' ? 'selected' : ''; ?>>Petugas Cabang</option>
-                                            <option value="karyawan" <?php echo $petugas['role'] === 'karyawan' ? 'selected' : ''; ?>>Karyawan</option>
+                                            <option value="teller" <?php echo $petugas['role'] === 'teller' ? 'selected' : ''; ?>>Teller</option>
                                         </select>
                                     </div>
                                     

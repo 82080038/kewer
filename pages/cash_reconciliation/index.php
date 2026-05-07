@@ -46,7 +46,7 @@ $reconciliationList = ($reconciliationData['success'] ?? false) && isset($reconc
         <main class="content-area">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2><i class="bi bi-calculator"></i> Rekonsiliasi Kas Harian</h2>
-                    <?php if (in_array($role, ['manager_pusat', 'manager_cabang', 'karyawan'])): ?>
+                    <?php if (in_array($role, ['manager_pusat', 'manager_cabang', 'teller'])): ?>
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
                         <i class="bi bi-plus"></i> Buat Rekonsiliasi
                     </button>

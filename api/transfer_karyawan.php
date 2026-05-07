@@ -21,8 +21,11 @@
  *   - Semua aksi dicatat di audit_log.
  */
 
-error_reporting(0);
-ini_set('display_errors', 0);
+// Enable error reporting for development
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+// error_reporting(0);
+// ini_set('display_errors', 0);
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Methods: POST, OPTIONS');

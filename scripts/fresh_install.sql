@@ -5,7 +5,7 @@
 -- ke kondisi bersih (fresh install).
 -- Hanya struktur tabel dan data referensi
 -- yang dipertahankan.
--- 
+--
 -- Usage: mysql -u root -p kewer < fresh_install.sql
 -- ============================================
 
@@ -52,6 +52,9 @@ TRUNCATE TABLE field_officer_activities;
 -- Hapus akun keuangan
 TRUNCATE TABLE akun;
 
+-- Hapus payment methods (reset)
+TRUNCATE TABLE platform_bank_accounts;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================
@@ -79,6 +82,25 @@ INSERT INTO role_permissions (role, permission_code, granted) VALUES
 ('appOwner', 'view_koperasi', 1),
 ('appOwner', 'suspend_koperasi', 1)
 ON DUPLICATE KEY UPDATE granted = 1;
+
+-- ============================================
+-- Payment Methods (Platform Bank Accounts)
+-- ============================================
+-- Ensure platform_bank_accounts table has payment method columns
+ALTER TABLE `platform_bank_accounts`
+ADD COLUMN IF NOT EXISTS `tipe_pembayaran` ENUM('bank', 'ewallet', 'qris', 'virtual_account', 'mobile_banking') NOT NULL DEFAULT 'bank' AFTER `nama_bank`,
+ADD COLUMN IF NOT EXISTS `nomor_hp` VARCHAR(20) DEFAULT NULL AFTER `nomor_rekening`,
+ADD COLUMN IF NOT EXISTS `qris_code` TEXT DEFAULT NULL AFTER `nomor_hp`,
+ADD COLUMN IF NOT EXISTS `keterangan` TEXT DEFAULT NULL AFTER `qris_code`;
+
+-- Insert sample payment methods
+INSERT INTO `platform_bank_accounts` (`nama_bank`, `nomor_rekening`, `nama_pemilik`, `cabang`, `tipe_pembayaran`, `nomor_hp`, `qris_code`, `keterangan`, `is_primary`, `created_at`) VALUES
+('BCA', '1234567890', 'Koperasi Kewer', 'Jakarta', 'bank', NULL, NULL, 'Rekening utama untuk pembayaran', 1, NOW()),
+('DANA', NULL, NULL, NULL, 'ewallet', '081234567890', NULL, 'E-wallet DANA', 0, NOW()),
+('QRIS', NULL, NULL, NULL, 'qris', NULL, 'ID123456789012345678901234567890', 'QR Code untuk pembayaran', 0, NOW()),
+('Sea Bank', NULL, NULL, NULL, 'virtual_account', NULL, NULL, 'Virtual Account Sea Bank', 0, NOW()),
+('Mobile Banking', NULL, NULL, NULL, 'mobile_banking', '081234567891', NULL, 'Mobile Banking BCA', 0, NOW())
+ON DUPLICATE KEY UPDATE updated_at = NOW();
 
 -- ============================================
 -- Data referensi berikut TIDAK dihapus:

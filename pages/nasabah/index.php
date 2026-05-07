@@ -257,22 +257,26 @@ $stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] :
                 <div class="modal-body">
                     <form id="addForm" enctype="multipart/form-data">
                         <?= csrfField() ?>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Nama Lengkap *</label>
-                                <input type="text" name="nama" class="form-control" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">No. KTP *</label>
-                                <input type="text" name="ktp" class="form-control" maxlength="16" required>
-                                <small class="form-text">16 digit angka</small>
-                            </div>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            Masukkan No. Telepon atau No. KTP untuk mengecek apakah data sudah ada di database.
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">No. Telepon *</label>
-                                <input type="tel" name="telp" class="form-control" required>
+                                <input type="tel" name="telp" id="telpInput" class="form-control" required onblur="checkTelp()">
                                 <small class="form-text">08xxxxxxxxxx</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">No. KTP</label>
+                                <input type="text" name="ktp" id="ktpInput" class="form-control" maxlength="16" onblur="checkKTP()">
+                                <small class="form-text">Opsional - 16 digit angka</small>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nama Lengkap *</label>
+                                <input type="text" name="nama" class="form-control" required>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Jenis Usaha</label>
@@ -398,6 +402,101 @@ $stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] :
         
         function showPending() {
             window.location.href = '?status=pending';
+        }
+
+        async function checkKTP() {
+            const ktp = document.getElementById('ktpInput').value.trim();
+            if (ktp.length === 0) return; // Skip if empty
+            if (ktp.length < 16) {
+                // Still check even if not 16 digits, for partial matches
+            }
+
+            try {
+                const response = await fetch(`/kewer/api/search_people.php?ktp=${encodeURIComponent(ktp)}`);
+                const data = await response.json();
+
+                if (data.success && data.found) {
+                    // Populate form fields
+                    populateForm(data.data);
+                    
+                    Swal.fire({
+                        title: 'Data KTP Ditemukan!',
+                        html: `Data dengan KTP <strong>${data.data.ktp}</strong> sudah terdaftar atas nama <strong>${data.data.nama}</strong><br><br>Form telah diisi otomatis. Silakan periksa dan edit jika diperlukan.`,
+                        icon: 'info',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } catch (error) {
+                console.error('Error checking KTP:', error);
+            }
+        }
+
+        async function checkTelp() {
+            const telp = document.getElementById('telpInput').value.trim();
+            if (telp.length < 10) return;
+
+            try {
+                const response = await fetch(`/kewer/api/search_people.php?telp=${encodeURIComponent(telp)}`);
+                const data = await response.json();
+
+                if (data.success && data.found) {
+                    // Populate form fields
+                    populateForm(data.data);
+                    
+                    Swal.fire({
+                        title: 'Data Telepon Ditemukan!',
+                        html: `Data dengan No. Telepon <strong>${data.data.telp}</strong> sudah terdaftar atas nama <strong>${data.data.nama}</strong><br><br>Form telah diisi otomatis. Silakan periksa dan edit jika diperlukan.`,
+                        icon: 'info',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            } catch (error) {
+                console.error('Error checking telepon:', error);
+            }
+        }
+
+        function populateForm(data) {
+            // Populate basic fields
+            if (data.nama) document.querySelector('input[name="nama"]').value = data.nama;
+            if (data.ktp) document.querySelector('input[name="ktp"]').value = data.ktp;
+            if (data.telp) document.querySelector('input[name="telp"]').value = data.telp;
+            if (data.street_address) document.querySelector('textarea[name="alamat"]').value = data.street_address;
+
+            // Populate address dropdowns if available
+            if (data.province_id) {
+                const provinceSelect = document.querySelector('select[name="province_id"]');
+                provinceSelect.value = data.province_id;
+                // Trigger loadRegencies
+                loadRegencies(data.province_id);
+                
+                // After regencies load, set regency_id
+                setTimeout(() => {
+                    if (data.regency_id) {
+                        const regencySelect = document.querySelector('select[name="regency_id"]');
+                        regencySelect.value = data.regency_id;
+                        // Trigger loadDistricts
+                        loadDistricts(data.regency_id);
+                        
+                        // After districts load, set district_id
+                        setTimeout(() => {
+                            if (data.district_id) {
+                                const districtSelect = document.querySelector('select[name="district_id"]');
+                                districtSelect.value = data.district_id;
+                                // Trigger loadVillages
+                                loadVillages(data.district_id);
+                                
+                                // After villages load, set village_id
+                                setTimeout(() => {
+                                    if (data.village_id) {
+                                        const villageSelect = document.querySelector('select[name="village_id"]');
+                                        villageSelect.value = data.village_id;
+                                    }
+                                }, 500);
+                            }
+                        }, 500);
+                    }
+                }, 500);
+            }
         }
 
         $(document).ready(function() {

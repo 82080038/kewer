@@ -109,6 +109,10 @@ foreach ($invoices as $inv) {
 // Billing plans summary
 $plans = query("SELECT bp.*, COUNT(kb.id) as subscribers FROM billing_plans bp LEFT JOIN koperasi_billing kb ON kb.billing_plan_id = bp.id AND kb.status = 'aktif' WHERE bp.is_active = 1 GROUP BY bp.id ORDER BY bp.harga_bulanan");
 if (!is_array($plans)) $plans = [];
+
+// Get primary bank account
+$primary_bank = query("SELECT * FROM platform_bank_accounts WHERE is_primary = 1 AND is_active = 1 LIMIT 1");
+$primary_bank = (is_array($primary_bank) && !empty($primary_bank)) ? $primary_bank[0] : null;
 ?>
 <?php include __DIR__ . '/_header.php'; ?>
 
@@ -168,6 +172,38 @@ if (!is_array($plans)) $plans = [];
                 </div>
             </div>
         </div>
+
+        <!-- Payment Method Info -->
+        <?php if ($primary_bank): ?>
+        <div class="alert alert-info alert-dismissible fade show mb-3">
+            <strong><i class="bi bi-bank"></i> Metode Pembayaran Utama:</strong>
+            <?php
+            $tipe_labels = [
+                'bank' => 'Bank',
+                'mobile_banking' => 'Mobile Banking',
+                'ewallet' => 'E-Wallet',
+                'qris' => 'QRIS',
+                'virtual_account' => 'Virtual Account'
+            ];
+            ?>
+            <span class="badge bg-primary"><?php echo $tipe_labels[$primary_bank['tipe_pembayaran']] ?? ucfirst($primary_bank['tipe_pembayaran']); ?></span>
+            <?php echo htmlspecialchars($primary_bank['nama_bank']); ?> -
+            <?php if ($primary_bank['tipe_pembayaran'] === 'ewallet'): ?>
+            No. HP: <code><?php echo htmlspecialchars($primary_bank['nomor_hp']); ?></code>
+            <?php elseif ($primary_bank['tipe_pembayaran'] === 'qris'): ?>
+            QR Code
+            <?php else: ?>
+            No. Rek: <code><?php echo htmlspecialchars($primary_bank['nomor_rekening']); ?></code>
+            <?php endif; ?>
+            <?php if ($primary_bank['nama_pemilik']): ?> - a.n. <?php echo htmlspecialchars($primary_bank['nama_pemilik']); ?><?php endif; ?>
+            <?php if ($primary_bank['cabang']): ?> (<?php echo htmlspecialchars($primary_bank['cabang']); ?>)<?php endif; ?>
+        </div>
+        <?php else: ?>
+        <div class="alert alert-warning mb-3">
+            <strong><i class="bi bi-exclamation-triangle"></i> Belum ada metode pembayaran utama.</strong>
+            Silakan set metode pembayaran di <a href="<?php echo baseUrl('pages/app_owner/settings.php'); ?>">Settings</a> agar koperasi bisa melihat info pembayaran.
+        </div>
+        <?php endif; ?>
 
         <!-- Invoice list -->
         <div class="card border-0 shadow-sm">

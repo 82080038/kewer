@@ -97,7 +97,7 @@ function handleGet() {
                     ['code' => 'admin_cabang', 'name' => 'Admin Cabang', 'description' => 'Admin cabang', 'hierarchy_level' => 6],
                     ['code' => 'petugas_pusat', 'name' => 'Petugas Pusat', 'description' => 'Petugas di pusat', 'hierarchy_level' => 7],
                     ['code' => 'petugas_cabang', 'name' => 'Petugas Cabang', 'description' => 'Petugas cabang', 'hierarchy_level' => 8],
-                    ['code' => 'karyawan', 'name' => 'Karyawan', 'description' => 'Karyawan', 'hierarchy_level' => 9]
+                    ['code' => 'teller', 'name' => 'Teller', 'description' => 'Teller dengan akses view-only data dan update kas reconciliation', 'hierarchy_level' => 9]
                 ];
             }
             echo json_encode(['success' => true, 'data' => $roles]);

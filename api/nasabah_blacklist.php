@@ -4,8 +4,11 @@
  */
 
 // Suppress errors to ensure JSON output
-error_reporting(0);
-ini_set('display_errors', 0);
+// Commented out for development to see errors
+// error_reporting(0);
+// ini_set('display_errors', 0);
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');

@@ -103,7 +103,7 @@ if (!is_array($users)) {
                                                 'admin_cabang' => 'info',
                                                 'petugas_pusat' => 'secondary',
                                                 'petugas_cabang' => 'dark',
-                                                'karyawan' => 'light text-dark'
+                                                'teller' => 'light text-dark'
                                             ];
                                             ?>
                                             <span class="badge bg-<?= $roleColors[$u['role']] ?? 'secondary' ?>">
@@ -249,7 +249,7 @@ if (!is_array($users)) {
             $('#roleSelect').on('change', function() {
                 const role = $(this).val();
                 const pusatRoles = ['bos', 'manager_pusat', 'admin_pusat', 'petugas_pusat'];
-                const cabangRoles = ['manager_cabang', 'admin_cabang', 'petugas_cabang', 'karyawan'];
+                const cabangRoles = ['manager_cabang', 'admin_cabang', 'petugas_cabang', 'teller'];
                 
                 if (pusatRoles.includes(role)) {
                     $('#cabangField').hide();

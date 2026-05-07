@@ -1019,25 +1019,25 @@ function canManageRole($target_role) {
     
     // Manager pusat can manage roles below manager_pusat
     if ($user['role'] === 'manager_pusat') {
-        $manageable_roles = ['admin_pusat', 'admin_cabang', 'manager_cabang', 'petugas_pusat', 'petugas_cabang', 'karyawan'];
+        $manageable_roles = ['admin_pusat', 'admin_cabang', 'manager_cabang', 'petugas_pusat', 'petugas_cabang', 'teller'];
         return in_array($target_role, $manageable_roles);
     }
     
     // Manager cabang can manage roles below manager_cabang
     if ($user['role'] === 'manager_cabang') {
-        $manageable_roles = ['admin_cabang', 'petugas_cabang', 'karyawan'];
+        $manageable_roles = ['admin_cabang', 'petugas_cabang', 'teller'];
         return in_array($target_role, $manageable_roles);
     }
     
     // Admin pusat can manage roles below admin_pusat
     if ($user['role'] === 'admin_pusat') {
-        $manageable_roles = ['petugas_pusat', 'petugas_cabang', 'karyawan'];
+        $manageable_roles = ['petugas_pusat', 'petugas_cabang', 'teller'];
         return in_array($target_role, $manageable_roles);
     }
     
     // Admin cabang can manage roles below admin_cabang
     if ($user['role'] === 'admin_cabang') {
-        $manageable_roles = ['petugas_cabang', 'karyawan'];
+        $manageable_roles = ['petugas_cabang', 'teller'];
         return in_array($target_role, $manageable_roles);
     }
     
@@ -1126,6 +1126,7 @@ function revokePermission($user_id, $permission_code) {
 // Get role hierarchy level (lower number = higher hierarchy)
 function getRoleHierarchyLevel($role) {
     $hierarchy = [
+        'appOwner' => 0,
         'bos' => 1,
         'manager_pusat' => 3,
         'manager_cabang' => 4,
@@ -1133,7 +1134,7 @@ function getRoleHierarchyLevel($role) {
         'admin_cabang' => 6,
         'petugas_pusat' => 7,
         'petugas_cabang' => 8,
-        'karyawan' => 9
+        'teller' => 9
     ];
     
     return $hierarchy[$role] ?? 999;

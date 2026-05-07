@@ -19,7 +19,7 @@ if ($currentUser['role'] === 'bos') {
 } elseif (in_array($currentUser['role'], ['manager_pusat', 'admin_pusat'])) {
     // Manager/Admin pusat can see all branches
     $cabang = query("SELECT c.*, u.nama as owner_name FROM cabang c LEFT JOIN users u ON c.owner_bos_id = u.id ORDER BY c.is_headquarters DESC, c.created_at DESC");
-} elseif (in_array($currentUser['role'], ['manager_cabang', 'admin_cabang', 'petugas_pusat', 'petugas_cabang', 'karyawan'])) {
+} elseif (in_array($currentUser['role'], ['manager_cabang', 'admin_cabang', 'petugas_pusat', 'petugas_cabang', 'teller'])) {
     // Other roles can only see their assigned branch
     $user_cabang_id = $currentUser['cabang_id'] ?? null;
     if ($user_cabang_id) {

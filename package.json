@@ -4,6 +4,6 @@
     "test:v23": "node tests/puppeteer-v23-features.test.js"
   },
   "dependencies": {
-    "puppeteer": "^24.40.0"
+    "puppeteer": "^24.43.0"
   }
 }

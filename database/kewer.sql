@@ -2001,7 +2001,7 @@ CREATE TABLE `ref_roles` (
 
 LOCK TABLES `ref_roles` WRITE;
 /*!40000 ALTER TABLE `ref_roles` DISABLE KEYS */;
-INSERT INTO `ref_roles` VALUES (1,'bos','Bos','Pemilik usaha dengan akses penuh untuk pengawasan operasional dan keuangan',NULL,1,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(2,'manager_pusat','Manager Pusat','Manager di kantor pusat dengan akses manajemen operasional pusat',NULL,2,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(3,'manager_cabang','Manager Cabang','Manager cabang dengan akses manajemen operasional cabang',NULL,3,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(4,'admin_pusat','Admin Pusat','Admin di kantor pusat dengan akses administratif pusat',NULL,4,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(5,'admin_cabang','Admin Cabang','Admin cabang dengan akses administratif cabang',NULL,5,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(6,'petugas_pusat','Petugas Pusat','Petugas lapangan pusat untuk kunjungan nasabah dan penagihan',NULL,6,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(7,'petugas_cabang','Petugas Cabang','Petugas lapangan cabang untuk kunjungan nasabah dan penagihan',NULL,7,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(8,'karyawan','Karyawan','Karyawan umum dengan akses dasar',NULL,8,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(9,'appOwner','App Owner','Pemilik aplikasi yang mengelola pendaftaran koperasi dan persetujuan Bos',NULL,0,'aktif','2026-05-02 14:44:02','2026-05-02 14:44:02');
+INSERT INTO `ref_roles` VALUES (1,'bos','Bos','Pemilik usaha dengan akses penuh untuk pengawasan operasional dan keuangan',NULL,1,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(2,'manager_pusat','Manager Pusat','Manager di kantor pusat dengan akses manajemen operasional pusat',NULL,2,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(3,'manager_cabang','Manager Cabang','Manager cabang dengan akses manajemen operasional cabang',NULL,3,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(4,'admin_pusat','Admin Pusat','Admin di kantor pusat dengan akses administratif pusat',NULL,4,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(5,'admin_cabang','Admin Cabang','Admin cabang dengan akses administratif cabang',NULL,5,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(6,'petugas_pusat','Petugas Pusat','Petugas lapangan pusat untuk kunjungan nasabah dan penagihan',NULL,6,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(7,'petugas_cabang','Petugas Cabang','Petugas lapangan cabang untuk kunjungan nasabah dan penagihan',NULL,7,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(8,'teller','Teller','Teller dengan akses view-only data dan update kas reconciliation',NULL,8,'aktif','2026-05-02 13:19:26','2026-05-02 13:19:26'),(9,'appOwner','App Owner','Pemilik aplikasi yang mengelola pendaftaran koperasi dan persetujuan Bos',NULL,0,'aktif','2026-05-02 14:44:02','2026-05-02 14:44:02');
 /*!40000 ALTER TABLE `ref_roles` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2426,7 +2426,7 @@ CREATE TABLE `users` (
   `ktp` varchar(16) DEFAULT NULL COMMENT 'NIK KTP - identitas global via db_orang',
   `email` varchar(100) DEFAULT NULL,
   `telp` varchar(20) DEFAULT NULL,
-  `role` varchar(50) NOT NULL DEFAULT 'karyawan',
+  `role` varchar(50) NOT NULL DEFAULT 'teller',
   `owner_bos_id` int(10) unsigned DEFAULT NULL,
   `cabang_id` int(11) DEFAULT NULL,
   `derived_permissions` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`derived_permissions`)),

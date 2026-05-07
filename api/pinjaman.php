@@ -12,10 +12,11 @@ try {
     require_once __DIR__ . '/../config/path.php';
     require_once BASE_PATH . '/includes/functions.php';
     require_once BASE_PATH . '/includes/accounting_helper.php';
+    require_once BASE_PATH . '/includes/business_logic.php';
 } catch (Exception $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Configuration error: ' . $e->getMessage()]);
-    exit();
+    echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
+    exit;
 }
 
 // Auth check

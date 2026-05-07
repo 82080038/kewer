@@ -229,7 +229,7 @@ $stats = $kasBon->getStatistics();
                             <select class="form-select" name="karyawan_id" required>
                                 <option value="">Pilih Karyawan</option>
                                 <?php
-                                $karyawan = query("SELECT * FROM users WHERE role IN ('karyawan','petugas_pusat','petugas_cabang') AND (cabang_id = ? OR cabang_id IS NULL) AND status = 'aktif'", [$cabang_id]);
+                                $karyawan = query("SELECT * FROM users WHERE role IN ('teller','petugas_pusat','petugas_cabang') AND (cabang_id = ? OR cabang_id IS NULL) AND status = 'aktif'", [$cabang_id]);
                                 if (!is_array($karyawan)) {
                                     $karyawan = [];
                                 }

@@ -170,7 +170,7 @@ if (!is_array($petugas)) {
                                     <option value="admin_cabang" <?php echo $role_filter === 'admin_cabang' ? 'selected' : ''; ?>>Admin Cabang</option>
                                     <option value="petugas_pusat" <?php echo $role_filter === 'petugas_pusat' ? 'selected' : ''; ?>>Petugas Pusat</option>
                                     <option value="petugas_cabang" <?php echo $role_filter === 'petugas_cabang' ? 'selected' : ''; ?>>Petugas Cabang</option>
-                                    <option value="karyawan" <?php echo $role_filter === 'karyawan' ? 'selected' : ''; ?>>Karyawan</option>
+                                    <option value="teller" <?php echo $role_filter === 'teller' ? 'selected' : ''; ?>>Teller</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
@@ -234,7 +234,7 @@ if (!is_array($petugas)) {
                                                         'admin_cabang' => 'info',
                                                         'petugas_pusat' => 'secondary',
                                                         'petugas_cabang' => 'dark',
-                                                        'karyawan' => 'light'
+                                                        'teller' => 'light'
                                                     ];
                                                     ?>
                                                     <span class="badge bg-<?php echo $role_class[$p['role']] ?? 'secondary'; ?>">

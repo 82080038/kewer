@@ -4,8 +4,11 @@
  * POST /api/wa_notifikasi.php { action: kirim_tagihan|kirim_konfirmasi|kirim_pengingat_batch, ... }
  * GET  /api/wa_notifikasi.php?action=log&limit=50
  */
-error_reporting(0);
-ini_set('display_errors', 0);
+// Enable error reporting for development
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+// error_reporting(0);
+// ini_set('display_errors', 0);
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../config/path.php';

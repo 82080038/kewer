@@ -30,6 +30,10 @@ if ($_POST) {
                 $reg = $registration[0];
 
                 if ($action === 'approve' && $reg['status'] === 'pending') {
+                    // Get default billing plan (STARTER)
+                    $default_plan = query("SELECT id FROM billing_plans WHERE kode = 'STARTER' AND is_active = 1 LIMIT 1");
+                    $default_plan_id = (is_array($default_plan) && !empty($default_plan)) ? (int)$default_plan[0]['id'] : null;
+
                     // Create user account
                     $user_result = query(
                         "INSERT INTO users (username, password, nama, email, telp, role, status) VALUES (?, ?, ?, ?, ?, 'bos', 'aktif')",
@@ -39,10 +43,17 @@ if ($_POST) {
                     if ($user_result) {
                         $bos_user_id = query("SELECT LAST_INSERT_ID() as id")[0]['id'];
 
+                        // Auto-assign default billing plan
+                        if ($default_plan_id) {
+                            query("INSERT INTO koperasi_billing (bos_user_id, billing_plan_id, status, tanggal_mulai, created_by) VALUES (?, ?, 'aktif', CURDATE(), ?)",
+                                [$bos_user_id, $default_plan_id, $user['id']]);
+                        }
+
                         query("UPDATE bos_registrations SET status = 'approved', approved_at = NOW(), approved_by = ? WHERE id = ?",
                             [$user['id'], $registration_id]);
 
-                        $_SESSION['success'] = "Bos '{$reg['nama']}' ({$reg['nama_usaha']}) berhasil disetujui. User aktif dengan username: {$reg['username']}";
+                        $plan_info = $default_plan_id ? " dengan plan STARTER" : " (belum ada billing plan)";
+                        $_SESSION['success'] = "Bos '{$reg['nama']}' ({$reg['nama_usaha']}) berhasil disetujui. User aktif dengan username: {$reg['username']}{$plan_info}";
                     } else {
                         $_SESSION['success'] = '';
                         $error = 'Gagal membuat akun user Bos';
