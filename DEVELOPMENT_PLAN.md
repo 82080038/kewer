@@ -455,6 +455,202 @@ Aplikasi Kewer saat ini berada di versi v2.4.0 dengan fitur-fitur inti sudah len
 
 ---
 
+## Phase 5: Risk Management System 🛡️ 🆕
+**Priority**: 🔴 HIGH
+**Effort**: 8-10 weeks
+**Dependencies**: Phase 1-4 complete
+
+### Overview
+Sistem manajemen risiko untuk mengantisipasi kondisi real-world yang dapat menyebabkan pendapatan atau pengeluaran tidak dapat lagi dihitung/dikumpulkan, seperti:
+- Dana di petugas lapangan dirampok atau hilang
+- Nasabah meninggal dunia
+- Petugas dirampok/bunuh
+- Nasabah melarikan diri
+- Petugas lapangan melarikan dana kutipan
+- Loan diversion (penyalahgunaan dana)
+- Identity theft (pencurian identitas)
+- Collusion antara nasabah dan petugas
+
+### 5.1 Manajemen Risiko Nasabah 👥
+**Priority**: 🔴 HIGH
+**Effort**: 2-3 weeks
+
+**Tasks**:
+- [ ] CRUD insiden nasabah (meninggal, lari, sakit berat, bencana)
+- [ ] Link ke ahli waris dari db_orang
+- [ ] Status tracking untuk risiko nasabah
+- [ ] Auto-notification ke ahli waris saat nasabah meninggal
+- [ ] Write-off policy untuk pinjaman yang tidak bisa ditagih
+- [ ] Laporan ke polisi untuk nasabah yang melarikan diri
+
+**Database Changes**:
+- [ ] `kewer.risiko_nasabah` - Tracking insiden nasabah
+- [ ] `kewer.nasabah.status_khusus` - ENUM (NORMAL, MENINGGAL, LARI, BLACKLIST, SAKIT_BERAT)
+- [ ] `kewer.nasabah.penanggung_jawab_nama` - Nama penanggung jawab
+- [ ] `kewer.nasabah.penanggung_jawab_telp` - Telepon penanggung jawab
+- [ ] `kewer.nasabah.penanggung_jawab_hubungan` - Hubungan dengan nasabah
+- [ ] `kewer.pinjaman.status_khusus` - ENUM (NORMAL, MENINGGAL, LARI, BENCANA, WRITE_OFF)
+- [ ] `kewer.pinjaman.tanggal_write_off` - Tanggal write-off
+- [ ] `kewer.pinjaman.alasan_write_off` - Alasan write-off
+
+**Files to Create/Modify**:
+- [ ] `pages/risiko/index.php` - UI manajemen risiko nasabah
+- [ ] `api/risiko_nasabah.php` - API endpoint
+- [ ] `includes/risiko_helper.php` - Helper functions
+- [ ] `pages/laporan_polisi.php` - Generate laporan polisi
+
+---
+
+### 5.2 Sistem Asuransi 🏛️
+**Priority**: 🟡 MEDIUM
+**Effort**: 2-3 weeks
+
+**Tasks**:
+- [ ] Integrasi asuransi jiwa untuk nasabah
+- [ ] Integrasi asuransi kecelakaan kerja untuk petugas
+- [ ] Klaim asuransi otomatis saat insiden terjadi
+- [ ] Tracking nomor polis asuransi
+- [ ] Reporting klaim asuransi
+- [ ] Integration dengan asuransi mikro
+
+**Database Changes**:
+- [ ] `kewer.klaim_asuransi` - Tracking klaim asuransi
+- [ ] `kewer.nasabah.asuransi_jiwa` - BOOLEAN
+- [ ] `kewer.nasabah.nomor_polis_asuransi` - VARCHAR(100)
+- [ ] `kewer.pinjaman.klaim_asuransi_id` - FK ke klaim_asuransi
+
+**Files to Create/Modify**:
+- [ ] `pages/asuransi/index.php` - UI manajemen asuransi
+- [ ] `api/asuransi.php` - API endpoint
+- [ ] `src/Insurance/InsuranceService.php` - Service class
+
+---
+
+### 5.3 Manajemen Jaminan Collateral 💼
+**Priority**: 🟡 MEDIUM
+**Effort**: 2-3 weeks
+
+**Tasks**:
+- [ ] Upload foto jaminan (BPKB, SHM, dokumen lain, barang)
+- [ ] Tracking lokasi penyimpanan jaminan
+- [ ] Lepas jaminan saat pinjaman lunas
+- [ ] Jual jaminan saat default
+- [ ] Taksiran nilai jaminan
+- [ ] QR code untuk tracking jaminan
+
+**Database Changes**:
+- [ ] `kewer.jaminan_collateral` - Tracking jaminan
+- [ ] `kewer.pinjaman.jaminan_collateral_id` - FK ke jaminan_collateral
+
+**Files to Create/Modify**:
+- [ ] `pages/jaminan/index.php` - UI manajemen jaminan
+- [ ] `api/jaminan.php` - API endpoint
+- [ ] `includes/jaminan_helper.php` - Helper functions
+
+---
+
+### 5.4 Insiden Petugas Lapangan 👮
+**Priority**: 🔴 HIGH
+**Effort**: 2-3 weeks
+
+**Tasks**:
+- [ ] CRUD insiden petugas (dirampok, dibunuh, kecelakaan)
+- [ ] Tracking dana yang hilang
+- [ ] Emergency alert system (tombol panic)
+- [ ] Route optimization untuk hindari area berbahaya
+- [ ] Backup petugas untuk area yang sama
+- [ ] Rotation policy untuk mencegah keakraban berlebihan
+- [ ] Limit kas petugas (maksimal dana yang dibawa)
+
+**Database Changes**:
+- [ ] `kewer.insiden_petugas` - Tracking insiden petugas
+- [ ] `kewer.kas_petugas.limit_kas` - Maksimal dana yang dibawa
+- [ ] `kewer.kas_petugas.rotation_policy` - Kebijakan rotasi
+
+**Files to Create/Modify**:
+- [ ] `pages/insiden_petugas/index.php` - UI manajemen insiden
+- [ ] `api/insiden_petugas.php` - API endpoint
+- [ ] `src/Safety/SafetyService.php` - Service class
+
+---
+
+### 5.5 Alert System 🚨
+**Priority**: 🟡 MEDIUM
+**Effort**: 1-2 weeks
+
+**Tasks**:
+- [ ] Alert jika setoran terlambat (lebih dari 24 jam)
+- [ ] Alert jika kas petugas melebihi limit
+- [ ] Alert jika ada insiden (real-time notification)
+- [ ] Alert jika ada pola mencurigakan (fraud detection)
+- [ ] SMS/Email notification untuk alerts
+- [ ] Dashboard untuk monitoring alerts
+
+**Database Changes**:
+- [ ] `kewer.alerts` - Tracking alerts
+- [ ] `kewer.alert_rules` - Aturan alert
+
+**Files to Create/Modify**:
+- [ ] `pages/alerts/index.php` - UI monitoring alerts
+- [ ] `api/alerts.php` - API endpoint
+- [ ] `includes/alert_system.php` - Alert system implementation
+
+---
+
+### 5.6 Anti-Fraud Measures 🔒
+**Priority**: 🔴 HIGH
+**Effort**: 3-4 weeks
+
+**Tasks**:
+- [ ] Separation of duties (petugas berbeda untuk approval)
+- [ ] Random audit oleh supervisor
+- [ ] Whistleblower system (laporan anonim)
+- [ ] Cross-verification antar petugas
+- [ ] AI fraud detection (deteksi pola mencurigakan)
+- [ ] Digital receipt untuk nasabah (konfirmasi pembayaran)
+- [ ] SMS notification ke nasabah saat pembayaran
+- [ ] Biometric verification (sidik jari/face recognition)
+- [ ] OTP verification untuk transaksi besar
+- [ ] Video KYC untuk pengajuan pinjaman
+
+**Database Changes**:
+- [ ] `kewer.fraud_alerts` - Tracking fraud alerts
+- [ ] `kewer.audit_logs` - Audit trail (sudah ada, perlu expand)
+- [ ] `kewer.whistleblower_reports` - Laporan anonim
+
+**Files to Create/Modify**:
+- [ ] `pages/fraud/index.php` - UI monitoring fraud
+- [ ] `api/fraud.php` - API endpoint
+- [ ] `src/Fraud/FraudDetectionService.php` - Service class
+- [ ] `api/pembayaran.php` - Add SMS notification
+- [ ] `api/nasabah.php` - Add biometric verification
+
+---
+
+### 5.7 Credit Bureau Integration 📊
+**Priority**: 🟡 MEDIUM
+**Effort**: 2-3 weeks
+
+**Tasks**:
+- [ ] Report ke SLIK OJK (Sistem Layanan Informasi Keuangan)
+- [ ] Cek skor kredit nasabah
+- [ ] Blacklist sharing antar koperasi
+- [ ] Integration dengan Indonesia Credit Bureau
+- [ ] Auto-report nasabah yang melarikan diri
+- [ ] Auto-report nasabah yang default
+
+**Database Changes**:
+- [ ] `kewer.credit_bureau_logs` - Log report ke SLIK
+- [ ] `kewer.nasabah.slik_score` - Skor SLIK
+- [ ] `kewer.nasabah.blacklist_status` - Status blacklist eksternal
+
+**Files to Create/Modify**:
+- [ ] `api/credit_bureau.php` - API endpoint
+- [ ] `src/CreditBureau/SLIKService.php` - Service class
+- [ ] `pages/nasabah/detail.php` - Tampilkan skor SLIK
+
+---
+
 ## Implementation Timeline
 
 ### Q3 2026 (Juli - September)
@@ -477,6 +673,16 @@ Aplikasi Kewer saat ini berada di versi v2.4.0 dengan fitur-fitur inti sudah len
 - **May**: Multi-branch Synchronization
 - **June**: Third-party API Integration + Cloud Deployment
 
+### Q3 2027 (Juli - September)
+- **July**: Risk Management - Manajemen Risiko Nasabah
+- **August**: Risk Management - Sistem Asuransi + Jaminan Collateral
+- **September**: Risk Management - Insiden Petugas + Alert System
+
+### Q4 2027 (Oktober - Desember)
+- **October**: Risk Management - Anti-Fraud Measures
+- **November**: Risk Management - Credit Bureau Integration
+- **December**: Risk Management Testing & Deployment
+
 ---
 
 ## Resource Requirements
@@ -498,6 +704,8 @@ Aplikasi Kewer saat ini berada di versi v2.4.0 dengan fitur-fitur inti sudah len
 - **Q4 2026**: Rp20-25 juta (payment gateway setup, GPS services)
 - **Q1 2027**: Rp10-15 juta (PWA testing, email service)
 - **Q2 2027**: Rp30-40 juta (cloud deployment, geographic data services)
+- **Q3 2027**: Rp25-35 juta (risk management development, insurance integration)
+- **Q4 2027**: Rp20-30 juta (fraud detection AI, credit bureau integration, testing)
 
 ---
 
@@ -508,11 +716,15 @@ Aplikasi Kewer saat ini berada di versi v2.4.0 dengan fitur-fitur inti sudah len
 2. **Payment Gateway Integration Complexity** - Start with simple QRIS, expand gradually
 3. **GPS Accuracy Issues** - Add geofencing tolerance, manual override option
 4. **Performance with Large Datasets** - Implement caching, pagination, lazy loading
+5. **Fraud Detection Accuracy** - Use machine learning models, continuous training
+6. **Insurance Integration Complexity** - Start with manual claims, then automate
 
 ### Business Risks
 1. **User Adoption** - Provide training, documentation, gradual rollout
 2. **Cost Overruns** - Prioritize high-value features, use open-source alternatives
 3. **Data Security** - Regular security audits, penetration testing
+4. **Insurance Claim Rejections** - Clear documentation, proper policy terms
+5. **Credit Bureau Integration Costs** - Negotiate bulk rates, prioritize high-risk clients
 
 ---
 
@@ -534,6 +746,20 @@ Aplikasi Kewer saat ini berada di versi v2.4.0 dengan fitur-fitur inti sudah len
 - 2FA adoption rate > 70% untuk admin users
 - PDF report generation < 10 detik
 - Scheduled reports delivered 99% on time
+
+### Phase 4 Success Criteria
+- Geographic analysis query time < 5 detik
+- Multi-branch sync latency < 1 menit
+- Webhook delivery success rate > 95%
+- API response time < 200ms (p95)
+
+### Phase 5 Success Criteria
+- Risk incident detection < 5 menit setelah kejadian
+- Insurance claim processing < 7 hari
+- Fraud detection accuracy > 90%
+- Alert delivery rate > 99%
+- Credit bureau report success rate > 95%
+- Write-off rate < 2% dari total pinjaman
 
 ---
 
