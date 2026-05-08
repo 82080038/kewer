@@ -170,17 +170,3 @@ function getChartColors($count) {
     
     return $result;
 }
-
-/**
- * Format number to Indonesian Rupiah
- */
-function formatRupiah($number) {
-    return 'Rp ' . number_format($number, 0, ',', '.');
-}
-
-/**
- * Format percentage
- */
-function formatPercentage($number) {
-    return number_format($number, 2) . '%';
-}
