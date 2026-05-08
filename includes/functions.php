@@ -370,7 +370,7 @@ function getFrequencyLabel($frekuensi) {
     // Fallback to old enum-based labels for backward compatibility
     $labels = [
         'harian' => 'Harian',
-        'mingguan' => 'Minggu',
+        'mingguan' => 'Mingguan',
         'bulanan' => 'Bulanan'
     ];
     return $labels[$frekuensi] ?? 'Bulanan';
@@ -425,8 +425,16 @@ function getFrequencyCode($frekuensi_id) {
         if ($result && is_array($result) && isset($result[0])) {
             return $result[0]['kode'];
         }
+    } else {
+        // Handle string input (backward compatibility)
+        $codes = [
+            'harian' => 'HARIAN',
+            'mingguan' => 'MINGGUAN',
+            'bulanan' => 'BULANAN'
+        ];
+        return $codes[$frekuensi_id] ?? 'BULANAN';
     }
-    return 'bulanan';
+    return 'BULANAN';
 }
 
 // Get frequency ID from code (for backward compatibility)
