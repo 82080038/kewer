@@ -187,16 +187,16 @@ $primary_bank = (is_array($primary_bank) && !empty($primary_bank)) ? $primary_ba
             ];
             ?>
             <span class="badge bg-primary"><?php echo $tipe_labels[$primary_bank['tipe_pembayaran']] ?? ucfirst($primary_bank['tipe_pembayaran']); ?></span>
-            <?php echo htmlspecialchars($primary_bank['nama_bank']); ?> -
+            <?php echo htmlspecialchars($primary_bank['bank_name'] ?? ''); ?> -
             <?php if ($primary_bank['tipe_pembayaran'] === 'ewallet'): ?>
-            No. HP: <code><?php echo htmlspecialchars($primary_bank['nomor_hp']); ?></code>
+            No. HP: <code><?php echo htmlspecialchars($primary_bank['nomor_hp'] ?? ''); ?></code>
             <?php elseif ($primary_bank['tipe_pembayaran'] === 'qris'): ?>
             QR Code
             <?php else: ?>
-            No. Rek: <code><?php echo htmlspecialchars($primary_bank['nomor_rekening']); ?></code>
+            No. Rek: <code><?php echo htmlspecialchars($primary_bank['nomor_rekening'] ?? ''); ?></code>
             <?php endif; ?>
-            <?php if ($primary_bank['nama_pemilik']): ?> - a.n. <?php echo htmlspecialchars($primary_bank['nama_pemilik']); ?><?php endif; ?>
-            <?php if ($primary_bank['cabang']): ?> (<?php echo htmlspecialchars($primary_bank['cabang']); ?>)<?php endif; ?>
+            <?php if (!empty($primary_bank['nama_pemilik'])): ?> - a.n. <?php echo htmlspecialchars($primary_bank['nama_pemilik']); ?><?php endif; ?>
+            <?php if (!empty($primary_bank['cabang'])): ?> (<?php echo htmlspecialchars($primary_bank['cabang']); ?>)<?php endif; ?>
         </div>
         <?php else: ?>
         <div class="alert alert-warning mb-3">
