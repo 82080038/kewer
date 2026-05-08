@@ -424,7 +424,7 @@ $total_advice = (is_array($total_advice) && isset($total_advice[0])) ? (int)$tot
                                         <?php echo $tipe_labels[$acc['tipe_pembayaran']] ?? ucfirst($acc['tipe_pembayaran']); ?>
                                     </span>
                                 </td>
-                                <td><strong><?php echo htmlspecialchars($acc['nama_bank']); ?></strong></td>
+                                <td><strong><?php echo htmlspecialchars($acc['bank_name'] ?? ''); ?></strong></td>
                                 <td>
                                     <?php if ($acc['tipe_pembayaran'] === 'ewallet'): ?>
                                     <code><?php echo htmlspecialchars($acc['nomor_hp'] ?? '-'); ?></code>
