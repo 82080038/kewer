@@ -344,6 +344,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
                         "Pencairan pinjaman {$pinjaman['kode_pinjaman']}", $user['id']
                     );
 
+                    // Trigger webhook for pinjaman approval
+                    require_once BASE_PATH . '/includes/webhook_trigger.php';
+                    triggerPinjamanApproved($pinjaman_id, $pinjaman);
+
                     echo json_encode(['success' => true, 'message' => 'Pinjaman berhasil disetujui dan diaktifkan']);
                 } else {
                     http_response_code(500);
@@ -363,6 +367,11 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 // Update cache nasabah
                 query("UPDATE nasabah SET total_pinjaman_aktif = (SELECT COUNT(*) FROM pinjaman WHERE nasabah_id = ? AND status IN ('aktif','disetujui','pengajuan')) WHERE id = ?",
                     [$pinjaman['nasabah_id'], $pinjaman['nasabah_id']]);
+                
+                // Trigger webhook for pinjaman rejection
+                require_once BASE_PATH . '/includes/webhook_trigger.php';
+                triggerPinjamanRejected($pinjaman_id, $pinjaman, $rejection_reason);
+                
                 echo json_encode(['success' => true, 'message' => 'Pinjaman ditolak']);
                 break;
                 

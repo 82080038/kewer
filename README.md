@@ -97,20 +97,24 @@ Petugas keliling mengutip angsuran langsung ke lokasi nasabah (pasar, lapak, rum
 - Platform-wide audit logs
 
 ### Operasional Koperasi
-- **Nasabah:** CRUD, upload KTP, OCR KTP (Tesseract), blacklist, family risk
-- **Pinjaman:** Pengajuan, approval workflow, harian/mingguan/bulanan, auto-confirm
+- **Nasabah:** CRUD, upload KTP, OCR KTP (Tesseract), blacklist, family risk, credit scoring
+- **Pinjaman:** Pengajuan, approval workflow, harian/mingguan/bulanan, auto-confirm, auto-approval
 - **Angsuran:** Jadwal otomatis, denda keterlambatan, cetak kartu angsuran
-- **Pembayaran:** Input tunai, kwitansi, rekonsiliasi kas harian
-- **Petugas Lapangan:** GPS tracking, foto, aktivitas lapangan, kas petugas
+- **Pembayaran:** Input tunai, GPS tracking, kwitansi, rekonsiliasi kas harian
+- **Petugas Lapangan:** GPS tracking, kunjungan, foto, aktivitas lapangan, kas petugas
 - **Kas & Keuangan:** Pengeluaran, kas bon, rekonsiliasi kas
-- **Laporan:** Keuangan, kinerja pinjaman, nasabah, audit trail
+- **Laporan:** Dashboard analytics, keuangan, kinerja pinjaman, nasabah, audit trail, geographic analysis
 - **Users:** RBAC granular, delegated permissions
+- **Multi-branch Sync:** Data synchronization antar cabang dengan conflict resolution
+- **Webhook System:** Third-party API integration dengan event triggers
 
 ### Integrasi
 - WhatsApp (Twilio, Wablas, Fonnte)
 - PDF export (DomPDF)
 - OCR KTP (Tesseract)
 - Email notifications (SMTP)
+- Chart.js untuk dashboard analytics
+- Webhook system untuk external integrations
 
 ---
 
@@ -200,10 +204,24 @@ Migration tersedia di `database/migrations/`:
 - `025_kewer_populate_angsuran_frekuensi.sql` - Populate angsuran frekuensi_id
 - `026_kewer_populate_settings_frekuensi.sql` - Populate settings frekuensi_id
 - `027_kewer_insert_default_settings_frekuensi.sql` - Default settings frekuensi
+- `028_add_credit_scoring_columns.sql` - Credit scoring system
+- `029_add_gps_tracking_tables.sql` - GPS tracking
+- `030_add_sync_tables.sql` - Multi-branch sync
+- `031_add_webhook_tables.sql` - Webhook system
+- `032_add_new_permissions.sql` - New permissions untuk batch features
 
 Migration sudah dijalankan pada v2.4.0. Untuk fresh install, gunakan:
 ```bash
 /opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock kewer < database/kewer.sql
+```
+
+Untuk menjalankan migration batch features (v2.4.0):
+```bash
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock kewer < database/migrations/028_add_credit_scoring_columns.sql
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock kewer < database/migrations/029_add_gps_tracking_tables.sql
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock kewer < database/migrations/030_add_sync_tables.sql
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock kewer < database/migrations/031_add_webhook_tables.sql
+/opt/lampp/bin/mysql -u root -proot --socket=/opt/lampp/var/mysql/mysql.sock kewer < database/migrations/032_add_new_permissions.sql
 ```
 
 ---
@@ -305,7 +323,7 @@ tail -f /opt/lampp/var/mysql/*.err
 
 ## Changelog
 
-### v2.4.0 (2026-05-08)
+### v2.4.0 (2026-05-08) - Batch Implementation Selesai
 - ✅ **Integrasi ref_frekuensi_angsuran** - Normalisasi frekuensi angsuran (harian, mingguan, bulanan)
   - Tabel `ref_frekuensi_angsuran` dengan ID: 1 (Harian, max 100 hari), 2 (Mingguan, max 52 minggu), 3 (Bulanan, max 36 bulan)
   - 20 file diperbarui untuk support frekuensi_id
@@ -317,6 +335,43 @@ tail -f /opt/lampp/var/mysql/*.err
   - API penagihan dan UI penagihan
   - autoCreatePenagihanOverdue() function
   - cron_daily_tasks.php untuk scheduled tasks
+- ✅ **Advanced Dashboard Analytics** - Dashboard analytics API dengan Chart.js
+  - API endpoint: api/dashboard_analytics.php
+  - Service: src/Cache/CacheManager.php
+  - Helper: includes/chart_helper.php
+  - Real-time metrics, per-cabang comparison, trend analysis
+  - File-based caching untuk performance
+- ✅ **Credit Scoring System** - Rule-based scoring engine dengan auto-approval
+  - API endpoint: api/credit_scoring.php
+  - Service: src/CreditScoring/ScoringEngine.php
+  - Database: credit_scoring_logs, nasabah (credit_score, risk_level), pinjaman (auto_approved)
+  - Auto-approval untuk low-risk nasabah
+- ✅ **GPS Tracking** - Geolocation tracking untuk petugas lapangan
+  - API endpoint: api/visits.php
+  - Service: src/Geo/GPSTracker.php
+  - Pages: pages/petugas/kunjungan.php
+  - Database: visits, mobile_devices, pembayaran (GPS columns), cabang (GPS columns)
+  - Geofencing, distance calculation, visit logging
+- ✅ **Audit Trail UI** - Audit log viewer dengan filtering dan export
+  - Pages: pages/audit/index.php
+  - API endpoint: api/audit_log.php
+  - Filterable by user, action, table, date range
+  - Export to CSV
+- ✅ **Geographic Analysis** - Radius search, demographic analysis, heatmap
+  - API endpoint: api/geographic_analysis.php
+  - Service: src/Geo/GPSTracker.php
+  - Area classification (urban vs rural)
+- ✅ **Multi-branch Sync** - Data synchronization service
+  - Service: src/Sync/DataSyncService.php
+  - Database: sync_logs, sync_conflicts
+  - Conflict detection dan resolution
+- ✅ **Webhook System** - Third-party API integration
+  - Pages: pages/settings/webhooks.php
+  - API endpoint: api/webhooks.php
+  - Service: src/Webhook/WebhookService.php
+  - Helper: includes/webhook_trigger.php
+  - Database: webhooks, webhook_logs, webhook_deliveries, external_api_logs, api_keys
+  - Event triggers: pinjaman.approved, pinjaman.rejected, pembayaran.received, dll
 - ✅ **Cleanup** - Hapus backward compatibility code & test files
   - Hapus fallback ke frekuensi enum (kolom sudah di-drop)
   - Hapus file test sementara

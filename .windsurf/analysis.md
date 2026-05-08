@@ -1,7 +1,7 @@
 # Kewer Application Analysis
 
-> **Terakhir diperbarui**: 7 Mei 2026
-> **Versi Aplikasi**: v2.3.1 (Feature Flags + Layout Consistency)
+> **Terakhir diperbarui**: 8 Mei 2026 (Batch Implementation Selesai)
+> **Versi Aplikasi**: v2.4.0 (Nasabah Portal + Penagihan System + Enhanced Features + Advanced Analytics)
 
 ## Overview
 **Project Name**: Kewer - Koperasi Warga Ekonomi Rakyat
@@ -18,15 +18,25 @@
 - **Interest**: Fixed percentage per month (typically 2-5%)
 - **Collection**: Field officers (petugas) collect payments from customers in the field
 - **Platform**: Multi-tenant — setiap Bos punya koperasi sendiri, appOwner mengelola platform
+- **Nasabah Portal**: Self-service portal untuk nasabah (dashboard, profil, pengajuan pinjaman/simpanan)
+- **Penagihan System**: Manajemen penagihan dengan pengingat otomatis
 
 ## Architecture
 - **Backend**: PHP 8.2 with MySQL/MariaDB
-- **Frontend**: Bootstrap 5.3 + Vanilla JavaScript
+- **Frontend**: Bootstrap 5.3 + Vanilla JavaScript + Chart.js
 - **Database**: 3 database terpisah (kewer, db_alamat, db_orang)
 - **Authentication**: Session-based with role-based permissions
-- **Platform**: appOwner layer (billing, usage tracking, AI advisor)
+- **Platform**: appOwner layer (billing, usage tracking, AI advisor, province activation)
 - **Audit Trail**: CRUD operations logged to audit_log table
 - **Feature Flags**: Dynamic feature toggle system (v2.3.1)
+- **Cron Jobs**: Automated daily tasks (v2.4.0)
+- **Koperasi Isolation**: Multi-tenant support dengan data isolation per koperasi (v2.4.0)
+- **Advanced Analytics**: Dashboard analytics API dengan Chart.js integration (v2.4.0)
+- **Credit Scoring**: Rule-based scoring engine dengan auto-approval (v2.4.0)
+- **GPS Tracking**: Geolocation tracking untuk petugas lapangan (v2.4.0)
+- **Geographic Analysis**: Radius search, demographic analysis, heatmap (v2.4.0)
+- **Multi-branch Sync**: Data synchronization service untuk cabang (v2.4.0)
+- **Webhook System**: Third-party API integration dengan webhook triggers (v2.4.0)
 
 ---
 
@@ -34,7 +44,7 @@
 
 ```
 ┌─────────────────────────────────┐
-│  kewer (49 tabel + 3 view)      │  Transaksi koperasi, users, billing, usage
+│  kewer (72+ tabel + 1 view)     │  Transaksi koperasi, users, billing, usage
 │  $conn → query()                │
 │  ├── users, permissions, roles  │  Auth & RBAC
 │  ├── nasabah, pinjaman          │  Bisnis inti
@@ -43,7 +53,18 @@
 │  ├── billing_plans, invoices    │  Platform (appOwner)
 │  ├── usage_log, ai_advice       │  Usage tracking & AI
 │  ├── koperasi_activities        │  Log aktivitas koperasi
-│  └── petugas_daerah_tugas       │  Daerah tugas petugas
+│  ├── petugas_daerah_tugas       │  Daerah tugas petugas
+│  ├── penagihan, penagihan_log   │  Penagihan system (v2.4.0)
+│  ├── ref_frekuensi_angsuran    │  Frekuensi angsuran reference (v2.4.0)
+│  ├── ref_produk_pinjaman       │  Produk pinjaman catalog (v2.4.0)
+│  ├── pinjaman_jaminan          │  Jaminan pinjaman (v2.4.0)
+│  ├── credit_scoring_logs        │  Credit scoring audit (v2.4.0)
+│  ├── visits, mobile_devices     │  GPS tracking (v2.4.0)
+│  ├── sync_logs, sync_conflicts  │  Multi-branch sync (v2.4.0)
+│  ├── webhooks, webhook_logs    │  Webhook system (v2.4.0)
+│  ├── webhook_deliveries        │  Webhook deliveries (v2.4.0)
+│  ├── external_api_logs, api_keys│  External API (v2.4.0)
+│  └── dashboard_cache            │  Analytics cache (v2.4.0)
 └────────┬────────────────────────┘
          │ province_id, regency_id, district_id, village_id
          ▼
@@ -57,7 +78,7 @@
 └─────────────────────────────────┘
          ▲ cross-DB JOIN
 ┌─────────────────────────────────┐
-│  db_orang (20 tabel)            │  Identitas orang + alamat + master data + relasi + audit
+│  db_orang (19 tabel)            │  Identitas orang + alamat + master data + relasi + audit
 │  $conn_orang → query_orang()    │
 │  ├── people                     │  Data orang (link ke kewer.users/nasabah)
 │  ├── addresses                  │  Alamat per orang (ref lokasi → db_alamat)
@@ -89,12 +110,21 @@
 - `db_orang.addresses` → `db_alamat.provinces/regencies/districts/villages`
 - Models (Nasabah.php, Cabang.php) use `LEFT JOIN db_alamat.provinces` etc.
 
+### v2.4.0 Database Additions
+- `penagihan` - Penagihan management system
+- `penagihan_log` - Log aktivitas penagihan
+- `ref_frekuensi_angsuran` - Reference table untuk frekuensi angsuran (menggantikan enum)
+- `ref_produk_pinjaman` - Catalog produk pinjaman
+- `ref_jenis_penagihan` - Jenis penagihan reference
+- `pinjaman_jaminan` - Jaminan pinjaman
+- `v_penagihan_hari_ini` - View untuk penagihan hari ini
+
 ---
 
-## Role Hierarchy (9 Levels + appOwner)
+## Role Hierarchy (9 Levels + appOwner + nasabah)
 
 ```
-appOwner          — Platform owner (billing, usage, AI advisor, approvals)
+appOwner          — Platform owner (billing, usage, AI advisor, approvals, province activation)
   └── Credentials: appowner / AppOwner2024!
 
 Level 1: Bos (Pemilik Usaha)
@@ -106,6 +136,8 @@ Level 5: Admin Cabang — administrasi cabang tunggal
 Level 6: Petugas Pusat — kutipan lapangan lintas cabang
 Level 7: Petugas Cabang — kutipan lapangan cabang tunggal
 Level 8: Karyawan — berdasarkan delegated permissions dari bos
+Level 9: Nasabah — Self-service portal (v2.4.0)
+  └── Dashboard, profil, pengajuan pinjaman/simpanan, pembayaran, angsuran
 ```
 
 ### Test Users (password: Kewer2024!)
@@ -124,27 +156,31 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 
 ### 🔴 KRITIS - Inti Bisnis (COMPLETED)
 
-1. **Frekuensi Angsuran** ✅ — Harian, mingguan, bulanan
+1. **Frekuensi Angsuran** ✅ — Harian, mingguan, bulanan (migrasi ke frekuensi_id di v2.4.0)
 2. **Denda Otomatis** ✅ — Grace period, auto-calc, waive by manager
 3. **Blacklist UI** ✅ — Kelola blacklist, validasi pinjaman aktif
+4. **Penagihan System** ✅ — Manajemen penagihan dengan pengingat otomatis (v2.4.0)
+5. **Nasabah Portal** ✅ — Self-service portal untuk nasabah (v2.4.0)
 
 ### 🟡 SEDANG - Operasional Lapangan (PARTIAL)
 
-4. Cetak Kwitansi & Kartu Angsuran — PARTIAL (cetak_kwitansi.php)
-5. Notifikasi WhatsApp — NOT IMPLEMENTED
-6. Rute Harian Petugas — NOT IMPLEMENTED
-7. Dashboard Kinerja Petugas — NOT IMPLEMENTED
+6. Cetak Kwitansi & Kartu Angsuran — PARTIAL (cetak_kwitansi.php)
+7. Notifikasi WhatsApp — PARTIAL (api/wa_notifikasi.php exists, feature flag ready)
+8. Rute Harian Petugas — PARTIAL (pages/rute_harian exists)
+9. Dashboard Kinerja Petugas — PARTIAL (pages/kinerja exists)
+10. Pengelolaan Jaminan — PARTIAL (pages/jaminan exists, pinjaman_jaminan table added)
 
 ### 🟢 RENDAH - Tata Kelola (PENDING)
 
-8. Audit Trail UI
-9. Manajemen Jaminan UI
-10. Pinjaman Top-Up
-11. Laporan Laba Rugi Sederhana
-12. Credit Scoring Sederhana
-13. Integrasi Pembayaran Digital
+11. Audit Trail UI
+12. Pinjaman Top-Up
+13. Laporan Laba Rugi Sederhana
+14. Credit Scoring Sederhana
+15. Integrasi Pembayaran Digital (pembayaran_elektronik.php exists but basic)
+16. Export/Import Data (api/export.php exists, src/Export/Exporter.php exists)
+17. Advanced Dashboard Analytics
 
-## Database Schema — kewer (64 base tables + 3 views)
+## Database Schema — kewer (67 tables + 1 view)
 
 ### Operational Tables
 | # | Tabel | Fungsi |
@@ -153,33 +189,36 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 | 2 | cabang | Kantor pusat & cabang, db_orang_person_id |
 | 3 | nasabah | Data nasabah, db_orang_user_id/address_id |
 | 4 | pinjaman | Pengajuan & tracking pinjaman |
-| 5 | angsuran | Jadwal cicilan |
-| 6 | pembayaran | Riwayat pembayaran |
-| 7 | settings | Konfigurasi sistem |
-| 8 | audit_log | Activity logging |
-| 9 | family_risk | Penilaian risiko keluarga |
-| 10 | nasabah_family_link | Relasi keluarga nasabah |
-| 11 | kas_bon | Kasbon karyawan |
-| 12 | kas_bon_potongan | Potongan kasbon |
-| 13 | kas_petugas | Kas petugas lapangan |
-| 14 | kas_petugas_setoran | Setoran kas petugas |
-| 15 | pengeluaran | Pengeluaran operasional |
-| 16 | loan_risk_log | Tracking risiko pinjaman |
-| 17 | field_officer_activities | Aktivitas petugas + daerah_province/regency/district/village_id |
-| 18 | daily_cash_reconciliation | Rekonsiliasi kas harian |
-| 19 | consolidated_reports | Laporan konsolidasi |
-| 20 | transaksi_log | Log transaksi |
-| 21 | blacklist_log | Log blacklist nasabah |
-| 22 | nasabah_orang_mapping | Mapping nasabah ↔ db_orang |
-| 23 | ahli_waris | Data ahli waris nasabah |
-| 24 | jurnal_kas | Jurnal kas |
-| 25 | kelebihan_bayar | Kelebihan pembayaran |
-| 26 | pembayaran_offline_queue | Antrian pembayaran offline |
-| 27 | pengganti_petugas | Pengganti petugas |
-| 28 | restrukturisasi | Restrukturisasi pinjaman |
-| 29 | riwayat_skor_kredit | Riwayat skor kredit nasabah |
-| 30 | write_off | Write-off pinjaman bermasalah |
-| 31 | notifikasi | Notifikasi sistem |
+| 5 | pinjaman_jaminan | Jaminan pinjaman (v2.4.0) |
+| 6 | angsuran | Jadwal cicilan |
+| 7 | pembayaran | Riwayat pembayaran |
+| 8 | settings | Konfigurasi sistem |
+| 9 | audit_log | Activity logging |
+| 10 | family_risk | Penilaian risiko keluarga |
+| 11 | nasabah_family_link | Relasi keluarga nasabah |
+| 12 | kas_bon | Kasbon karyawan |
+| 13 | kas_bon_potongan | Potongan kasbon |
+| 14 | kas_petugas | Kas petugas lapangan |
+| 15 | kas_petugas_setoran | Setoran kas petugas |
+| 16 | pengeluaran | Pengeluaran operasional |
+| 17 | loan_risk_log | Tracking risiko pinjaman |
+| 18 | field_officer_activities | Aktivitas petugas + daerah_province/regency/district/village_id |
+| 19 | daily_cash_reconciliation | Rekonsiliasi kas harian |
+| 20 | consolidated_reports | Laporan konsolidasi |
+| 21 | transaksi_log | Log transaksi |
+| 22 | blacklist_log | Log blacklist nasabah |
+| 23 | nasabah_orang_mapping | Mapping nasabah ↔ db_orang |
+| 24 | ahli_waris | Data ahli waris nasabah |
+| 25 | jurnal_kas | Jurnal kas |
+| 26 | kelebihan_bayar | Kelebihan pembayaran |
+| 27 | pembayaran_offline_queue | Antrian pembayaran offline |
+| 28 | pengganti_petugas | Pengganti petugas |
+| 29 | restrukturisasi | Restrukturisasi pinjaman |
+| 30 | riwayat_skor_kredit | Riwayat skor kredit nasabah |
+| 31 | write_off | Write-off pinjaman bermasalah |
+| 32 | notifikasi | Notifikasi sistem |
+| 33 | penagihan | Manajemen penagihan (v2.4.0) |
+| 34 | penagihan_log | Log aktivitas penagihan (v2.4.0) |
 
 ### Organizational & Auth Tables
 | # | Tabel | Fungsi |
@@ -222,22 +261,171 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 | 46 | ref_metode_pembayaran | Metode pembayaran |
 | 47 | ref_roles | Daftar role |
 | 48 | ref_status_pinjaman | Status pinjaman |
-| 49 | setting_bunga | Setting bunga |
+| 49 | ref_frekuensi_angsuran | Frekuensi angsuran reference (v2.4.0) |
+| 50 | ref_produk_pinjaman | Produk pinjaman catalog (v2.4.0) |
+| 51 | ref_jenis_penagihan | Jenis penagihan reference (v2.4.0) |
+| 52 | setting_bunga | Setting bunga |
 | — | auto_confirm_settings | Auto-confirm pinjaman |
 | — | denda_settings | Setting denda |
 | — | setting_denda | Setting denda per cabang |
-| 50 | platform_features | Feature flags system (v2.3.1) |
-| 51 | target_petugas | Target petugas lapangan (v2.3.1) |
-| 52 | wa_log | Log WA notifikasi (v2.3.1) |
+| 53 | platform_features | Feature flags system (v2.3.1) |
+| 54 | target_petugas | Target petugas lapangan (v2.3.1) |
+| 55 | wa_log | Log WA notifikasi (v2.3.1) |
 
-### Views (3)
-- v_karyawan_kasbon, v_kasbon_summary, v_laporan_kas_harian
+### New Tables (v2.4.0 Batch Implementation)
+| # | Tabel | Fungsi |
+|---|-------|--------|
+| 56 | credit_scoring_logs | Credit scoring audit trail |
+| 57 | visits | Petugas field visit log dengan GPS |
+| 58 | mobile_devices | Mobile device registration |
+| 59 | sync_logs | Multi-branch sync operation logs |
+| 60 | sync_conflicts | Sync conflict resolution |
+| 61 | webhooks | Webhook configuration |
+| 62 | webhook_logs | Webhook trigger logs |
+| 63 | webhook_deliveries | Webhook delivery queue |
+| 64 | external_api_logs | External API call logs |
+| 65 | api_keys | API key management |
+| 66 | dashboard_cache | Analytics data cache |
+
+### Views (1)
+- v_penagihan_hari_ini - View untuk penagihan hari ini (v2.4.0)
 
 ---
 
-## v2.3.1 Feature Flags System
+## v2.4.0 New Features
 
-### Platform Features Table
+### Nasabah Portal (Self-Service)
+- **Pages**: dashboard, profil, pengajuan_pinjaman, pengajuan_simpanan, pinjaman, angsuran, pembayaran, data_keluarga
+- **API**: api/nasabah_portal.php
+- **Features**:
+  - Dashboard dengan ringkasan pinjaman & angsuran
+  - Profil management dengan data keluarga
+  - Pengajuan pinjaman online
+  - Pengajuan simpanan
+  - Riwayat angsuran & pembayaran
+  - Integration dengan db_orang untuk data keluarga
+
+### Penagihan System
+- **Pages**: penagihan/index.php
+- **API**: api/penagihan.php, api/pengingat_penagihan.php
+- **Database**: penagihan, penagihan_log, ref_jenis_penagihan, v_penagihan_hari_ini
+- **Features**:
+  - Manajemen penagihan nasabah
+  - Pengingat otomatis (WA/SMS)
+  - Jenis penagihan (JATUH_TEMPO, OVERDUE, BLACKLIST, FOLLOW_UP)
+  - Log aktivitas penagihan
+
+### Advanced Dashboard Analytics (Batch Implementation)
+- **API**: api/dashboard_analytics.php
+- **Service**: src/Cache/CacheManager.php
+- **Helper**: includes/chart_helper.php
+- **Features**:
+  - Real-time metrics (total pinjaman aktif, collection rate, NPL ratio)
+  - Per-cabang performance comparison
+  - Trend analysis (mingguan/bulanan/tahunan)
+  - Top 10 nasabah analysis
+  - File-based caching untuk performance
+  - Chart.js integration untuk visualisasi
+
+### Credit Scoring System (Batch Implementation)
+- **API**: api/credit_scoring.php
+- **Service**: src/CreditScoring/ScoringEngine.php
+- **Database**: credit_scoring_logs, nasabah (credit_score, risk_level), pinjaman (auto_approved)
+- **Features**:
+  - Rule-based scoring engine (payment history, demographics, location, family risk, duration)
+  - Auto-approval untuk low-risk nasabah
+  - Risk score (0-100) untuk setiap nasabah
+  - Audit trail untuk scoring history
+  - Batch score calculation untuk semua nasabah
+
+### GPS Tracking (Batch Implementation)
+- **API**: api/visits.php
+- **Service**: src/Geo/GPSTracker.php
+- **Pages**: pages/petugas/kunjungan.php
+- **Database**: visits, mobile_devices, pembayaran (GPS columns), cabang (GPS columns)
+- **Features**:
+  - GPS capture saat pembayaran
+  - Geofencing untuk validasi lokasi
+  - Visit logging dengan GPS data
+  - Haversine formula untuk distance calculation
+  - GPS accuracy level determination
+
+### Audit Trail UI (Batch Implementation)
+- **Pages**: pages/audit/index.php
+- **API**: api/audit_log.php
+- **Database**: audit_log (already exists)
+- **Features**:
+  - Filterable log viewer (by user, action, table, date range)
+  - Export audit log to CSV
+  - Search functionality
+  - Statistics on audit activity
+
+### Geographic Analysis (Batch Implementation)
+- **API**: api/geographic_analysis.php
+- **Service**: src/Geo/GPSTracker.php
+- **Features**:
+  - Radius-based nasabah search
+  - Demographic analysis per area
+  - Risk scoring by location
+  - Heatmap data untuk nasabah distribution
+  - Area classification (urban vs rural)
+
+### Multi-branch Sync (Batch Implementation)
+- **Service**: src/Sync/DataSyncService.php
+- **Database**: sync_logs, sync_conflicts
+- **Features**:
+  - Data synchronization antar cabang
+  - Conflict detection dan resolution
+  - Sync operation logging
+  - Full dan incremental sync support
+
+### Webhook System (Batch Implementation)
+- **Pages**: pages/settings/webhooks.php
+- **API**: api/webhooks.php
+- **Service**: src/Webhook/WebhookService.php
+- **Helper**: includes/webhook_trigger.php
+- **Database**: webhooks, webhook_logs, webhook_deliveries, external_api_logs, api_keys
+- **Features**:
+  - Webhook configuration management
+  - Event triggers (pinjaman.approved, pinjaman.rejected, pembayaran.received, dll)
+  - HMAC signature untuk security
+  - Retry logic dengan exponential backoff
+  - Webhook delivery logging
+  - Integration di pinjaman dan pembayaran logic
+  - Tracking status penagihan
+  - Log aktivitas penagihan
+
+### Cron Jobs
+- **File**: cron_daily_tasks.php
+- **Features**:
+  - Auto-calculate denda
+  - Update status pinjaman overdue
+  - Generate pengingat penagihan
+  - Daily summary reports
+
+### Koperasi Isolation
+- **Helper**: includes/koperasi_isolation.php
+- **Features**:
+  - Data isolation per koperasi (bos)
+  - Cross-koperasi operations API
+  - Multi-tenant support
+
+### Province Activation
+- **Pages**: pages/app_owner/provinsi_activation.php
+- **API**: api/provinsi_activation.php
+- **Features**:
+  - Aktivasi provinsi untuk rollout
+  - Per-province configuration
+
+### Enhanced Reference Tables
+- **ref_frekuensi_angsuran** — Menggantikan enum frekuensi (v2.4.0)
+  - ID 1: Harian (max 100 hari)
+  - ID 2: Mingguan (max 52 minggu)
+  - ID 3: Bulanan (max 36 bulan)
+- **ref_produk_pinjaman** — Catalog produk pinjaman
+- **pinjaman_jaminan** — Enhanced jaminan management
+
+### v2.3.1 Feature Flags System (Still Active)
 | Feature Key | Category | Default | Description |
 |-------------|----------|---------|-------------|
 | wa_notifikasi | wa | OFF | WhatsApp notifikasi via Fonnte API |
@@ -252,29 +440,14 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 | cron_harian | system | OFF | Cron job harian otomatis |
 | simulasi_pinjaman | lapangan | ON | Simulasi pinjaman real-time |
 
-### Feature Flags Components
-- **Helper**: `includes/feature_flags.php` — isFeatureEnabled(), requireFeature(), getAllFeatures()
-- **API**: `api/feature_flags.php` — GET list, POST toggle, POST bulk toggle
-- **UI**: `pages/app_owner/features.php` — Toggle switches per fitur
-- **Guard Pattern**: API returns 403 if feature disabled, UI redirects or hides elements
-
-### v2.3.1 Database Additions
-- `platform_features` — Feature flags configuration
-- `target_petugas` — Target petugas per cabang
-- `wa_log` — Log pengiriman WA
-- `pinjaman.kolektibilitas` — Kolektibilitas OJK (1-5)
-- `pinjaman.hari_tunggakan` — Jumlah hari tunggakan
-- `pembayaran.lat, lng, akurasi_gps` — GPS location pembayaran
-- `users.totp_secret, totp_enabled, totp_verified_at, phone_2fa` — 2FA TOTP
-
 ---
 
 ## Application Structure
 
-### API Endpoints (32 files)
+### API Endpoints (38+ files)
 | File | Fungsi |
 |------|--------|
-| alamat.php | Cascade dropdown lokasi (db_alamat_simple) |
+| alamat.php | Cascade dropdown lokasi (db_alamat) |
 | accounting.php | Akuntansi (jurnal, ledger, neraca) |
 | angsuran.php | CRUD angsuran |
 | auth.php | Login/logout API |
@@ -283,6 +456,8 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 | bos_registration.php | Registrasi & approval bos |
 | branch_managers.php | Assign manager ke cabang |
 | cabang.php | CRUD cabang |
+| cross_koperasi.php | Cross-koperasi operations (v2.4.0) |
+| cron_daily_tasks.php | Cron job harian (v2.4.0) |
 | daily_cash_reconciliation.php | Rekonsiliasi kas |
 | dashboard.php | Statistik dashboard |
 | delegated_permissions.php | Delegasi permission |
@@ -295,18 +470,25 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 | kas_petugas_setoran.php | Setoran petugas |
 | nasabah.php | CRUD nasabah |
 | nasabah_blacklist.php | Blacklist nasabah |
+| nasabah_portal.php | API portal nasabah (v2.4.0) |
 | ocr.php | OCR KTP |
 | pembayaran.php | CRUD pembayaran |
+| pembayaran_elektronik.php | Pembayaran elektronik (v2.4.0) |
 | pengeluaran.php | CRUD pengeluaran |
+| pengingat_penagihan.php | Pengingat penagihan (v2.4.0) |
+| penagihan.php | Manajemen penagihan (v2.4.0) |
+| petugas_tugas_pengajuan.php | Pengajuan tugas petugas (v2.4.0) |
 | pinjaman.php | CRUD pinjaman |
+| provinsi_activation.php | Aktivasi provinsi (v2.4.0) |
 | roles.php | Manajemen role & permission |
+| search_people.php | Search people di db_orang (v2.4.0) |
 | setting_bunga.php | Setting bunga |
 | target_petugas.php | Target petugas (v2.3.1) |
 | wa_notifikasi.php | WA notifikasi via Fonnte (v2.3.1) |
 | business.php | Business logic operations |
 | transfer_karyawan.php | Transfer karyawan antar cabang |
 
-### Includes (27 files)
+### Includes (28 files)
 | File | Fungsi |
 |------|--------|
 | functions.php | Core business logic |
@@ -336,12 +518,16 @@ Level 8: Karyawan — berdasarkan delegated permissions dari bos
 | feature_flags.php | Feature flags helper (v2.3.1) |
 | wa_notifikasi.php | WA notification via Fonnte (v2.3.1) |
 | business_logic.php | Business logic operations |
+| koperasi_isolation.php | Multi-tenant isolation (v2.4.0) |
 
-### Page Modules (25 directories)
-angsuran, app_owner, audit, auto_confirm, bos, cabang, cash_reconciliation, family_risk, field_activities, jaminan, kas_bon, kas_petugas, kinerja, laporan, nasabah, notifikasi, pembayaran, pengeluaran, permissions, petugas, pinjaman, rute_harian, setting_bunga, superadmin, users
+### Page Modules (26 directories)
+angsuran, app_owner, audit, auto_confirm, bos, cabang, cash_reconciliation, family_risk, field_activities, jaminan, kas_bon, kas_petugas, kinerja, laporan, nasabah, notifikasi, pembayaran, pengeluaran, penagihan, permissions, petugas, pinjaman, rute_harian, setting_bunga, superadmin, users
 
-### appOwner Pages (8)
-dashboard, approvals, koperasi, billing, usage, ai_advisor, settings, features
+### appOwner Pages (9)
+dashboard, approvals, koperasi, billing, usage, ai_advisor, settings, features, provinsi_activation (v2.4.0)
+
+### Nasabah Portal Pages (7) - v2.4.0
+dashboard, profil, pengajuan_pinjaman, pengajuan_simpanan, pinjaman, angsuran, pembayaran, data_keluarga
 
 ---
 
@@ -391,14 +577,14 @@ Semua halaman (kecuali compact/standalone views) menggunakan layout konsisten:
 - **WA Provider**: fonnte (default)
 
 ## Database Files (database/)
-- `kewer.sql` — Full export database kewer (49 tabel + 3 views + data)
-- `db_alamat_simple.sql` — Export db_alamat_simple (4 tabel + data Sumut)
-- `db_orang.sql` — Export db_orang (19 tabel + 6 views + geospasial nasional)
-- `migrations/` — Migration scripts (009, 010)
+- `kewer.sql` — Full export database kewer (67 tabel + 1 view + data)
+- `db_alamat.sql` — Export db_alamat (24 tabel + data nasional dengan geospasial)
+- `db_orang.sql` — Export db_orang (19 tabel + geospasial nasional)
+- `migrations/` — Migration scripts (012-027 untuk v2.4.0)
 
 ---
 
-## Bugfix History (v2.3.1)
+## Bugfix History (v2.4.0)
 
 | File | Issue | Fix |
 |------|-------|-----|
@@ -409,3 +595,26 @@ Semua halaman (kecuali compact/standalone views) menggunakan layout konsisten:
 | `pages/pinjaman/tambah.php` | Undefined `$error`/`$success` | Initialized before POST block |
 | 7 pages | Double navbar (sidebar.php + inline nav) | Removed inline navbar |
 | 12 pages | Hardcoded mini sidebar | Replaced with shared `sidebar.php` |
+| **v2.4.0 Migration** | Frekuensi enum → frekuensi_id | Migration 021-027 |
+| **v2.4.0 Migration** | Added penagihan system tables | Migration 020 |
+| **v2.4.0 Migration** | Added nasabah portal tables | Migration 015-019 |
+
+---
+
+## Current Gaps & Improvement Areas
+
+### 🔴 High Priority Gaps
+1. **WA Notifikasi Full Implementation** - API exists but not fully integrated with penagihan system
+2. **Export/Import Data** - Basic export exists, need full Excel/CSV import with validation
+3. **Advanced Dashboard Analytics** - Basic dashboard exists, need real-time charts and metrics
+
+### 🟡 Medium Priority Gaps
+4. **Credit Scoring System** - Not implemented (planned in ROADMAP.md)
+5. **Payment Gateway Integration** - Basic pembayaran_elektronik.php exists, need full QRIS/VA/e-wallet
+6. **GPS Tracking for Field Officers** - Feature flag exists but not implemented
+7. **Audit Trail UI** - audit_log table exists but no UI
+
+### 🟢 Low Priority Gaps
+8. **PWA Support** - Feature flag exists but not implemented
+9. **2FA TOTP** - Feature flag exists but not fully implemented
+10. **Advanced Reporting** - PDF generation, scheduled reports

@@ -2,6 +2,7 @@
 require_once 'config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
 require_once BASE_PATH . '/includes/feature_flags.php';
+require_once BASE_PATH . '/includes/chart_helper.php';
 requireLogin();
 
 $user = getCurrentUser();
@@ -419,74 +420,18 @@ if (!is_array($recent_activities)) {
             ]);
         ?>;
 
-        // Pinjaman per Bulan Chart
-        const pinjamanCtx = document.getElementById('pinjamanChart').getContext('2d');
-        new Chart(pinjamanCtx, {
-            type: 'bar',
-            data: {
-                labels: chartData.monthly.map(d => d.month),
-                datasets: [{
-                    label: 'Jumlah Pinjaman',
-                    data: chartData.monthly.map(d => d.count),
-                    backgroundColor: 'rgba(78, 115, 223, 0.8)',
-                    borderColor: 'rgba(78, 115, 223, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                }
-            }
-        });
+        // Use chart helper functions
+        const monthlyChart = createBarChart('pinjamanChart', 
+            chartData.monthly.map(d => d.month),
+            [chartData.monthly.map(d => d.count)],
+            'Jumlah Pinjaman'
+        );
 
-        // Status Pinjaman Chart
-        const statusCtx = document.getElementById('statusChart').getContext('2d');
-        new Chart(statusCtx, {
-            type: 'doughnut',
-            data: {
-                labels: chartData.status.labels,
-                datasets: [{
-                    data: chartData.status.counts,
-                    backgroundColor: [
-                        'rgba(28, 200, 138, 0.8)',
-                        'rgba(246, 194, 62, 0.8)',
-                        'rgba(54, 185, 204, 0.8)',
-                        'rgba(231, 74, 59, 0.8)',
-                        'rgba(78, 115, 223, 0.8)'
-                    ],
-                    borderColor: [
-                        'rgba(28, 200, 138, 1)',
-                        'rgba(246, 194, 62, 1)',
-                        'rgba(54, 185, 204, 1)',
-                        'rgba(231, 74, 59, 1)',
-                        'rgba(78, 115, 223, 1)'
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
+        const statusChart = createDoughnutChart('statusChart',
+            chartData.status.labels,
+            chartData.status.counts,
+            'Status Pinjaman'
+        );
 
         // Service worker disabled to prevent MIME type errors
         // If PWA is needed in production, re-enable with proper configuration

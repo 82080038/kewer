@@ -5,7 +5,7 @@ description: Development rules untuk aplikasi Kewer
 # Development Rules - Kewer Application
 
 > **Terakhir diperbarui**: 8 Mei 2026
-> **Versi Aplikasi**: v2.4.0
+> **Versi Aplikasi**: v2.4.0 (Nasabah Portal + Penagihan System)
 
 ## Core Principles
 
@@ -46,7 +46,46 @@ description: Development rules untuk aplikasi Kewer
   - `getActiveFrequencies()` - semua frekuensi aktif untuk dropdown
 - **JANGAN** gunakan kolom `frekuensi` enum - sudah dihapus
 
-### 5. Page Layout Consistency
+### 5. Nasabah Portal (v2.4.0)
+- **Self-service portal untuk nasabah** - 7 pages: dashboard, profil, pengajuan_pinjaman, pengajuan_simpanan, pinjaman, angsuran, pembayaran, data_keluarga
+- **Authentication**: Nasabah login dengan KTP + password/OTP
+- **API**: `api/nasabah_portal.php` untuk semua nasabah operations
+- **Integration**: Gunakan `db_orang` untuk data keluarga (people_helper.php)
+- **Security**: Nasabah hanya bisa akses data mereka sendiri (filter by nasabah_id)
+- **Layout**: Gunakan layout khusus nasabah (tanpa sidebar admin)
+
+### 6. Penagihan System (v2.4.0)
+- **Manajemen penagihan dengan pengingat otomatis**
+- **Tables**: `penagihan`, `penagihan_log`, `ref_jenis_penagihan`, `v_penagihan_hari_ini`
+- **API**: `api/penagihan.php`, `api/pengingat_penagihan.php`
+- **Integration**: Integrasikan dengan WA notifikasi system (jika aktif)
+- **Cron Jobs**: Gunakan `cron_daily_tasks.php` untuk auto-generate pengingat
+- **Status Tracking**: Pending → In Progress → Completed → Cancelled
+
+### 7. Cron Jobs (v2.4.0)
+- **File**: `cron_daily_tasks.php`
+- **Schedule**: Jalankan setiap hari via cron job
+- **Tasks**:
+  - Auto-calculate denda untuk angsuran overdue
+  - Update status pinjaman (overdue, write-off)
+  - Generate pengingat penagihan (H-3, H-1, hari H)
+  - Daily summary reports
+- **Setup**: Add ke crontab: `0 0 * * * php /opt/lampp/htdocs/kewer/cron_daily_tasks.php`
+
+### 8. Koperasi Isolation (v2.4.0)
+- **Multi-tenant support** - Setiap bos punya koperasi sendiri
+- **Helper**: `includes/koperasi_isolation.php`
+- **API**: `api/cross_koperasi.php` untuk cross-koperasi operations
+- **Data Isolation**: Filter semua data by bos_user_id (koperasi_id)
+- **Cross-DB**: Gunakan koperasi_isolation untuk cross-koperasi queries
+
+### 9. Province Activation (v2.4.0)
+- **Rollout management per provinsi**
+- **Pages**: `pages/app_owner/provinsi_activation.php`
+- **API**: `api/provinsi_activation.php`
+- **Purpose**: Aktifkan provinsi untuk rollout bertahap
+
+### 10. Page Layout Consistency
 - Semua halaman (kecuali compact/standalone) menggunakan layout standar:
   ```html
   <div class="main-container">

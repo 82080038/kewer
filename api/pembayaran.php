@@ -322,6 +322,22 @@ switch ($method) {
             // ─────────────────────────────────────────────────────
 
             query("COMMIT");
+
+            // Trigger webhook for pembayaran received
+            require_once BASE_PATH . '/includes/webhook_trigger.php';
+            $nasabah_info = query("SELECT n.nama, n.id FROM pinjaman pin JOIN nasabah n ON pin.nasabah_id = n.id WHERE pin.id = ?", [$angsuran['pinjaman_id']]);
+            $pembayaran_data = [
+                'nasabah_id' => $nasabah_info[0]['id'] ?? null,
+                'nama_nasabah' => $nasabah_info[0]['nama'] ?? '',
+                'pinjaman_id' => $angsuran['pinjaman_id'],
+                'cabang_id' => 1,
+                'petugas_id' => getCurrentUser()['id'],
+                'latitude' => $lat,
+                'longitude' => $lng,
+                'nominal' => $total_pembayaran,
+                'tanggal_bayar' => $tanggal_bayar
+            ];
+            triggerPembayaranReceived($pembayaran_id, $pembayaran_data);
             
             $new_pembayaran = query("
                 SELECT p.*, a.no_angsuran, pin.kode_pinjaman, n.nama as nasabah_nama
