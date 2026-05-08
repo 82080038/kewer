@@ -60,26 +60,28 @@ $page_title = 'Resign / Pindah Cabang Karyawan';
     <title><?php echo $page_title; ?> - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-<?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
-    <div class="container-fluid">
-        <div class="row mb-3">
-            <div class="col">
-                <h4 class="fw-bold"><i class="bi bi-person-x"></i> Resign / Pindah Cabang Karyawan</h4>
-                <p class="text-muted mb-0">Proses resign atau pindah cabang karyawan. Identitas NIK tersimpan permanen di platform.</p>
+    <div class="main-container">
+        <?php require_once BASE_PATH . '/includes/sidebar.php'; ?>
+        
+        <main class="content-area">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2"><i class="bi bi-person-x"></i> Resign / Pindah Cabang Karyawan</h1>
             </div>
-        </div>
+            
+            <p class="text-muted mb-3">Proses resign atau pindah cabang karyawan. Identitas NIK tersimpan permanen di platform.</p>
 
-        <div class="alert alert-info border-start border-4 border-info">
-            <div class="fw-semibold mb-1"><i class="bi bi-lightbulb"></i> Cara Kerja Identitas Karyawan</div>
-            <ul class="mb-0 small">
-                <li><strong>Resign / Dipecat:</strong> Karyawan dinonaktifkan. Tidak bisa login dan tidak bisa akses data koperasi ini.</li>
-                <li><strong>Pindah ke koperasi lain:</strong> Tidak perlu dilakukan di sini. Bos koperasi lain cukup mendaftarkan NIK yang sama &rarr; data identitas terisi otomatis.</li>
-                <li><strong>Pindah cabang (koperasi sama):</strong> Gunakan aksi &ldquo;Pindah Cabang&rdquo; di bawah.</li>
-                <li><strong>Data lama terlindungi:</strong> Setelah resign, karyawan <em>tidak bisa</em> melihat data koperasi lama meskipun bergabung ke koperasi lain.</li>
-            </ul>
-        </div>
+            <div class="alert alert-info border-start border-4 border-info">
+                <div class="fw-semibold mb-1"><i class="bi bi-lightbulb"></i> Cara Kerja Identitas Karyawan</div>
+                <ul class="mb-0 small">
+                    <li><strong>Resign / Dipecat:</strong> Karyawan dinonaktifkan. Tidak bisa login dan tidak bisa akses data koperasi ini.</li>
+                    <li><strong>Pindah ke koperasi lain:</strong> Tidak perlu dilakukan di sini. Bos koperasi lain cukup mendaftarkan NIK yang sama &rarr; data identitas terisi otomatis.</li>
+                    <li><strong>Pindah cabang (koperasi sama):</strong> Gunakan aksi &ldquo;Pindah Cabang&rdquo; di bawah.</li>
+                    <li><strong>Data lama terlindungi:</strong> Setelah resign, karyawan <em>tidak bisa</em> melihat data koperasi lama meskipun bergabung ke koperasi lain.</li>
+                </ul>
+            </div>
 
         <?php if (isset($_SESSION['success'])): ?>
             <div class="alert alert-success alert-dismissible fade show">
@@ -221,7 +223,9 @@ $page_title = 'Resign / Pindah Cabang Karyawan';
                 </div>
             </div>
         </div>
+        </div>
     </div>
+    </main>
 </div>
 
 <script>
