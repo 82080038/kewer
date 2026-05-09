@@ -59,87 +59,87 @@
       "access": true,
       "permissions": ["dashboard.read", "manage_app"],
       "features": [
-        "View platform-wide statistics",
-        "View total koperasi count",
-        "View total users count",
-        "View platform revenue",
-        "View system health",
-        "Manage platform settings"
+        "Lihat statistik platform",
+        "Lihat total koperasi",
+        "Lihat total users",
+        "Lihat revenue platform",
+        "Lihat kesehatan sistem",
+        "Kelola pengaturan platform"
       ]
     },
     "koperasi_management": {
       "access": true,
       "permissions": ["approve_bos", "view_koperasi", "suspend_koperasi", "manage_app"],
       "features": [
-        "View all koperasi",
-        "Approve new koperasi registrations",
-        "Suspend problematic koperasi",
-        "View koperasi statistics",
-        "Manage koperasi billing",
-        "View koperasi usage metrics"
+        "Lihat semua koperasi",
+        "Setujui registrasi koperasi baru",
+        "Suspend koperasi bermasalah",
+        "Lihat statistik koperasi",
+        "Kelola billing koperasi",
+        "Lihat metrik penggunaan koperasi"
       ]
     },
     "billing": {
       "access": true,
       "permissions": ["manage_billing", "view_billing"],
       "features": [
-        "View billing reports",
-        "Generate invoices",
-        "Manage payment processing",
-        "View payment history",
-        "Configure billing plans"
+        "Lihat laporan billing",
+        "Generate invoice",
+        "Kelola proses pembayaran",
+        "Lihat riwayat pembayaran",
+        "Konfigurasi plan billing"
       ]
     },
     "users": {
       "access": true,
       "permissions": ["users.create", "users.read", "manage_users"],
       "features": [
-        "View platform users",
-        "Create new appOwner accounts",
-        "Manage platform user access",
-        "View user activity logs"
+        "Lihat users platform",
+        "Buat akun appOwner baru",
+        "Kelola akses user platform",
+        "Lihat log aktivitas user"
       ]
     },
     "laporan": {
       "access": true,
       "permissions": ["view_laporan", "manage_app"],
       "features": [
-        "View platform-wide reports",
-        "View revenue analytics",
-        "View usage statistics",
-        "Export platform reports",
-        "Filter by koperasi"
+        "Lihat laporan platform",
+        "Lihat analitik revenue",
+        "Lihat statistik penggunaan",
+        "Export laporan platform",
+        "Filter berdasarkan koperasi"
       ]
     },
     "audit": {
       "access": true,
       "permissions": ["view_laporan", "manage_app"],
       "features": [
-        "View platform audit logs",
-        "Filter by koperasi",
-        "Filter by action",
-        "Filter by date range",
-        "Export audit logs"
+        "Lihat audit log platform",
+        "Filter berdasarkan koperasi",
+        "Filter berdasarkan action",
+        "Filter berdasarkan tanggal",
+        "Export audit log"
       ]
     },
     "settings": {
       "access": true,
       "permissions": ["manage_app", "view_settings"],
       "features": [
-        "View platform settings",
-        "Edit platform configuration",
-        "Manage system parameters",
-        "View system logs"
+        "Lihat pengaturan platform",
+        "Edit konfigurasi platform",
+        "Kelola parameter sistem",
+        "Lihat log sistem"
       ]
     },
     "ai_advisor": {
       "access": true,
       "permissions": ["manage_app"],
       "features": [
-        "View AI advisor settings",
-        "Configure AI advisor",
-        "View AI advisor usage",
-        "Manage AI advisor access"
+        "Lihat pengaturan AI advisor",
+        "Konfigurasi AI advisor",
+        "Lihat penggunaan AI advisor",
+        "Kelola akses AI advisor"
       ]
     },
     "nasabah": {

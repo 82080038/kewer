@@ -263,8 +263,8 @@ $total = $pengeluaran->getTotalExpenses($filters['tanggal_mulai'], $filters['tan
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/id.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>
-    <script src="../includes/js/auto-focus.js"></script>
-    <script src="../includes/js/enter-navigation.js"></script>
+    <script src="/kewer/includes/js/auto-focus.js"></script>
+    <script src="/kewer/includes/js/enter-navigation.js"></script>
     <script>
         $(document).ready(function() {
             // Only initialize DataTable if there's data

@@ -2,7 +2,7 @@
   "role": {
     "name": "Nasabah",
     "code": "nasabah",
-    "hierarchy_level": 10,
+    "hierarchy_level": 9,
     "description": "Nasabah koperasi dengan akses untuk melihat pinjaman, angsuran, riwayat pembayaran, mengajukan pinjaman baru, dan mengajukan simpanan",
     "status": "aktif"
   },
@@ -52,66 +52,66 @@
       "access": true,
       "permissions": ["dashboard.read"],
       "features": [
-        "View own loan summary",
-        "View next payment due",
-        "View total remaining debt",
-        "View payment history summary"
+        "Lihat ringkasan pinjaman sendiri",
+        "Lihat pembayaran berikutnya",
+        "Lihat total sisa hutang",
+        "Lihat ringkasan riwayat pembayaran"
       ]
     },
     "nasabah_profile": {
       "access": true,
       "permissions": ["nasabah.read.own"],
       "features": [
-        "View own profile",
-        "View personal information",
-        "View address information",
-        "Update phone number",
+        "Lihat profil sendiri",
+        "Lihat informasi pribadi",
+        "Lihat informasi alamat",
+        "Update nomor HP",
         "Update email",
-        "View blacklist status"
+        "Lihat status blacklist"
       ],
-      "limitations": "Cannot edit KTP, name, or other critical information"
+      "limitations": "Tidak bisa edit KTP, nama, atau informasi kritis lainnya"
     },
     "pinjaman": {
       "access": true,
       "permissions": ["pinjaman.read.own"],
       "features": [
-        "View own active loans",
-        "View loan details",
-        "View loan history",
-        "View loan status",
-        "View total loan amount",
-        "View remaining balance"
+        "Lihat pinjaman aktif sendiri",
+        "Lihat detail pinjaman",
+        "Lihat riwayat pinjaman",
+        "Lihat status pinjaman",
+        "Lihat total pinjaman",
+        "Lihat sisa saldo"
       ]
     },
     "pengajuan_pinjaman": {
       "access": true,
       "permissions": ["pengajuan_pinjaman.create"],
       "features": [
-        "Submit new loan application",
-        "View loan application limits (min/max set by bos)",
-        "Select tenor and frequency",
-        "Specify loan purpose",
-        "Provide collateral information",
-        "Track application status",
-        "View application history",
-        "Choose delivery method: teller (pickup at office) or diantar_petugas (delivered by officer)"
+        "Ajukan pinjaman baru",
+        "Lihat limit pengajuan pinjaman (min/max diatur bos)",
+        "Pilih tenor dan frekuensi",
+        "Tentukan tujuan pinjaman",
+        "Sediakan informasi jaminan",
+        "Lacak status pengajuan",
+        "Lihat riwayat pengajuan",
+        "Pilih metode pengambilan: teller (ambil di kantor) atau diantar_petugas (diantar petugas)"
       ],
-      "limitations": "Subject to approval by bos/manager. Limits: Rp500rb - Rp10jt, tenor 1-24 months"
+      "limitations": "Tergantung approval bos/manager. Limit: Rp500rb - Rp10jt, tenor 1-24 bulan"
     },
     "pengajuan_simpanan": {
       "access": true,
       "permissions": ["pengajuan_simpanan.create"],
       "features": [
-        "Submit savings application",
-        "Choose savings type (sukarela/wajib/pokok/berjangka)",
-        "Set deposit amount within limits",
-        "Select deposit frequency",
-        "Specify savings purpose",
-        "Track application status",
-        "View savings history",
-        "Choose collection method: teller (deposit at office) or dijemput_petugas (picked up by officer)"
+        "Ajukan simpanan",
+        "Pilih jenis simpanan (sukarela/wajib/pokok/berjangka)",
+        "Set jumlah setoran dalam limit",
+        "Pilih frekuensi setoran",
+        "Tentukan tujuan simpanan",
+        "Lacak status pengajuan",
+        "Lihat riwayat simpanan",
+        "Pilih metode penyetoran: teller (setor di kantor) atau dijemput_petugas (dijemput petugas)"
       ],
-      "limitations": "Limits: Rp100rb - Rp50jt. Subject to bos approval."
+      "limitations": "Limit: Rp100rb - Rp50jt. Tergantung approval bos."
     },
     "metode_pengambilan": {
       "pinjaman": {
@@ -141,31 +141,31 @@
       "access": true,
       "permissions": ["angsuran.read.own"],
       "features": [
-        "View own payment schedule",
-        "View upcoming payments",
-        "View payment history",
-        "View late payments",
-        "View penalty/denda information",
-        "Download payment card"
+        "Lihat jadwal pembayaran sendiri",
+        "Lihat pembayaran yang akan datang",
+        "Lihat riwayat pembayaran",
+        "Lihat pembayaran terlambat",
+        "Lihat informasi denda",
+        "Download kartu pembayaran"
       ]
     },
     "pembayaran": {
       "access": true,
       "permissions": ["pembayaran.read.own"],
       "features": [
-        "View payment history",
-        "View payment receipts",
-        "Download payment proof",
-        "View remaining debt after payment"
+        "Lihat riwayat pembayaran",
+        "Lihat bukti pembayaran",
+        "Download bukti pembayaran",
+        "Lihat sisa hutang setelah pembayaran"
       ]
     },
     "notifications": {
       "access": true,
       "permissions": ["notifications.read.own"],
       "features": [
-        "Receive payment reminders via WhatsApp",
-        "Receive due date notifications",
-        "View notification history"
+        "Terima pengingat pembayaran via WhatsApp",
+        "Terima notifikasi jatuh tempo",
+        "Lihat riwayat notifikasi"
       ]
     },
     "laporan": {

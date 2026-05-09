@@ -2,6 +2,14 @@
 require_once __DIR__ . '/../../config/env.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../includes/feature_flags.php';
+
+// Check GPS tracking feature flag
+if (!isFeatureEnabled('gps_pembayaran')) {
+    header('Location: /dashboard.php');
+    exit;
+}
+
 require_once __DIR__ . '/../../src/Geo/GPSTracker.php';
 
 // Check authentication

@@ -259,7 +259,8 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 }
             }
             
-            $new_nasabah = query("SELECT * FROM nasabah WHERE id = ?", [$nasabah_id])[0];
+            $result = query("SELECT * FROM nasabah WHERE id = ?", [$nasabah_id]);
+            $new_nasabah = is_array($result) && isset($result[0]) ? $result[0] : null;
             echo json_encode([
                 'success' => true,
                 'message' => 'Nasabah berhasil ditambahkan',

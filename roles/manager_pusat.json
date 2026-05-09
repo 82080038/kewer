@@ -2,7 +2,7 @@
   "role": {
     "name": "Manager Pusat",
     "code": "manager_pusat",
-    "hierarchy_level": 3,
+    "hierarchy_level": 2,
     "description": "Manager di pusat dengan kontrol operasional",
     "status": "aktif"
   },
@@ -225,11 +225,11 @@
       "access": true,
       "permissions": ["view_laporan"],
       "features": [
-        "View audit logs",
-        "Filter by user",
-        "Filter by action",
-        "Filter by date range",
-        "Export audit logs"
+        "Lihat audit log",
+        "Filter berdasarkan user",
+        "Filter berdasarkan action",
+        "Filter berdasarkan tanggal",
+        "Export audit log"
       ]
     },
     "permissions": {

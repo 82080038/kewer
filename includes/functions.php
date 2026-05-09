@@ -6,6 +6,7 @@ require_once __DIR__ . '/bunga_calculator.php';
 require_once __DIR__ . '/family_risk.php';
 require_once __DIR__ . '/csrf.php';
 require_once __DIR__ . '/usage_tracker.php';
+require_once __DIR__ . '/feature_flags.php';
 
 // Auto-validate CSRF for all POST requests (except API endpoints)
 if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/api/') === false) {
@@ -709,6 +710,12 @@ function logCrudOperation($table, $action, $record_id, $old_data = null, $new_da
  * @return bool Success status
  */
 function sendWhatsApp($phone, $message) {
+    // Check feature flag for WhatsApp notifications
+    if (!isFeatureEnabled('wa_notifikasi')) {
+        error_log("WhatsApp notification feature disabled - WA to $phone: $message");
+        return false;
+    }
+    
     // Normalize phone number to international format (62)
     $phone = normalizePhoneNumber($phone);
     

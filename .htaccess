@@ -4,14 +4,28 @@ RewriteEngine On
 # Exclude API endpoints from rewrite
 RewriteCond %{REQUEST_URI} !^/kewer/api/
 
+# Exclude includes directory (CSS, JS, images) from rewrite
+RewriteCond %{REQUEST_URI} !^/kewer/includes/
+
+# Exclude assets directory from rewrite
+RewriteCond %{REQUEST_URI} !^/kewer/assets/
+
 # Redirect to index.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ index.php [QSA,L]
 
+# AddType for JavaScript files
+AddType application/javascript .js
+
+# Prevent PHP from processing .js files
+<FilesMatch "\.js$">
+    SetHandler default-handler
+</FilesMatch>
+
 # Security headers
 Header always set X-Frame-Options DENY
-Header always set X-Content-Type-Options nosniff
+# Header always set X-Content-Type-Options nosniff  # Temporarily disabled to debug MIME type error
 Header always set X-XSS-Protection "1; mode=block"
 
 # Performance optimizations

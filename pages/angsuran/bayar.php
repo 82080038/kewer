@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
+require_once BASE_PATH . '/includes/feature_flags.php';
 requireLogin();
 
 // Permission check
@@ -143,8 +144,10 @@ if ($_POST) {
             $success = 'Pembayaran angsuran berhasil';
             
             // Send WhatsApp notification
-            $message = "Pembayaran angsuran ke-{$angsuran['no_angsuran']} untuk pinjaman {$angsuran['kode_pinjaman']} telah diterima. Terima kasih.";
-            sendWhatsApp($angsuran['telp'], $message);
+            if (isFeatureEnabled('wa_notifikasi')) {
+                $message = "Pembayaran angsuran ke-{$angsuran['no_angsuran']} untuk pinjaman {$angsuran['kode_pinjaman']} telah diterima. Terima kasih.";
+                sendWhatsApp($angsuran['telp'], $message);
+            }
             
             // Redirect if paid from loan detail
             if ($_GET['from'] === 'loan') {

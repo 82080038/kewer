@@ -172,6 +172,10 @@ if (!is_array($pembayaran)) {
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>
     <script>
+        function formatRupiah(angka) {
+            return new Intl.NumberFormat('id-ID').format(angka);
+        }
+
         $(document).ready(function() {
             // Only initialize DataTable if there's data
             var hasData = <?php echo !empty($pembayaran) ? 'true' : 'false'; ?>;

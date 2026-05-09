@@ -635,8 +635,10 @@ function prosesOfflineQueue($queue_id, $processed_by) {
         query("UPDATE pembayaran_offline_queue SET status = 'processed', processed_at = NOW(), processed_by = ?, pembayaran_id = ? WHERE id = ?", [$processed_by, $bayar_id, $queue_id]);
         // Update skor kredit
         $selisih_hari = (int)((strtotime($q['tanggal_kutip']) - strtotime($a['jatuh_tempo'])) / 86400);
+        $result_pinjaman = query("SELECT nasabah_id FROM pinjaman WHERE id = ?", [$q['pinjaman_id']]);
+        $nasabah_id = is_array($result_pinjaman) && isset($result_pinjaman[0]) ? $result_pinjaman[0]['nasabah_id'] : 0;
         updateSkorKredit(
-            query("SELECT nasabah_id FROM pinjaman WHERE id = ?", [$q['pinjaman_id']])[0]['nasabah_id'] ?? 0,
+            $nasabah_id,
             $selisih_hari > 0 ? -2 : +1,
             $selisih_hari > 0 ? 'bayar_telat' : 'bayar_tepat_waktu',
             $bayar_id

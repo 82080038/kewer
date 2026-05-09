@@ -2,8 +2,8 @@
   "role": {
     "name": "Admin Pusat",
     "code": "admin_pusat",
-    "hierarchy_level": 5,
-    "description": "Central administrator with administrative functions",
+    "hierarchy_level": 4,
+    "description": "Administrator pusat dengan fungsi administratif",
     "status": "aktif"
   },
   "access_scope": {
@@ -52,36 +52,37 @@
   "modules": {
     "dashboard": {
       "access": true,
+      "permissions": ["dashboard.read"],
       "features": [
-        "View consolidated statistics",
-        "View total nasabah count",
-        "View total pinjaman count",
-        "View outstanding balance",
-        "View recent activities"
+        "Lihat statistik konsolidasi",
+        "Lihat total nasabah",
+        "Lihat total pinjaman",
+        "Lihat saldo outstanding",
+        "Lihat aktivitas terbaru"
       ]
     },
     "nasabah": {
       "access": true,
       "permissions": ["nasabah.read", "manage_nasabah", "manage_blacklist"],
       "features": [
-        "View nasabah",
-        "Add new nasabah",
-        "Edit nasabah information",
-        "Delete nasabah",
-        "View nasabah details",
-        "View nasabah family links",
+        "Lihat nasabah",
+        "Tambah nasabah baru",
+        "Edit informasi nasabah",
+        "Hapus nasabah",
+        "Lihat detail nasabah",
+        "Lihat hubungan keluarga nasabah",
         "Blacklist/unblacklist nasabah",
-        "View blacklist history log"
+        "Lihat log blacklist"
       ]
     },
     "pinjaman": {
       "access": true,
       "permissions": ["pinjaman.read", "manage_pinjaman"],
       "features": [
-        "View pinjaman",
-        "Create new pinjaman applications (harian/mingguan/bulanan)",
-        "View pinjaman details",
-        "View pinjaman schedules (harian/mingguan/bulanan)",
+        "Lihat pinjaman",
+        "Buat pengajuan pinjaman baru (harian/mingguan/bulanan)",
+        "Lihat detail pinjaman",
+        "Lihat jadwal pinjaman (harian/mingguan/bulanan)",
         "Cetak kartu angsuran",
         "Cetak kwitansi pembayaran"
       ]
@@ -90,12 +91,12 @@
       "access": true,
       "permissions": ["angsuran.read", "manage_pembayaran", "manage_denda"],
       "features": [
-        "View angsuran",
-        "Record payments",
-        "Edit payment records",
-        "Delete payment records",
-        "View payment history",
-        "View auto-calculated denda (penalty)",
+        "Lihat angsuran",
+        "Catat pembayaran",
+        "Edit catatan pembayaran",
+        "Hapus catatan pembayaran",
+        "Lihat riwayat pembayaran",
+        "Lihat denda otomatis",
         "Cetak kwitansi pembayaran"
       ]
     },
@@ -103,29 +104,29 @@
       "access": true,
       "permissions": ["users.create", "users.read", "manage_users", "assign_permissions"],
       "features": [
-        "View users",
-        "Create new users",
-        "Edit user information",
-        "Delete users",
-        "Assign roles to users",
-        "Assign permissions to users"
+        "Lihat users",
+        "Buat user baru",
+        "Edit informasi user",
+        "Hapus users",
+        "Assign role ke user",
+        "Assign permission ke user"
       ]
     },
     "cabang": {
       "access": true,
       "permissions": ["cabang.read"],
       "features": [
-        "View branch information",
-        "View branch statistics",
-        "View branch performance"
+        "Lihat informasi cabang",
+        "Lihat statistik cabang",
+        "Lihat kinerja cabang"
       ]
     },
-    "field_activities": {
+    "aktivitas_lapangan": {
       "access": true,
       "permissions": ["angsuran.read"],
       "features": [
-        "View field activities",
-        "View activity reports"
+        "Lihat aktivitas lapangan",
+        "Lihat laporan aktivitas"
       ]
     },
     "kas_petugas": {
@@ -203,6 +204,17 @@
         "Lihat laporan nasabah",
         "Lihat laporan komprehensif",
         "Cetak laporan"
+      ]
+    },
+    "audit": {
+      "access": true,
+      "permissions": ["view_laporan"],
+      "features": [
+        "Lihat audit log",
+        "Filter berdasarkan user",
+        "Filter berdasarkan action",
+        "Filter berdasarkan tanggal",
+        "Export audit log"
       ]
     }
   },

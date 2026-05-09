@@ -430,7 +430,8 @@ switch ($method) {
         if ($result) {
             // Recalculate angsuran status
             $angsuran_id = $existing['angsuran_id'];
-            $total_paid = query("SELECT COALESCE(SUM(jumlah_bayar), 0) as total FROM pembayaran WHERE angsuran_id = ?", [$angsuran_id])[0]['total'];
+            $result_total = query("SELECT COALESCE(SUM(jumlah_bayar), 0) as total FROM pembayaran WHERE angsuran_id = ?", [$angsuran_id]);
+            $total_paid = is_array($result_total) && isset($result_total[0]) ? $result_total[0]['total'] : 0;
             $angsuran_data = query("SELECT total_angsuran FROM angsuran WHERE id = ?", [$angsuran_id]);
             $angsuran_nominal = $angsuran_data ? $angsuran_data[0]['total_angsuran'] : 0;
             if ($total_paid >= $angsuran_nominal) {
@@ -439,7 +440,8 @@ switch ($method) {
                 query("UPDATE angsuran SET status = 'pending' WHERE id = ?", [$angsuran_id]);
             }
             
-            $updated_pembayaran = query("SELECT * FROM pembayaran WHERE id = ?", [$pembayaran_id])[0];
+            $result = query("SELECT * FROM pembayaran WHERE id = ?", [$pembayaran_id]);
+            $updated_pembayaran = is_array($result) && isset($result[0]) ? $result[0] : null;
             echo json_encode(['success' => true, 'data' => $updated_pembayaran]);
         } else {
             http_response_code(500);

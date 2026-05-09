@@ -2,8 +2,8 @@
   "role": {
     "name": "Admin Cabang",
     "code": "admin_cabang",
-    "hierarchy_level": 6,
-    "description": "Branch administrator with administrative functions",
+    "hierarchy_level": 5,
+    "description": "Administrator cabang dengan fungsi administratif",
     "status": "aktif"
   },
   "access_scope": {
@@ -51,35 +51,36 @@
   "modules": {
     "dashboard": {
       "access": true,
+      "permissions": ["dashboard.read"],
       "features": [
-        "View statistics",
-        "View total nasabah count",
-        "View total pinjaman count",
-        "View outstanding balance",
-        "View recent activities"
+        "Lihat statistik",
+        "Lihat total nasabah",
+        "Lihat total pinjaman",
+        "Lihat saldo outstanding",
+        "Lihat aktivitas terbaru"
       ]
     },
     "nasabah": {
       "access": true,
       "permissions": ["nasabah.read", "manage_nasabah", "manage_blacklist"],
       "features": [
-        "View nasabah",
-        "Add new nasabah",
-        "Edit nasabah information",
-        "Delete nasabah",
-        "View nasabah details",
+        "Lihat nasabah",
+        "Tambah nasabah baru",
+        "Edit informasi nasabah",
+        "Hapus nasabah",
+        "Lihat detail nasabah",
         "Blacklist/unblacklist nasabah",
-        "View blacklist history log"
+        "Lihat log blacklist"
       ]
     },
     "pinjaman": {
       "access": true,
       "permissions": ["pinjaman.read", "manage_pinjaman"],
       "features": [
-        "View pinjaman",
-        "Create new pinjaman applications (harian/mingguan/bulanan)",
-        "View pinjaman details",
-        "View pinjaman schedules (harian/mingguan/bulanan)",
+        "Lihat pinjaman",
+        "Buat pengajuan pinjaman baru (harian/mingguan/bulanan)",
+        "Lihat detail pinjaman",
+        "Lihat jadwal pinjaman (harian/mingguan/bulanan)",
         "Cetak kartu angsuran",
         "Cetak kwitansi pembayaran"
       ]
@@ -88,12 +89,12 @@
       "access": true,
       "permissions": ["angsuran.read", "manage_pembayaran"],
       "features": [
-        "View angsuran",
-        "Record payments",
-        "Edit payment records",
-        "Delete payment records",
-        "View payment history",
-        "View auto-calculated denda (penalty)",
+        "Lihat angsuran",
+        "Catat pembayaran",
+        "Edit catatan pembayaran",
+        "Hapus catatan pembayaran",
+        "Lihat riwayat pembayaran",
+        "Lihat denda otomatis",
         "Cetak kwitansi pembayaran"
       ]
     },
@@ -101,26 +102,26 @@
       "access": true,
       "permissions": ["users.create", "users.read", "manage_users"],
       "features": [
-        "View users",
-        "Create new users",
-        "Edit user information",
-        "Delete users"
+        "Lihat users",
+        "Buat user baru",
+        "Edit informasi user",
+        "Hapus users"
       ]
     },
     "cabang": {
       "access": true,
       "permissions": ["cabang.read"],
       "features": [
-        "View branch information",
-        "View branch statistics"
+        "Lihat informasi cabang",
+        "Lihat statistik cabang"
       ]
     },
-    "field_activities": {
+    "aktivitas_lapangan": {
       "access": true,
       "permissions": ["angsuran.read"],
       "features": [
-        "View field activities",
-        "View activity reports"
+        "Lihat aktivitas lapangan",
+        "Lihat laporan aktivitas"
       ]
     },
     "kas_petugas": {
@@ -185,9 +186,14 @@
       ]
     },
     "audit": {
-      "access": false,
-      "permissions": [],
-      "features": []
+      "access": true,
+      "permissions": ["view_laporan"],
+      "features": [
+        "Lihat audit log",
+        "Filter berdasarkan user",
+        "Filter berdasarkan action",
+        "Filter berdasarkan tanggal"
+      ]
     },
     "permissions": {
       "access": false,

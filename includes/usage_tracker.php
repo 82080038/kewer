@@ -45,9 +45,15 @@ function trackUsage() {
     
     // Update daily summary (upsert)
     if ($tipe === 'api_call') {
-        $conn->query("INSERT INTO usage_daily_summary (bos_user_id, tanggal, total_api_calls, total_renders) VALUES ($bos_user_id, '$today', 1, 0) ON DUPLICATE KEY UPDATE total_api_calls = total_api_calls + 1");
+        $stmt = $conn->prepare("INSERT INTO usage_daily_summary (bos_user_id, tanggal, total_api_calls, total_renders) VALUES (?, ?, 1, 0) ON DUPLICATE KEY UPDATE total_api_calls = total_api_calls + 1");
+        $stmt->bind_param("is", $bos_user_id, $today);
+        $stmt->execute();
+        $stmt->close();
     } else {
-        $conn->query("INSERT INTO usage_daily_summary (bos_user_id, tanggal, total_api_calls, total_renders) VALUES ($bos_user_id, '$today', 0, 1) ON DUPLICATE KEY UPDATE total_renders = total_renders + 1");
+        $stmt = $conn->prepare("INSERT INTO usage_daily_summary (bos_user_id, tanggal, total_api_calls, total_renders) VALUES (?, ?, 0, 1) ON DUPLICATE KEY UPDATE total_renders = total_renders + 1");
+        $stmt->bind_param("is", $bos_user_id, $today);
+        $stmt->execute();
+        $stmt->close();
     }
 }
 

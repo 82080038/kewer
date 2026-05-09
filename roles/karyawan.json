@@ -2,8 +2,8 @@
   "role": {
     "name": "Karyawan",
     "code": "karyawan",
-    "hierarchy_level": 9,
-    "description": "Employee with basic administrative support and cash handling responsibilities",
+    "hierarchy_level": 8,
+    "description": "Karyawan dengan dukungan administratif dasar dan tanggung jawab penanganan kas",
     "status": "aktif"
   },
   "access_scope": {

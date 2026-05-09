@@ -94,7 +94,7 @@ function getListNasabahWithReminder($user_id, $user_role) {
             n.catatan_pengingat,
             n.pengingat_diset_tanggal,
             u.nama as diset_oleh_nama,
-            c.nama as nama_cabang,
+            c.nama_cabang as nama_cabang,
             (SELECT COUNT(*) FROM pinjaman p WHERE p.nasabah_id = n.id AND p.status = 'aktif') as pinjaman_aktif
         FROM nasabah n
         LEFT JOIN users u ON n.pengingat_diset_oleh = u.id
@@ -129,7 +129,7 @@ function getListNasabahWithReminder($user_id, $user_role) {
             n.catatan_pengingat,
             n.pengingat_diset_tanggal,
             u.nama as diset_oleh_nama,
-            c.nama as nama_cabang,
+            c.nama_cabang as nama_cabang,
             (SELECT COUNT(*) FROM pinjaman p WHERE p.nasabah_id = n.id AND p.status = 'aktif') as pinjaman_aktif", "SELECT COUNT(*) as total", $sql);
     $count_result = query($count_sql, $params);
     $total = $count_result[0]['total'] ?? 0;
@@ -176,7 +176,7 @@ function getReminderDetail($nasabah_id) {
             n.pengingat_diset_oleh,
             u.nama as diset_oleh_nama,
             u.role as diset_oleh_role,
-            c.nama as nama_cabang,
+            c.nama_cabang as nama_cabang,
             (SELECT COUNT(*) FROM pinjaman p WHERE p.nasabah_id = n.id AND p.status = 'aktif') as pinjaman_aktif,
             (SELECT COUNT(*) FROM pinjaman p WHERE p.nasabah_id = n.id AND p.status = 'lunas') as total_pinjaman_lunas
         FROM nasabah n

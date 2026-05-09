@@ -706,7 +706,7 @@ function listPengajuanPinjaman($nasabah_id) {
     $pengajuan = query("
         SELECT 
             p.*,
-            c.nama as nama_koperasi,
+            c.nama_cabang as nama_koperasi,
             u.nama as disetujui_oleh_nama
         FROM nasabah_pengajuan_pinjaman p
         LEFT JOIN cabang c ON p.koperasi_id = c.id
@@ -844,7 +844,7 @@ function listPengajuanSimpanan($nasabah_id) {
     $pengajuan = query("
         SELECT 
             p.*,
-            c.nama as nama_koperasi,
+            c.nama_cabang as nama_koperasi,
             u.nama as disetujui_oleh_nama
         FROM nasabah_pengajuan_simpanan p
         LEFT JOIN cabang c ON p.koperasi_id = c.id
@@ -867,7 +867,7 @@ function getKoperasiTerdaftar($nasabah_id) {
     $koperasi = query("
         SELECT 
             kt.*,
-            c.nama as nama_koperasi,
+            c.nama_cabang as nama_koperasi,
             c.alamat as alamat_koperasi
         FROM nasabah_koperasi_terdaftar kt
         LEFT JOIN cabang c ON kt.koperasi_id = c.id

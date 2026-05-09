@@ -19,7 +19,7 @@ $cabang_filter = getCabangFilterForRole($role, $user_cabang_id, $user['id']);
 if ($cabang_filter) {
     $cabang_filter = "AND " . $cabang_filter;
 }
-$nasabah_list = query("SELECT id, kode_nasabah, nama FROM nasabah WHERE status = 'aktif' $cabang_filter ORDER BY nama");
+$nasabah_list = query("SELECT id, kode_nasabah, nama FROM nasabah WHERE status = 'aktif' $cabang_filter ORDER BY nama", []);
 if (!is_array($nasabah_list)) {
     $nasabah_list = [];
 }
@@ -122,8 +122,8 @@ if ($_POST) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>
-    <script src="../../includes/js/auto-focus.js"></script>
-    <script src="../../includes/js/enter-navigation.js"></script>
+    <script src="/kewer/includes/js/auto-focus.js"></script>
+    <script src="/kewer/includes/js/enter-navigation.js"></script>
     <script>
         function formatRupiah(angka) {
             return new Intl.NumberFormat('id-ID').format(angka);

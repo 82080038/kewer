@@ -207,9 +207,9 @@ if ($_POST) {
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../../includes/js/auto-focus.js"></script>
-    <script src="../../includes/js/enter-navigation.js"></script>
-    <script src="../../includes/js/alamat-loader.js"></script>
+    <script src="/kewer/includes/js/auto-focus.js"></script>
+    <script src="/kewer/includes/js/enter-navigation.js"></script>
+    <script src="/kewer/includes/js/alamat-loader.js"></script>
     <script>
     </script>
 </body>

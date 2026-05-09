@@ -269,7 +269,7 @@ function getListPengajuanForApproval($user_id, $role) {
                 n.kode_nasabah,
                 n.telp,
                 n.alamat_rumah,
-                c.nama as nama_koperasi
+                c.nama_cabang as nama_koperasi
             FROM nasabah_pengajuan_pinjaman p
             JOIN nasabah n ON p.nasabah_id = n.id
             LEFT JOIN cabang c ON p.koperasi_id = c.id
@@ -284,7 +284,7 @@ function getListPengajuanForApproval($user_id, $role) {
                 n.kode_nasabah,
                 n.telp,
                 n.alamat_rumah,
-                c.nama as nama_koperasi
+                c.nama_cabang as nama_koperasi
             FROM nasabah_pengajuan_simpanan p
             JOIN nasabah n ON p.nasabah_id = n.id
             LEFT JOIN cabang c ON p.koperasi_id = c.id

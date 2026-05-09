@@ -267,7 +267,8 @@ switch ($method) {
         $result = query($sql, $params);
         
         if ($result) {
-            $updated_cabang = query("SELECT * FROM cabang WHERE id = ?", [$cabang_id])[0];
+            $result_cabang = query("SELECT * FROM cabang WHERE id = ?", [$cabang_id]);
+            $updated_cabang = is_array($result_cabang) && isset($result_cabang[0]) ? $result_cabang[0] : null;
             echo json_encode(['success' => true, 'data' => $updated_cabang]);
         } else {
             http_response_code(500);

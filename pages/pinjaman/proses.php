@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
+require_once BASE_PATH . '/includes/feature_flags.php';
 require_once BASE_PATH . '/includes/auto_confirm.php';
 requireLogin();
 
@@ -68,7 +69,7 @@ switch ($action) {
                         $nasabah_result = query("SELECT telp FROM nasabah WHERE id = ?", [$pinjaman['nasabah_id']]);
                         $nasabah = is_array($nasabah_result) && isset($nasabah_result[0]) ? $nasabah_result[0] : ['telp' => null];
                         $message = "Pinjaman Anda dengan kode {$pinjaman['kode_pinjaman']} telah disetujui. Plafon: " . formatRupiah($pinjaman['plafon']);
-                        if ($nasabah['telp']) {
+                        if ($nasabah['telp'] && isFeatureEnabled('wa_notifikasi')) {
                             sendWhatsApp($nasabah['telp'], $message);
                         }
                     } else {
@@ -88,9 +89,12 @@ switch ($action) {
                 $_SESSION['success'] = 'Pinjaman berhasil ditolak';
                 
                 // Send notification
-                $nasabah = query("SELECT telp FROM nasabah WHERE id = ?", [$pinjaman['nasabah_id']])[0];
+                $nasabah_result = query("SELECT telp FROM nasabah WHERE id = ?", [$pinjaman['nasabah_id']]);
+                $nasabah = is_array($nasabah_result) && isset($nasabah_result[0]) ? $nasabah_result[0] : ['telp' => null];
                 $message = "Mohon maaf, pengajuan pinjaman Anda dengan kode {$pinjaman['kode_pinjaman']} ditolak.";
-                sendWhatsApp($nasabah['telp'], $message);
+                if ($nasabah['telp'] && isFeatureEnabled('wa_notifikasi')) {
+                    sendWhatsApp($nasabah['telp'], $message);
+                }
             } else {
                 $_SESSION['error'] = 'Gagal menolak pinjaman';
             }

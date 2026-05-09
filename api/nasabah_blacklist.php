@@ -38,7 +38,7 @@ switch ($method) {
         if ($action === 'blacklist') {
             // Get blacklisted nasabah
             $nasabah = query("
-                SELECT n.*, c.nama as cabang_nama,
+                SELECT n.*, c.nama_cabang as cabang_nama,
                        bl.blacklist_reason, bl.blacklisted_at, bl.blacklisted_by,
                        u.nama as blacklisted_by_name
                 FROM nasabah n

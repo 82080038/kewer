@@ -289,6 +289,10 @@ $metode_list = ['Tunai', 'Transfer Bank', 'QRIS', 'Debit', 'Lainnya'];
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
+    function formatRupiah(angka) {
+        return new Intl.NumberFormat('id-ID').format(angka);
+    }
+
     const angsuranData = {
         pokok: <?= $a['pokok'] ?>,
         bunga: <?= $a['bunga'] ?>,

@@ -2,8 +2,8 @@
   "role": {
     "name": "Petugas Cabang",
     "code": "petugas_cabang",
-    "hierarchy_level": 8,
-    "description": "Branch field officer with field activities and payment collection",
+    "hierarchy_level": 7,
+    "description": "Petugas lapangan cabang dengan aktivitas lapangan dan pembayaran",
     "status": "aktif"
   },
   "access_scope": {

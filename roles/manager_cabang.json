@@ -2,7 +2,7 @@
   "role": {
     "name": "Manager Cabang",
     "code": "manager_cabang",
-    "hierarchy_level": 4,
+    "hierarchy_level": 3,
     "description": "Manager cabang dengan kontrol operasional",
     "status": "aktif"
   },
@@ -211,11 +211,11 @@
       "access": true,
       "permissions": ["view_laporan"],
       "features": [
-        "View audit logs",
-        "Filter by user",
-        "Filter by action",
-        "Filter by date range",
-        "Export audit logs"
+        "Lihat audit log",
+        "Filter berdasarkan user",
+        "Filter berdasarkan action",
+        "Filter berdasarkan tanggal",
+        "Export audit log"
       ]
     },
     "permissions": {

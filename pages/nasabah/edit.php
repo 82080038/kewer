@@ -58,20 +58,20 @@ if ($_POST) {
         
         if (isset($_FILES['foto_ktp']) && $_FILES['foto_ktp']['error'] === 0) {
             // Delete old file
-            if ($foto_ktp && file_exists('../../' . $foto_ktp)) {
-                unlink('../../' . $foto_ktp);
+            if ($foto_ktp && file_exists(BASE_PATH . '/' . $foto_ktp)) {
+                unlink(BASE_PATH . '/' . $foto_ktp);
             }
             $foto_ktp = 'uploads/ktp_' . $nasabah['kode_nasabah'] . '_' . time() . '.jpg';
-            move_uploaded_file($_FILES['foto_ktp']['tmp_name'], '../../' . $foto_ktp);
+            move_uploaded_file($_FILES['foto_ktp']['tmp_name'], BASE_PATH . '/' . $foto_ktp);
         }
-        
+
         if (isset($_FILES['foto_selfie']) && $_FILES['foto_selfie']['error'] === 0) {
             // Delete old file
-            if ($foto_selfie && file_exists('../../' . $foto_selfie)) {
-                unlink('../../' . $foto_selfie);
+            if ($foto_selfie && file_exists(BASE_PATH . '/' . $foto_selfie)) {
+                unlink(BASE_PATH . '/' . $foto_selfie);
             }
             $foto_selfie = 'uploads/selfie_' . $nasabah['kode_nasabah'] . '_' . time() . '.jpg';
-            move_uploaded_file($_FILES['foto_selfie']['tmp_name'], '../../' . $foto_selfie);
+            move_uploaded_file($_FILES['foto_selfie']['tmp_name'], BASE_PATH . '/' . $foto_selfie);
         }
         
         // Update nasabah (termasuk field baru v2.2.0)
@@ -206,17 +206,17 @@ if ($_POST) {
                                         <input type="file" name="foto_ktp" class="form-control" accept="image/*">
                                         <?php if ($nasabah['foto_ktp']): ?>
                                             <small class="form-text">
-                                                <a href="../../<?php echo $nasabah['foto_ktp']; ?>" target="_blank">Lihat foto saat ini</a>
+                                                <a href="<?php echo baseUrl($nasabah['foto_ktp']); ?>" target="_blank">Lihat foto saat ini</a>
                                             </small>
                                         <?php endif; ?>
                                     </div>
-                                    
+
                                     <div class="mb-3">
                                         <label class="form-label">Foto Selfie + KTP</label>
                                         <input type="file" name="foto_selfie" class="form-control" accept="image/*">
                                         <?php if ($nasabah['foto_selfie']): ?>
                                             <small class="form-text">
-                                                <a href="../../<?php echo $nasabah['foto_selfie']; ?>" target="_blank">Lihat foto saat ini</a>
+                                                <a href="<?php echo baseUrl($nasabah['foto_selfie']); ?>" target="_blank">Lihat foto saat ini</a>
                                             </small>
                                         <?php endif; ?>
                                     </div>
@@ -237,9 +237,35 @@ if ($_POST) {
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../../includes/js/alamat-loader.js"></script>
+    <script src="/kewer/includes/js/alamat-loader.js"></script>
     <script>
-        // Initialize province dropdown
+        // Initialize province dropdown and load dependent data
+        document.addEventListener('DOMContentLoaded', function() {
+            const provinceId = <?php echo $nasabah['province_id'] ? $nasabah['province_id'] : 'null'; ?>;
+            const regencyId = <?php echo $nasabah['regency_id'] ? $nasabah['regency_id'] : 'null'; ?>;
+            const districtId = <?php echo $nasabah['district_id'] ? $nasabah['district_id'] : 'null'; ?>;
+
+            if (provinceId) {
+                loadRegencies(provinceId);
+                if (regencyId) {
+                    setTimeout(() => {
+                        document.getElementById('regency_id').value = regencyId;
+                        loadDistricts(regencyId);
+                        if (districtId) {
+                            setTimeout(() => {
+                                document.getElementById('district_id').value = districtId;
+                                loadVillages(districtId);
+                                if (<?php echo $nasabah['village_id'] ? $nasabah['village_id'] : 'null'; ?>) {
+                                    setTimeout(() => {
+                                        document.getElementById('village_id').value = <?php echo $nasabah['village_id']; ?>;
+                                    }, 200);
+                                }
+                            }, 200);
+                        }
+                    }, 200);
+                }
+            }
+        });
     </script>
 </body>
 </html>

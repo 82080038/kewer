@@ -64,13 +64,14 @@ if (!is_array($recent_activities)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - <?php echo APP_NAME; ?></title>
-    <?php if (isFeatureEnabled('pwa')): ?>
+    <?php // PWA disabled during development ?>
+    <?php /* if (isFeatureEnabled('pwa')): ?>
     <link rel="manifest" href="/kewer/manifest.json">
     <meta name="theme-color" content="#2c3e50">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <?php endif; ?>
+    <?php endif; */ ?>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -420,8 +421,106 @@ if (!is_array($recent_activities)) {
             ]);
         ?>;
 
-        // Use chart helper functions
-        const monthlyChart = createBarChart('pinjamanChart', 
+        // Chart helper functions
+        function createBarChart(canvasId, labels, datasets, label) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return null;
+
+            const colors = [
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(255, 206, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)',
+                'rgba(153, 102, 255, 0.8)'
+            ];
+
+            const borderColors = [
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 99, 132, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(153, 102, 255, 1)'
+            ];
+
+            const chartDatasets = datasets.map((data, index) => ({
+                label: Array.isArray(label) ? label[index] : label,
+                data: data,
+                backgroundColor: colors[index % colors.length],
+                borderColor: borderColors[index % borderColors.length],
+                borderWidth: 1
+            }));
+
+            return new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: chartDatasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function createDoughnutChart(canvasId, labels, data, label) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx) return null;
+
+            const colors = [
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(255, 206, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)',
+                'rgba(153, 102, 255, 0.8)',
+                'rgba(255, 159, 64, 0.8)'
+            ];
+
+            const borderColors = [
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 99, 132, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(153, 102, 255, 1)',
+                'rgba(255, 159, 64, 1)'
+            ];
+
+            return new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        backgroundColor: colors.slice(0, data.length),
+                        borderColor: borderColors.slice(0, data.length),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create charts
+        const monthlyChart = createBarChart('pinjamanChart',
             chartData.monthly.map(d => d.month),
             [chartData.monthly.map(d => d.count)],
             'Jumlah Pinjaman'

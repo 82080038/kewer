@@ -4,8 +4,8 @@ description: Development rules untuk aplikasi Kewer
 
 # Development Rules - Kewer Application
 
-> **Terakhir diperbarui**: 8 Mei 2026
-> **Versi Aplikasi**: v2.4.0 (Nasabah Portal + Penagihan System)
+> **Terakhir diperbarui**: 9 Mei 2026
+> **Versi Aplikasi**: v2.4.0 (Nasabah Portal + Penagihan System + Enhanced Features + Advanced Analytics)
 
 ## Core Principles
 
@@ -31,6 +31,18 @@ description: Development rules untuk aplikasi Kewer
 - Gunakan `isFeatureEnabled('feature_key')` sebelum mengakses fitur
 - Feature flags dikelola di tabel `platform_features`
 - API: `api/feature_flags.php`
+- **Available Features**:
+  - `wa_notifikasi` (wa) - WhatsApp notifikasi via Fonnte API
+  - `wa_pengingat_auto` (wa) - Auto reminder WA (cron harian)
+  - `two_factor_auth` (auth) - 2FA TOTP untuk login
+  - `pwa` (pwa) - Progressive Web App support
+  - `gps_pembayaran` (lapangan) - GPS tracking pembayaran lapangan
+  - `export_laporan` (laporan) - Export laporan CSV/PDF
+  - `target_petugas` (lapangan) - Target kinerja petugas
+  - `slip_harian` (lapangan) - Slip harian petugas
+  - `kolektibilitas` (lapangan) - Kolektibilitas OJK 1-5
+  - `cron_harian` (system) - Cron job harian otomatis
+  - `simulasi_pinjaman` (lapangan) - Simulasi pinjaman real-time (default ON)
 
 ### 4. Frekuensi Angsuran (v2.4.0)
 - **Gunakan frekuensi_id (INT)** - kolom `frekuensi` enum sudah dihapus di migration 024
@@ -85,7 +97,58 @@ description: Development rules untuk aplikasi Kewer
 - **API**: `api/provinsi_activation.php`
 - **Purpose**: Aktifkan provinsi untuk rollout bertahap
 
-### 10. Page Layout Consistency
+### 10. Advanced Dashboard Analytics (v2.4.0)
+- **Real-time metrics dengan Chart.js integration**
+- **API**: `api/dashboard_analytics.php`
+- **Helper**: `includes/chart_helper.php`
+- **Service**: `src/Cache/CacheManager.php`
+- **Features**: Total pinjaman aktif, collection rate, NPL ratio, per-cabang comparison, trend analysis
+- **Caching**: File-based caching untuk performance
+
+### 11. Credit Scoring System (v2.4.0)
+- **Rule-based scoring engine dengan auto-approval**
+- **API**: `api/credit_scoring.php`
+- **Service**: `src/CreditScoring/ScoringEngine.php`
+- **Database**: `credit_scoring_logs`, `nasabah.credit_score`, `nasabah.risk_level`, `pinjaman.auto_approved`
+- **Features**: Payment history, demographics, location, family risk, duration scoring
+- **Auto-approval**: Low-risk nasabah otomatis disetujui
+
+### 12. GPS Tracking (v2.4.0)
+- **Geolocation tracking untuk petugas lapangan**
+- **API**: `api/visits.php`
+- **Service**: `src/Geo/GPSTracker.php`
+- **Pages**: `pages/petugas/kunjungan.php`
+- **Database**: `visits`, `mobile_devices`, `pembayaran.lat/lng/akurasi_gps`
+- **Features**: GPS capture saat pembayaran, geofencing, visit logging, Haversine formula
+
+### 13. Geographic Analysis (v2.4.0)
+- **Radius search dan demographic analysis**
+- **API**: `api/geographic_analysis.php`
+- **Service**: `src/Geo/GPSTracker.php`
+- **Features**: Radius-based nasabah search, demographic analysis per area, risk scoring by location, heatmap
+
+### 14. Multi-branch Sync (v2.4.0)
+- **Data synchronization antar cabang**
+- **Service**: `src/Sync/DataSyncService.php`
+- **Database**: `sync_logs`, `sync_conflicts`
+- **Features**: Conflict detection, sync operation logging, full/incremental sync
+
+### 15. Webhook System (v2.4.0)
+- **Third-party API integration dengan webhook triggers**
+- **Pages**: `pages/settings/webhooks.php`
+- **API**: `api/webhooks.php`
+- **Service**: `src/Webhook/WebhookService.php`
+- **Helper**: `includes/webhook_trigger.php`
+- **Database**: `webhooks`, `webhook_logs`, `webhook_deliveries`, `external_api_logs`, `api_keys`
+- **Features**: Event triggers, HMAC signature, retry logic, delivery logging
+
+### 16. Audit Trail UI (v2.4.0)
+- **Filterable log viewer untuk audit_log**
+- **Pages**: `pages/audit/index.php`
+- **API**: `api/audit_log.php`
+- **Features**: Filter by user/action/table/date range, export to CSV, search, statistics
+
+### 17. Page Layout Consistency
 - Semua halaman (kecuali compact/standalone) menggunakan layout standar:
   ```html
   <div class="main-container">
@@ -98,13 +161,13 @@ description: Development rules untuk aplikasi Kewer
 - **JANGAN** duplikasi navbar - `sidebar.php` sudah menyediakan navbar
 - Standalone pages: `bayar_compact.php`, `index_compact.php`, `blacklist_compact.php`, `transaksi.php`, `riwayat_harian.php`, `gabungan.php`, `setup_headquarters.php`
 
-### 6. Error Handling
+### 18. Error Handling
 - Gunakan prepared statements untuk semua query SQL
 - Tambahkan pengecekan array sebelum akses: `is_array($result) && isset($result[0]) ? $result[0] : ['default' => 0]`
 - Inisialisasi variabel sebelum digunakan di template: `$error = ''; $success = '';`
 - Log error ke `logs/error.log`
 
-### 7. Security
+### 19. Security
 - CSRF protection di semua forms (gunakan `includes/csrf.php`)
 - Session timeout 2 jam
 - Rate limiting API (60 req/min)
@@ -174,11 +237,16 @@ if (isFeatureEnabled('wa_notifikasi')) {
 - Core: `functions.php`, `csrf.php`, `validation.php`
 - UI: `datatable_helper.php`, `sweetalert_helper.php`, `select2_helper.php`, `flatpickr_helper.php`
 - Business logic: `bunga_calculator.php`, `family_risk.php`, `kas_bon.php`, `kas_petugas.php`
+- New v2.4.0: `chart_helper.php`, `koperasi_isolation.php`, `webhook_trigger.php`
 
-### Models
-- Lokasi: `models/`
-- Pattern: Class-based dengan method CRUD
-- Gunakan `query()` untuk database operations
+### Services (src/)
+- Lokasi: `src/`
+- New v2.4.0 Services:
+  - `CreditScoring/ScoringEngine.php` - Rule-based credit scoring
+  - `Geo/GPSTracker.php` - GPS tracking dan geographic analysis
+  - `Sync/DataSyncService.php` - Multi-branch data synchronization
+  - `Webhook/WebhookService.php` - Webhook management and delivery
+  - `Cache/CacheManager.php` - File-based caching untuk analytics
 
 ## Testing Rules
 
@@ -303,17 +371,19 @@ APP_URL=https://domain.com
 ## Quick Reference
 
 ### Database Counts
-- kewer: 64 base tables + 3 views
-- db_alamat: 4 tables (Sumut: 1 prov, 33 kab, 448 kec, 6.101 desa)
-- db_orang: 19 tables + 6 views (nasional: 38 prov, 541 kab, 8K kec, 81K desa)
+- kewer: 77 tables + 1 view (v_penagihan_hari_ini)
+- db_alamat: 24 tables (nasional: 38 prov, 541 kab, 7,938 kec, 80,937 desa)
+- db_orang: 19 tables (master data + relasi + audit)
 
 ### API Endpoints
-- Total: 32+ endpoints
+- Total: 38+ endpoints
 - Base: `http://localhost/kewer/api/`
+- New v2.4.0 APIs: dashboard_analytics, credit_scoring, geographic_analysis, nasabah_portal, pembayaran_elektronik, penagihan, pengingat_penagihan, petugas_tugas_pengajuan, provinsi_activation, search_people, visits, webhooks, cross_koperasi
 
 ### Page Modules
-- Total: 25+ modules
-- appOwner pages: 8 pages
+- Total: 26+ modules
+- appOwner pages: 9 pages (dashboard, approvals, koperasi, billing, usage, ai_advisor, settings, features, provinsi_activation)
+- nasabah portal pages: 8 pages (dashboard, profil, pengajuan_pinjaman, pengajuan_simpanan, pinjaman, angsuran, pembayaran, data_keluarga)
 
 ### Test Users (password: Kewer2024!)
 - patri (bos), mgr_pusat, mgr_balige, adm_pusat, adm_pangururan, adm_balige

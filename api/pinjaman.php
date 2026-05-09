@@ -132,10 +132,9 @@ switch ($_SERVER['REQUEST_METHOD']) {
         // Convert frequency to ID if it's a code
         $frekuensi_id = getFrequencyId($frekuensi);
         
-        // Validate frekuensi
-        if (!in_array($frekuensi, ['harian', 'mingguan', 'bulanan', 'HARIAN', 'MINGGUAN', 'BULANAN']) && !is_numeric($frekuensi)) {
-            $frekuensi = 'bulanan';
-            $frekuensi_id = 3;
+        // Validate frekuensi_id (must be 1, 2, or 3 for harian, mingguan, bulanan)
+        if (!$frekuensi_id || !in_array($frekuensi_id, [1, 2, 3])) {
+            $frekuensi_id = 3; // Default to bulanan
         }
         
         // Validation
@@ -236,10 +235,12 @@ switch ($_SERVER['REQUEST_METHOD']) {
         ]);
 
         if ($result) {
-            $new_id = query("SELECT LAST_INSERT_ID() as id")[0]['id'];
+            $result_id = query("SELECT LAST_INSERT_ID() as id");
+            $new_id = is_array($result_id) && isset($result_id[0]) ? $result_id[0]['id'] : null;
             // Update cache total_pinjaman_aktif di nasabah
             query("UPDATE nasabah SET total_pinjaman_aktif = (SELECT COUNT(*) FROM pinjaman WHERE nasabah_id = ? AND status IN ('aktif','disetujui','pengajuan')) WHERE id = ?", [$nasabah_id, $nasabah_id]);
-            $new_pinjaman = query("SELECT * FROM pinjaman WHERE id = ?", [$new_id])[0] ?? null;
+            $result = query("SELECT * FROM pinjaman WHERE id = ?", [$new_id]);
+            $new_pinjaman = is_array($result) && isset($result[0]) ? $result[0] : null;
             echo json_encode([
                 'success' => true,
                 'message' => 'Pengajuan pinjaman berhasil dibuat',

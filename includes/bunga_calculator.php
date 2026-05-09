@@ -225,7 +225,8 @@ class BungaCalculator {
             'angsuran_bunga' => round($angsuranBunga, 2),
             'angsuran_total' => round($angsuranTotal, 2),
             'metode' => $metode,
-            'frekuensi' => $frekuensi,
+            'frekuensi_id' => $frekuensi_id,
+            'frekuensi_code' => getFrequencyCode($frekuensi_id),
             'bunga_per_period' => round($bungaPerPeriod, 4)
         ];
     }
@@ -274,14 +275,13 @@ class BungaCalculator {
         }
         
         $sql = "INSERT INTO setting_bunga 
-                (cabang_id, jenis_pinjaman, frekuensi_id, frekuensi, tenor_min, tenor_max, bunga_default, bunga_min, bunga_max, faktor_risiko, jaminan_adjustment)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                (cabang_id, jenis_pinjaman, frekuensi_id, tenor_min, tenor_max, bunga_default, bunga_min, bunga_max, faktor_risiko, jaminan_adjustment)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         return $this->db->insert($sql, [
             null, // Single office - always null (global)
             $data['jenis_pinjaman'],
             $frekuensi_id,
-            $frekuensi,
             $data['tenor_min'],
             $data['tenor_max'],
             $data['bunga_default'],

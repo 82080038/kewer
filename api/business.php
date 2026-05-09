@@ -158,7 +158,11 @@ if ($method === 'POST') {
                 );
                 query("UPDATE angsuran SET status='lunas' WHERE pinjaman_id = ? AND status != 'lunas'", [$pinjaman_id]);
                 query("UPDATE pinjaman SET status='lunas', tanggal_lunas=?, sisa_pokok_berjalan=0, updated_at=NOW() WHERE id=?", [$input['tanggal'] ?? date('Y-m-d'), $pinjaman_id]);
-                updateSkorKredit((int)query("SELECT nasabah_id FROM pinjaman WHERE id=?", [$pinjaman_id])[0]['nasabah_id'], +5, 'bayar_tepat_waktu', $pinjaman_id);
+                $result_pinjaman = query("SELECT nasabah_id FROM pinjaman WHERE id=?", [$pinjaman_id]);
+                $nasabah_id = is_array($result_pinjaman) && isset($result_pinjaman[0]) ? (int)$result_pinjaman[0]['nasabah_id'] : null;
+                if ($nasabah_id) {
+                    updateSkorKredit($nasabah_id, +5, 'bayar_tepat_waktu', $pinjaman_id);
+                }
                 $hitungan['lunas'] = true;
             }
             echo json_encode(array_merge(['success' => true], $hitungan));

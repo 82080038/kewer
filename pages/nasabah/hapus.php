@@ -37,12 +37,12 @@ if ($active_loans > 0) {
 }
 
 // Delete files
-if ($nasabah['foto_ktp'] && file_exists('../../' . $nasabah['foto_ktp'])) {
-    unlink('../../' . $nasabah['foto_ktp']);
+if ($nasabah['foto_ktp'] && file_exists(BASE_PATH . '/' . $nasabah['foto_ktp'])) {
+    unlink(BASE_PATH . '/' . $nasabah['foto_ktp']);
 }
 
-if ($nasabah['foto_selfie'] && file_exists('../../' . $nasabah['foto_selfie'])) {
-    unlink('../../' . $nasabah['foto_selfie']);
+if ($nasabah['foto_selfie'] && file_exists(BASE_PATH . '/' . $nasabah['foto_selfie'])) {
+    unlink(BASE_PATH . '/' . $nasabah['foto_selfie']);
 }
 
 // Delete nasabah
