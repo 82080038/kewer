@@ -289,6 +289,73 @@ if ($method === 'GET') {
             ]]);
             break;
 
+        // Get usage data for usage page
+        case 'usage_data':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            
+            $days = (int)($_GET['days'] ?? 30);
+            if ($days < 7) $days = 7;
+            if ($days > 90) $days = 90;
+
+            // Per-koperasi usage summary
+            $koperasi_usage = query("
+                SELECT 
+                    uds.bos_user_id,
+                    u.nama as bos_nama,
+                    br.nama_usaha,
+                    SUM(uds.total_api_calls) as api_calls,
+                    SUM(uds.total_renders) as renders,
+                    SUM(uds.total_api_calls) + SUM(uds.total_renders) as total
+                FROM usage_daily_summary uds
+                JOIN users u ON u.id = uds.bos_user_id
+                LEFT JOIN bos_registrations br ON br.username = u.username
+                WHERE uds.tanggal >= DATE_SUB(CURDATE(), INTERVAL $days DAY)
+                GROUP BY uds.bos_user_id, u.nama, br.nama_usaha
+                ORDER BY total DESC
+            ");
+            if (!is_array($koperasi_usage)) $koperasi_usage = [];
+
+            // Daily trend (total)
+            $daily_trend = query("
+                SELECT tanggal, SUM(total_api_calls) as api, SUM(total_renders) as renders
+                FROM usage_daily_summary
+                WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL $days DAY)
+                GROUP BY tanggal ORDER BY tanggal
+            ");
+            if (!is_array($daily_trend)) $daily_trend = [];
+
+            // Totals
+            $grand_api = 0; $grand_renders = 0;
+            foreach ($koperasi_usage as $ku) {
+                $grand_api += (int)$ku['api_calls'];
+                $grand_renders += (int)$ku['renders'];
+            }
+
+            // Top endpoints
+            $top_endpoints = query("
+                SELECT endpoint, tipe, COUNT(*) as cnt
+                FROM usage_log
+                WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL $days DAY)
+                GROUP BY endpoint, tipe
+                ORDER BY cnt DESC
+                LIMIT 15
+            ");
+            if (!is_array($top_endpoints)) $top_endpoints = [];
+
+            echo json_encode(['success' => true, 'data' => [
+                'days' => $days,
+                'koperasi_usage' => $koperasi_usage,
+                'daily_trend' => $daily_trend,
+                'top_endpoints' => $top_endpoints,
+                'totals' => [
+                    'api' => $grand_api,
+                    'renders' => $grand_renders,
+                    'koperasi_count' => count($koperasi_usage),
+                    'avg_per_day' => ($grand_api + $grand_renders) / max($days, 1)
+                ]
+            ]]);
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Action tidak dikenali']);
