@@ -105,211 +105,211 @@
         }
 
         // ============ NASABAH API ============
-        async getNasabah(params = {}) {
+        getNasabah(params = {}) {
             return this.get('/nasabah.php', params);
         }
 
-        async getNasabahDetail(id) {
+        getNasabahDetail(id) {
             return this.get('/nasabah.php', { id: id });
         }
 
-        async createNasabah(data) {
+        createNasabah(data) {
             return this.post('/nasabah.php', data);
         }
 
-        async updateNasabah(id, data) {
+        updateNasabah(id, data) {
             return this.put('/nasabah.php?id=' + id, data);
         }
 
-        async deleteNasabah(id) {
+        deleteNasabah(id) {
             return this.delete('/nasabah.php', { id: id });
         }
 
         // ============ PINJAMAN API ============
-        async getPinjaman(params = {}) {
+        getPinjaman(params = {}) {
             return this.get('/pinjaman.php', params);
         }
 
-        async getPinjamanDetail(id) {
+        getPinjamanDetail(id) {
             return this.get('/pinjaman.php', { id: id });
         }
 
-        async createPinjaman(data) {
+        createPinjaman(data) {
             return this.post('/pinjaman.php', data);
         }
 
-        async updatePinjaman(id, data) {
+        updatePinjaman(id, data) {
             return this.put('/pinjaman.php?id=' + id, data);
         }
 
-        async approvePinjaman(id) {
+        approvePinjaman(id) {
             return this.put('/pinjaman.php', { id: id, action: 'approve' });
         }
 
-        async rejectPinjaman(id) {
+        rejectPinjaman(id) {
             return this.put('/pinjaman.php', { id: id, action: 'reject' });
         }
 
-        async deletePinjaman(id) {
+        deletePinjaman(id) {
             return this.delete('/pinjaman.php', { id: id });
         }
 
         // ============ ANGSURAN API ============
-        async getAngsuran(params = {}) {
+        getAngsuran(params = {}) {
             return this.get('/angsuran.php', params);
         }
 
-        async getAngsuranDetail(id) {
+        getAngsuranDetail(id) {
             return this.get('/angsuran.php', { id: id });
         }
 
-        async getAngsuranByPinjaman(pinjamanId) {
+        getAngsuranByPinjaman(pinjamanId) {
             return this.get('/angsuran.php', { pinjaman_id: pinjamanId });
         }
 
         // ============ PEMBAYARAN API ============
-        async getPembayaran(params = {}) {
+        getPembayaran(params = {}) {
             return this.get('/pembayaran.php', params);
         }
 
-        async getPembayaranDetail(id) {
+        getPembayaranDetail(id) {
             return this.get('/pembayaran.php', { id: id });
         }
 
-        async createPembayaran(data) {
+        createPembayaran(data) {
             return this.post('/pembayaran.php', data);
         }
 
-        async updatePembayaran(id, data) {
+        updatePembayaran(id, data) {
             return this.put('/pembayaran.php?id=' + id, data);
         }
 
         // ============ CABANG API ============
-        async getCabang(params = {}) {
+        getCabang(params = {}) {
             return this.get('/cabang.php', params);
         }
 
-        async createCabang(data) {
+        createCabang(data) {
             return this.post('/cabang.php', data);
         }
 
-        async updateCabang(id, data) {
+        updateCabang(id, data) {
             return this.put('/cabang.php?id=' + id, data);
         }
 
-        async deleteCabang(id) {
+        deleteCabang(id) {
             return this.delete('/cabang.php', { id: id });
         }
 
         // ============ PETUGAS API ============
-        async getPetugas(params = {}) {
+        getPetugas(params = {}) {
             return this.get('/users.php', params);
         }
 
-        async getPetugasDetail(id) {
+        getPetugasDetail(id) {
             return this.get('/users.php', { id: id });
         }
 
-        async createPetugas(data) {
+        createPetugas(data) {
             return this.post('/users.php', data);
         }
 
-        async updatePetugas(id, data) {
+        updatePetugas(id, data) {
             return this.put('/users.php?id=' + id, data);
         }
 
-        async deletePetugas(id) {
+        deletePetugas(id) {
             return this.delete('/users.php', { id: id });
         }
 
         // ============ DASHBOARD API ============
-        async getDashboardStats() {
+        getDashboardStats() {
             return this.get('/dashboard.php', { action: 'stats' });
         }
 
-        async getDashboardCharts() {
+        getDashboardCharts() {
             return this.get('/dashboard.php', { action: 'charts' });
         }
 
-        async getDashboardRecent() {
+        getDashboardRecent() {
             return this.get('/dashboard.php', { action: 'recent' });
         }
 
         // ============ LAPORAN API ============
-        async getLaporanKeuangan(params = {}) {
+        getLaporanKeuangan(params = {}) {
             return this.get('/export.php', { type: 'keuangan', ...params });
         }
 
-        async getLaporanPinjaman(params = {}) {
+        getLaporanPinjaman(params = {}) {
             return this.get('/export.php', { type: 'pinjaman', ...params });
         }
 
-        async getLaporanNasabah(params = {}) {
+        getLaporanNasabah(params = {}) {
             return this.get('/export.php', { type: 'nasabah', ...params });
         }
 
         // ============ KAS PETUGAS API ============
-        async getKasPetugas(params = {}) {
+        getKasPetugas(params = {}) {
             return this.get('/kas_petugas.php', params);
         }
 
-        async createSetoran(data) {
+        createSetoran(data) {
             return this.post('/kas_petugas_setoran.php', data);
         }
 
         // ============ PENGELUARAN API ============
-        async getPengeluaran(params = {}) {
+        getPengeluaran(params = {}) {
             return this.get('/pengeluaran.php', params);
         }
 
-        async createPengeluaran(data) {
+        createPengeluaran(data) {
             return this.post('/pengeluaran.php', data);
         }
 
-        async updatePengeluaran(id, data) {
+        updatePengeluaran(id, data) {
             return this.put('/pengeluaran.php?id=' + id, data);
         }
 
-        async deletePengeluaran(id) {
+        deletePengeluaran(id) {
             return this.delete('/pengeluaran.php', { id: id });
         }
 
         // ============ NOTIFICATIONS API ============
-        async getNotifications(params = {}) {
+        getNotifications(params = {}) {
             return this.get('/notifications.php', params);
         }
 
-        async getNotificationCount(status = 'sent') {
+        getNotificationCount(status = 'sent') {
             return this.get('/notifications.php', { action: 'count', status: status });
         }
 
-        async markNotificationAsRead(id) {
+        markNotificationAsRead(id) {
             return this.post('/notifications.php', { action: 'mark_read', id: id });
         }
 
-        async markAllNotificationsAsRead(status = 'sent') {
+        markAllNotificationsAsRead(status = 'sent') {
             return this.post('/notifications.php', { action: 'mark_all_read', status: status });
         }
 
         // ============ AUTH API ============
-        async login(username, password) {
+        login(username, password) {
             return this.post('/auth.php', { action: 'login', username, password });
         }
 
-        async logout() {
+        logout() {
             return this.post('/auth.php', { action: 'logout' });
         }
 
-        async getCurrentUser() {
+        getCurrentUser() {
             return this.get('/auth.php', { action: 'me' });
         }
 
         // ============ SETTINGS API ============
-        async getSettings() {
+        getSettings() {
             return this.get('/feature_flags.php');
         }
 
-        async updateSetting(key, value) {
+        updateSetting(key, value) {
             return this.put('/feature_flags.php', { key, value });
         }
     }

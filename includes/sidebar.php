@@ -433,7 +433,8 @@ function safeHasPermission($permission_code) {
         });
     });
 </script>
-<!-- Include Global JS Files -->
+<!-- Include jQuery and Global JS Files -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="<?php echo baseUrl('includes/js/api.js'); ?>"></script>
 <script src="<?php echo baseUrl('includes/js/app.js'); ?>"></script>
 <script src="<?php echo baseUrl('includes/js/notifications.js'); ?>"></script>
