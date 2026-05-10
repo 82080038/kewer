@@ -122,6 +122,142 @@ if ($method === 'GET') {
             ]]);
             break;
 
+        // App owner dashboard stats
+        case 'app_owner_dashboard':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            
+            $total_pending = query("SELECT COUNT(*) as c FROM bos_registrations WHERE status = 'pending'");
+            $total_pending = (is_array($total_pending) && isset($total_pending[0])) ? (int)$total_pending[0]['c'] : 0;
+            
+            $total_approved = query("SELECT COUNT(*) as c FROM bos_registrations WHERE status = 'approved'");
+            $total_approved = (is_array($total_approved) && isset($total_approved[0])) ? (int)$total_approved[0]['c'] : 0;
+            
+            $total_bos = query("SELECT COUNT(*) as c FROM users WHERE role = 'bos' AND status = 'aktif'");
+            $total_bos = (is_array($total_bos) && isset($total_bos[0])) ? (int)$total_bos[0]['c'] : 0;
+            
+            $total_users = query("SELECT COUNT(*) as c FROM users WHERE role != 'appOwner' AND status = 'aktif'");
+            $total_users = (is_array($total_users) && isset($total_users[0])) ? (int)$total_users[0]['c'] : 0;
+            
+            $total_revenue = query("SELECT COALESCE(SUM(total),0) as c FROM koperasi_invoices WHERE status = 'dibayar'");
+            $total_revenue = (is_array($total_revenue) && isset($total_revenue[0])) ? (float)$total_revenue[0]['c'] : 0;
+            
+            $overdue_invoices = query("SELECT COUNT(*) as c FROM koperasi_invoices WHERE status = 'overdue'");
+            $overdue_invoices = (is_array($overdue_invoices) && isset($overdue_invoices[0])) ? (int)$overdue_invoices[0]['c'] : 0;
+            
+            $today_usage = query("SELECT COALESCE(SUM(total_api_calls),0) as api, COALESCE(SUM(total_renders),0) as renders FROM usage_daily_summary WHERE tanggal = CURDATE()");
+            $today_api = (is_array($today_usage) && isset($today_usage[0])) ? (int)$today_usage[0]['api'] : 0;
+            $today_renders = (is_array($today_usage) && isset($today_usage[0])) ? (int)$today_usage[0]['renders'] : 0;
+            
+            $recent = query("SELECT id, username, nama, nama_usaha, status, created_at FROM bos_registrations ORDER BY created_at DESC LIMIT 10");
+            if (!is_array($recent)) $recent = [];
+            
+            $recent_advice = query("SELECT id, judul, kategori, prioritas, created_at FROM ai_advice ORDER BY created_at DESC LIMIT 5");
+            if (!is_array($recent_advice)) $recent_advice = [];
+            
+            echo json_encode(['success' => true, 'data' => [
+                'stats' => [
+                    'total_pending' => $total_pending,
+                    'total_approved' => $total_approved,
+                    'total_bos' => $total_bos,
+                    'total_users' => $total_users,
+                    'total_revenue' => $total_revenue,
+                    'overdue_invoices' => $overdue_invoices,
+                    'today_api' => $today_api,
+                    'today_renders' => $today_renders
+                ],
+                'recent_registrations' => $recent,
+                'recent_advice' => $recent_advice
+            ]]);
+            break;
+
+        // Get bos registrations for approvals page
+        case 'bos_registrations':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            
+            $filter = $_GET['status'] ?? 'pending';
+            $valid_filters = ['pending', 'approved', 'rejected', 'all'];
+            if (!in_array($filter, $valid_filters)) $filter = 'pending';
+            
+            if ($filter === 'all') {
+                $registrations = query("SELECT * FROM bos_registrations ORDER BY created_at DESC");
+            } else {
+                $registrations = query("SELECT * FROM bos_registrations WHERE status = ? ORDER BY created_at DESC", [$filter]);
+            }
+            if (!is_array($registrations)) $registrations = [];
+            
+            $cnt_pending = query("SELECT COUNT(*) as c FROM bos_registrations WHERE status = 'pending'");
+            $cnt_pending = (is_array($cnt_pending) && isset($cnt_pending[0])) ? (int)$cnt_pending[0]['c'] : 0;
+            $cnt_approved = query("SELECT COUNT(*) as c FROM bos_registrations WHERE status = 'approved'");
+            $cnt_approved = (is_array($cnt_approved) && isset($cnt_approved[0])) ? (int)$cnt_approved[0]['c'] : 0;
+            $cnt_rejected = query("SELECT COUNT(*) as c FROM bos_registrations WHERE status = 'rejected'");
+            $cnt_rejected = (is_array($cnt_rejected) && isset($cnt_rejected[0])) ? (int)$cnt_rejected[0]['c'] : 0;
+            
+            echo json_encode(['success' => true, 'data' => [
+                'registrations' => $registrations,
+                'stats' => [
+                    'pending' => $cnt_pending,
+                    'approved' => $cnt_approved,
+                    'rejected' => $cnt_rejected
+                ]
+            ]]);
+            break;
+
+        // Get billing data for billing page
+        case 'billing_data':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            
+            $filter_status = $_GET['status'] ?? 'all';
+            $filter_month = (int)($_GET['bulan'] ?? date('n'));
+            $filter_year = (int)($_GET['tahun'] ?? date('Y'));
+            
+            $where = "WHERE ki.periode_bulan = $filter_month AND ki.periode_tahun = $filter_year";
+            if ($filter_status !== 'all') {
+                $where .= " AND ki.status = '" . addslashes($filter_status) . "'";
+            }
+            
+            $invoices = query("
+                SELECT ki.*, br.nama_usaha, bp.nama as plan_nama, bp.tipe as plan_tipe, u.nama as bos_nama
+                FROM koperasi_invoices ki
+                JOIN koperasi_billing kb ON kb.id = ki.koperasi_billing_id
+                JOIN billing_plans bp ON bp.id = kb.billing_plan_id
+                JOIN users u ON u.id = ki.bos_user_id
+                LEFT JOIN bos_registrations br ON br.username = u.username
+                $where
+                ORDER BY ki.created_at DESC
+            ");
+            if (!is_array($invoices)) $invoices = [];
+            
+            // Summary
+            $sum_total = 0; $sum_paid = 0;
+            foreach ($invoices as $inv) {
+                $sum_total += (float)$inv['total'];
+                if ($inv['status'] === 'dibayar') $sum_paid += (float)$inv['total'];
+            }
+            
+            // Billing plans summary
+            $plans = query("SELECT bp.*, COUNT(kb.id) as subscribers FROM billing_plans bp LEFT JOIN koperasi_billing kb ON kb.billing_plan_id = bp.id AND kb.status = 'aktif' WHERE bp.is_active = 1 GROUP BY bp.id ORDER BY bp.harga_bulanan");
+            if (!is_array($plans)) $plans = [];
+            
+            // Get primary bank account
+            $primary_bank = query("SELECT * FROM platform_bank_accounts WHERE is_primary = 1 AND is_active = 1 LIMIT 1");
+            $primary_bank = (is_array($primary_bank) && !empty($primary_bank)) ? $primary_bank[0] : null;
+            
+            echo json_encode(['success' => true, 'data' => [
+                'invoices' => $invoices,
+                'plans' => $plans,
+                'primary_bank' => $primary_bank,
+                'summary' => [
+                    'total' => $sum_total,
+                    'paid' => $sum_paid
+                ],
+                'filter' => [
+                    'month' => $filter_month,
+                    'year' => $filter_year,
+                    'status' => $filter_status
+                ]
+            ]]);
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Action tidak dikenali']);
@@ -358,6 +494,136 @@ if ($method === 'POST') {
             $cara_bayar = $input['cara_bayar'] ?? 'tunai';
             $r = prosesLunasDipercepat($pinjaman_id, $user['id'], $cara_bayar);
             echo json_encode($r);
+            break;
+
+        // ─── Approve bos registration (appOwner only) ───────────────
+        case 'approve_bos_registration':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            $registration_id = (int)($input['registration_id'] ?? 0);
+            if (!$registration_id) { http_response_code(400); echo json_encode(['error' => 'registration_id wajib']); exit(); }
+            
+            $registration = query("SELECT * FROM bos_registrations WHERE id = ?", [$registration_id]);
+            if (!is_array($registration) || empty($registration)) {
+                http_response_code(404); echo json_encode(['error' => 'Pendaftaran tidak ditemukan']); exit();
+            }
+            
+            $reg = $registration[0];
+            if ($reg['status'] !== 'pending') {
+                http_response_code(400); echo json_encode(['error' => 'Pendaftaran sudah diproses']); exit();
+            }
+            
+            // Get default billing plan (STARTER)
+            $default_plan = query("SELECT id FROM billing_plans WHERE kode = 'STARTER' AND is_active = 1 LIMIT 1");
+            $default_plan_id = (is_array($default_plan) && !empty($default_plan)) ? (int)$default_plan[0]['id'] : null;
+            
+            // Create user account
+            $user_result = query(
+                "INSERT INTO users (username, password, nama, email, telp, role, status) VALUES (?, ?, ?, ?, ?, 'bos', 'aktif')",
+                [$reg['username'], $reg['password'], $reg['nama'], $reg['email'] ?? '', $reg['telp'] ?? '']
+            );
+            
+            if ($user_result) {
+                $bos_user_id = query("SELECT LAST_INSERT_ID() as id")[0]['id'];
+                
+                // Auto-assign default billing plan
+                if ($default_plan_id) {
+                    query("INSERT INTO koperasi_billing (bos_user_id, billing_plan_id, status, tanggal_mulai, created_by) VALUES (?, ?, 'aktif', CURDATE(), ?)",
+                        [$bos_user_id, $default_plan_id, $user['id']]);
+                }
+                
+                query("UPDATE bos_registrations SET status = 'approved', approved_at = NOW(), approved_by = ? WHERE id = ?",
+                    [$user['id'], $registration_id]);
+                
+                $plan_info = $default_plan_id ? " dengan plan STARTER" : " (belum ada billing plan)";
+                echo json_encode(['success' => true, 'message' => "Bos '{$reg['nama']}' ({$reg['nama_usaha']}) berhasil disetujui. User aktif dengan username: {$reg['username']}{$plan_info}"]);
+            } else {
+                http_response_code(500); echo json_encode(['error' => 'Gagal membuat akun user Bos']); exit();
+            }
+            break;
+
+        // ─── Reject bos registration (appOwner only) ────────────────
+        case 'reject_bos_registration':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            $registration_id = (int)($input['registration_id'] ?? 0);
+            $rejection_reason = trim($input['rejection_reason'] ?? '');
+            if (!$registration_id) { http_response_code(400); echo json_encode(['error' => 'registration_id wajib']); exit(); }
+            
+            $registration = query("SELECT * FROM bos_registrations WHERE id = ?", [$registration_id]);
+            if (!is_array($registration) || empty($registration)) {
+                http_response_code(404); echo json_encode(['error' => 'Pendaftaran tidak ditemukan']); exit();
+            }
+            
+            $reg = $registration[0];
+            if ($reg['status'] !== 'pending') {
+                http_response_code(400); echo json_encode(['error' => 'Pendaftaran sudah diproses']); exit();
+            }
+            
+            query("UPDATE bos_registrations SET status = 'rejected', rejected_reason = ?, approved_by = ?, approved_at = NOW() WHERE id = ?",
+                [$rejection_reason, $user['id'], $registration_id]);
+            
+            echo json_encode(['success' => true, 'message' => "Pendaftaran '{$reg['nama']}' ditolak."]);
+            break;
+
+        // ─── Generate invoices (appOwner only) ─────────────────────────
+        case 'generate_invoices':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            $bulan = (int)($input['bulan'] ?? date('n'));
+            $tahun = (int)($input['tahun'] ?? date('Y'));
+            $generated = 0;
+
+            $active_billings = query("SELECT kb.*, bp.* FROM koperasi_billing kb JOIN billing_plans bp ON bp.id = kb.billing_plan_id WHERE kb.status = 'aktif'");
+            if (is_array($active_billings)) {
+                foreach ($active_billings as $kb) {
+                    // Check if invoice already exists
+                    $exists = query("SELECT id FROM koperasi_invoices WHERE koperasi_billing_id = ? AND periode_bulan = ? AND periode_tahun = ?",
+                        [$kb['id'], $bulan, $tahun]);
+                    if (is_array($exists) && !empty($exists)) continue;
+
+                    $biaya_fixed = 0; $biaya_persen = 0; $biaya_usage = 0;
+                    $keuntungan = 0; $total_api = 0; $total_renders = 0;
+
+                    if ($kb['tipe'] === 'fixed') {
+                        $biaya_fixed = (float)$kb['harga_bulanan'];
+                    } elseif ($kb['tipe'] === 'percentage') {
+                        // Get koperasi profit from pembayaran this month
+                        $profit = query("SELECT COALESCE(SUM(total_bayar),0) as p FROM pembayaran WHERE petugas_id IN (SELECT id FROM users WHERE (owner_bos_id = ? OR id = ?)) AND MONTH(tanggal_bayar) = ? AND YEAR(tanggal_bayar) = ?",
+                            [$kb['bos_user_id'], $kb['bos_user_id'], $bulan, $tahun]);
+                        $keuntungan = (is_array($profit) && isset($profit[0])) ? (float)$profit[0]['p'] : 0;
+                        $biaya_persen = $keuntungan * ((float)$kb['persentase_keuntungan'] / 100);
+                    } elseif ($kb['tipe'] === 'usage') {
+                        $usage = query("SELECT COALESCE(SUM(total_api_calls),0) as api, COALESCE(SUM(total_renders),0) as renders FROM usage_daily_summary WHERE bos_user_id = ? AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?",
+                            [$kb['bos_user_id'], $bulan, $tahun]);
+                        if (is_array($usage) && isset($usage[0])) {
+                            $total_api = (int)$usage[0]['api'];
+                            $total_renders = (int)$usage[0]['renders'];
+                        }
+                        $billable_api = max(0, $total_api - (int)$kb['api_call_gratis']);
+                        $billable_renders = max(0, $total_renders - (int)$kb['render_gratis']);
+                        $biaya_usage = ($billable_api * (float)$kb['harga_per_api_call']) + ($billable_renders * (float)$kb['harga_per_render']);
+                    }
+
+                    $subtotal = $biaya_fixed + $biaya_persen + $biaya_usage;
+                    $kode = 'INV-' . $tahun . str_pad($bulan, 2, '0', STR_PAD_LEFT) . '-' . str_pad($kb['bos_user_id'], 4, '0', STR_PAD_LEFT);
+
+                    query("INSERT INTO koperasi_invoices (koperasi_billing_id, bos_user_id, kode_invoice, periode_bulan, periode_tahun, biaya_fixed, biaya_persentase, keuntungan_koperasi, biaya_usage, total_api_calls, total_renders, subtotal, total, status, tanggal_terbit, tanggal_jatuh_tempo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'terbit', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 14 DAY))",
+                        [$kb['id'], $kb['bos_user_id'], $kode, $bulan, $tahun, $biaya_fixed, $biaya_persen, $keuntungan, $biaya_usage, $total_api, $total_renders, $subtotal, $subtotal]);
+                    $generated++;
+                }
+            }
+            echo json_encode(['success' => true, 'message' => "$generated invoice berhasil di-generate untuk periode $bulan/$tahun."]);
+            break;
+
+        // ─── Mark invoice as paid (appOwner only) ─────────────────────
+        case 'mark_invoice_paid':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            $invoice_id = (int)($input['invoice_id'] ?? 0);
+            $metode = $input['metode_bayar'] ?? 'transfer';
+            if ($invoice_id) {
+                query("UPDATE koperasi_invoices SET status = 'dibayar', tanggal_bayar = CURDATE(), metode_bayar = ? WHERE id = ?", [$metode, $invoice_id]);
+                echo json_encode(['success' => true, 'message' => 'Invoice ditandai sebagai dibayar.']);
+            } else {
+                http_response_code(400); echo json_encode(['error' => 'invoice_id wajib']); exit();
+            }
             break;
 
         default:
