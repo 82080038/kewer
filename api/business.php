@@ -258,6 +258,37 @@ if ($method === 'GET') {
             ]]);
             break;
 
+        // Get koperasi data for koperasi page
+        case 'koperasi_data':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            
+            // Get billing plans for assignment
+            $plans = query("SELECT id, kode, nama, tipe, harga_bulanan, persentase_keuntungan FROM billing_plans WHERE is_active = 1 ORDER BY harga_bulanan");
+            if (!is_array($plans)) $plans = [];
+            
+            // Get koperasi list
+            $koperasi_list = query("
+                SELECT 
+                    br.id as reg_id, br.nama_usaha, br.alamat_usaha, br.username, br.nama, br.email, br.telp,
+                    br.approved_at,
+                    u.id as user_id, u.status as user_status,
+                    bp.nama as plan_nama, bp.tipe as plan_tipe, bp.harga_bulanan,
+                    kb.status as billing_status
+                FROM bos_registrations br
+                LEFT JOIN users u ON u.username = br.username AND u.role = 'bos'
+                LEFT JOIN koperasi_billing kb ON kb.bos_user_id = u.id AND kb.status = 'aktif'
+                LEFT JOIN billing_plans bp ON bp.id = kb.billing_plan_id
+                WHERE br.status = 'approved'
+                ORDER BY br.approved_at DESC
+            ");
+            if (!is_array($koperasi_list)) $koperasi_list = [];
+            
+            echo json_encode(['success' => true, 'data' => [
+                'plans' => $plans,
+                'koperasi_list' => $koperasi_list
+            ]]);
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Action tidak dikenali']);
@@ -624,6 +655,102 @@ if ($method === 'POST') {
             } else {
                 http_response_code(400); echo json_encode(['error' => 'invoice_id wajib']); exit();
             }
+            break;
+
+        // ─── Suspend koperasi (appOwner only) ─────────────────────────
+        case 'suspend_koperasi':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            $bos_user_id = (int)($input['bos_user_id'] ?? 0);
+            if ($bos_user_id) {
+                query("UPDATE users SET status = 'nonaktif' WHERE id = ? AND role = 'bos'", [$bos_user_id]);
+                query("UPDATE koperasi_billing SET status = 'suspended' WHERE bos_user_id = ? AND status = 'aktif'", [$bos_user_id]);
+                echo json_encode(['success' => true, 'message' => 'Koperasi berhasil di-suspend.']);
+            } else {
+                http_response_code(400); echo json_encode(['error' => 'bos_user_id wajib']); exit();
+            }
+            break;
+
+        // ─── Activate koperasi (appOwner only) ────────────────────────
+        case 'activate_koperasi':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            $bos_user_id = (int)($input['bos_user_id'] ?? 0);
+            if ($bos_user_id) {
+                query("UPDATE users SET status = 'aktif' WHERE id = ? AND role = 'bos'", [$bos_user_id]);
+                echo json_encode(['success' => true, 'message' => 'Koperasi berhasil diaktifkan kembali.']);
+            } else {
+                http_response_code(400); echo json_encode(['error' => 'bos_user_id wajib']); exit();
+            }
+            break;
+
+        // ─── Assign billing plan to koperasi (appOwner only) ───────────
+        case 'assign_billing_plan':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            $bos_user_id = (int)($input['bos_user_id'] ?? 0);
+            $plan_id = (int)($input['billing_plan_id'] ?? 0);
+            if ($bos_user_id && $plan_id) {
+                // Deactivate old billing
+                query("UPDATE koperasi_billing SET status = 'cancelled' WHERE bos_user_id = ? AND status = 'aktif'", [$bos_user_id]);
+                // Create new billing
+                query("INSERT INTO koperasi_billing (bos_user_id, billing_plan_id, status, tanggal_mulai, created_by) VALUES (?, ?, 'aktif', CURDATE(), ?)",
+                    [$bos_user_id, $plan_id, $user['id']]);
+                echo json_encode(['success' => true, 'message' => 'Billing plan berhasil di-assign.']);
+            } else {
+                http_response_code(400); echo json_encode(['error' => 'bos_user_id dan billing_plan_id wajib']); exit();
+            }
+            break;
+
+        // ─── Generate invoice for specific koperasi (appOwner only) ─────
+        case 'generate_koperasi_invoice':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            $bos_user_id = (int)($input['bos_user_id'] ?? 0);
+            $bulan = (int)($input['bulan'] ?? date('n'));
+            $tahun = (int)($input['tahun'] ?? date('Y'));
+
+            // Get active billing for this koperasi
+            $billing = query("SELECT kb.*, bp.* FROM koperasi_billing kb JOIN billing_plans bp ON bp.id = kb.billing_plan_id WHERE kb.bos_user_id = ? AND kb.status = 'aktif' LIMIT 1", [$bos_user_id]);
+            if (!is_array($billing) || empty($billing)) {
+                http_response_code(400); echo json_encode(['error' => 'Koperasi ini tidak memiliki billing plan aktif.']); exit();
+            }
+
+            $kb = $billing[0];
+
+            // Check if invoice already exists
+            $exists = query("SELECT id FROM koperasi_invoices WHERE koperasi_billing_id = ? AND periode_bulan = ? AND periode_tahun = ?",
+                [$kb['id'], $bulan, $tahun]);
+            if (is_array($exists) && !empty($exists)) {
+                http_response_code(400); echo json_encode(['error' => 'Invoice untuk periode ini sudah ada.']); exit();
+            }
+
+            $biaya_fixed = 0; $biaya_persen = 0; $biaya_usage = 0;
+            $keuntungan = 0; $total_api = 0; $total_renders = 0;
+
+            if ($kb['tipe'] === 'fixed') {
+                $biaya_fixed = (float)$kb['harga_bulanan'];
+            } elseif ($kb['tipe'] === 'percentage') {
+                // Get koperasi profit from pembayaran this month
+                $profit = query("SELECT COALESCE(SUM(total_bayar),0) as p FROM pembayaran WHERE petugas_id IN (SELECT id FROM users WHERE (owner_bos_id = ? OR id = ?)) AND MONTH(tanggal_bayar) = ? AND YEAR(tanggal_bayar) = ?",
+                    [$kb['bos_user_id'], $kb['bos_user_id'], $bulan, $tahun]);
+                $keuntungan = (is_array($profit) && isset($profit[0])) ? (float)$profit[0]['p'] : 0;
+                $biaya_persen = $keuntungan * ((float)$kb['persentase_keuntungan'] / 100);
+            } elseif ($kb['tipe'] === 'usage') {
+                $usage = query("SELECT COALESCE(SUM(total_api_calls),0) as api, COALESCE(SUM(total_renders),0) as renders FROM usage_daily_summary WHERE bos_user_id = ? AND MONTH(tanggal) = ? AND YEAR(tanggal) = ?",
+                    [$kb['bos_user_id'], $bulan, $tahun]);
+                if (is_array($usage) && isset($usage[0])) {
+                    $total_api = (int)$usage[0]['api'];
+                    $total_renders = (int)$usage[0]['renders'];
+                }
+                $billable_api = max(0, $total_api - (int)$kb['api_call_gratis']);
+                $billable_renders = max(0, $total_renders - (int)$kb['render_gratis']);
+                $biaya_usage = ($billable_api * (float)$kb['harga_per_api_call']) + ($billable_renders * (float)$kb['harga_per_render']);
+            }
+
+            $subtotal = $biaya_fixed + $biaya_persen + $biaya_usage;
+            $kode = 'INV-' . $tahun . str_pad($bulan, 2, '0', STR_PAD_LEFT) . '-' . str_pad($kb['bos_user_id'], 4, '0', STR_PAD_LEFT);
+
+            query("INSERT INTO koperasi_invoices (koperasi_billing_id, bos_user_id, kode_invoice, periode_bulan, periode_tahun, biaya_fixed, biaya_persentase, keuntungan_koperasi, biaya_usage, total_api_calls, total_renders, subtotal, total, status, tanggal_terbit, tanggal_jatuh_tempo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'terbit', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 14 DAY))",
+                [$kb['id'], $kb['bos_user_id'], $kode, $bulan, $tahun, $biaya_fixed, $biaya_persen, $keuntungan, $biaya_usage, $total_api, $total_renders, $subtotal, $subtotal]);
+
+            echo json_encode(['success' => true, 'message' => "Invoice {$kode} berhasil di-generate untuk periode {$bulan}/{$tahun}."]);
             break;
 
         default:
