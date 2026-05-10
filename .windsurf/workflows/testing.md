@@ -43,12 +43,144 @@ curl -H "Authorization: Bearer kewer-api-token-2024" http://localhost/kewer/api/
    - setting_bunga/index.php
    - permissions/index.php
    - users/index.php
+   - app_owner/settings.php
 
 2. Cek:
    - Data dimuat via AJAX (loading spinner muncul)
    - Tabel dirender secara dinamis
    - Tidak ada PHP error di console
    - SweetAlert2 alerts berfungsi
+
+### Testing JavaScript Console
+1. Buka Developer Tools → Console tab
+2. Verifikasi:
+   - jQuery terdefinisi (bukan "jQuery is not defined")
+   - KewerAPI object tersedia
+   - Tidak ada JavaScript error
+   - AJAX requests berhasil (Network tab)
+
+### Testing API Endpoints
+1. Buka Developer Tools → Network tab
+2. Filter by XHR/fetch
+3. Verifikasi:
+   - Response format JSON dengan {success, data, error}
+   - Status code 200 untuk success, 4xx/5xx untuk error
+   - Response time reasonable (< 1s)
+
+### Testing Form Submissions
+1. Submit form pada halaman yang sudah dikonversi
+2. Verifikasi:
+   - Form submit via AJAX (bukan page reload)
+   - SweetAlert2 alert muncul
+   - Data terupdate tanpa refresh halaman
+   - Loading state ditampilkan selama request
+
+### Testing Error Handling
+1. Simulasikan error (invalid data, network error)
+2. Verifikasi:
+   - Error message ditampilkan di SweetAlert2
+   - Tidak ada native alert()
+   - Error message jelas dan informatif
+   - Form tidak reset jika error
+
+### Testing Client-Side Rendering Pattern
+**IMPORTANT**: Saat membuat atau memodifikasi halaman, ikuti pattern ini:
+
+```javascript
+// 1. Struktur halaman PHP minimal
+<?php
+require_once BASE_PATH . '/config/path.php';
+requireLogin();
+$page_title = 'Page Title';
+?>
+<?php include BASE_PATH . '/includes/sidebar.php'; ?>
+
+<div id="alert-container"></div>
+<div id="loading-spinner">
+    <div class="spinner-border spinner-border-sm" role="status"></div>
+</div>
+<div id="data-container"></div>
+
+<script>
+// 2. Load data via API
+$(document).ready(function() {
+    loadData();
+    setupForms();
+});
+
+function loadData() {
+    window.KewerAPI.getData(params).done(response => {
+        if (response.success) {
+            renderData(response.data);
+        } else {
+            showAlert(response.error, 'danger');
+        }
+    }).fail(() => {
+        showAlert('Gagal memuat data', 'danger');
+    });
+}
+
+// 3. Render data dengan template literals
+function renderData(data) {
+    const html = `
+        <table class="table">
+            ${data.map(item => `
+                <tr>
+                    <td>${item.nama}</td>
+                    <td>${item.status}</td>
+                </tr>
+            `).join('')}
+        </table>
+    `;
+    $('#data-container').html(html);
+}
+
+// 4. Setup form submission via AJAX
+function setupForms() {
+    $('#formId').on('submit', function(e) {
+        e.preventDefault();
+        const formData = $(this).serialize();
+        
+        $.ajax({
+            url: 'api/endpoint.php',
+            method: 'POST',
+            data: formData,
+            success: function(response) {
+                showAlert('Data berhasil disimpan');
+                loadData();
+            },
+            error: function(xhr) {
+                const error = xhr.responseJSON?.error || 'Gagal menyimpan data';
+                showAlert(error, 'danger');
+            }
+        });
+    });
+}
+
+// 5. Helper function untuk alerts
+function showAlert(message, type = 'success') {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    $('#alert-container').html(alertHtml);
+}
+</script>
+```
+
+### Checklist untuk Testing Client-Side Rendering
+- [ ] Halaman menggunakan loading spinner
+- [ ] Data dimuat via AJAX (bukan PHP render)
+- [ ] Form submit via AJAX (bukan page reload)
+- [ ] Alert menggunakan SweetAlert2
+- [ ] Error handling dengan showAlert()
+- [ ] Tidak ada PHP query di halaman
+- [ ] API endpoint mengembalikan JSON format {success, data, error}
+- [ ] jQuery terdefinisi sebelum script lain
+- [ ] Tidak ada JavaScript error di console
+- [ ] Data dirender dengan template literals
 
 ## Manual Testing Checklist
 

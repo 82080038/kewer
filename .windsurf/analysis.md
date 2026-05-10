@@ -72,11 +72,101 @@ All API endpoints return standardized JSON response:
 ```
 
 ### Page Conversion Pattern
-1. Remove PHP queries and server-side data fetching
-2. Replace PHP-rendered HTML with loading spinners
-3. Add JavaScript functions to fetch data via KewerAPI
-4. Implement dynamic HTML rendering using template literals
-5. Maintain role-based access control via API/backend
+**IMPORTANT**: When modifying or creating pages, ALWAYS use client-side rendering pattern. Do NOT use PHP server-side rendering.
+
+**Conversion Steps:**
+1. Remove all PHP queries and server-side data fetching from the page
+2. Replace PHP-rendered HTML with loading spinners (`<div class="spinner-border spinner-border-sm" role="status"></div>`)
+3. Add JavaScript functions to fetch data via KewerAPI or $.ajax()
+4. Implement dynamic HTML rendering using JavaScript template literals (backticks)
+5. Maintain role-based access control via API/backend (not in PHP)
+6. Use standardized AJAX error handling with showAlert()
+
+**JavaScript Structure Pattern:**
+```javascript
+$(document).ready(function() {
+    loadData();
+    setupForms();
+});
+
+function loadData() {
+    window.KewerAPI.getData().done(response => {
+        if (response.success) {
+            renderData(response.data);
+        }
+    });
+}
+
+function renderData(data) {
+    const html = `<!-- template literal HTML -->`;
+    $('#container').html(html);
+}
+
+function setupForms() {
+    $('#formId').on('submit', function(e) {
+        e.preventDefault();
+        const formData = $(this).serialize();
+        $.ajax({
+            url: 'api/endpoint.php',
+            method: 'POST',
+            data: formData,
+            success: function() {
+                showAlert('Success message');
+                loadData();
+            },
+            error: function(xhr) {
+                const error = xhr.responseJSON?.error || 'Error message';
+                showAlert(error, 'danger');
+            }
+        });
+    });
+}
+
+function showAlert(message, type = 'success') {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    $('#alert-container').html(alertHtml);
+}
+```
+
+**API Endpoint Pattern:**
+All API endpoints must return standardized JSON:
+```json
+{
+  "success": true|false,
+  "data": { ... },
+  "error": "Error message if failed"
+}
+```
+
+**KewerAPI Usage:**
+- `window.KewerAPI.getCurrentUser()` - Get current user data
+- `window.KewerAPI.getData(params)` - Generic GET request
+- `window.KewerAPI.postData(data)` - Generic POST request
+- `window.KewerAPI.putData(id, data)` - Generic PUT request
+- `window.KewerAPI.deleteData(params)` - Generic DELETE request
+
+**Direct AJAX Usage:**
+For custom endpoints not in KewerAPI:
+```javascript
+$.ajax({
+    url: 'api/endpoint.php',
+    method: 'GET',
+    data: { action: 'specific_action', param: value },
+    success: function(response) {
+        if (response.success) {
+            // handle data
+        }
+    },
+    error: function() {
+        showAlert('Error message', 'danger');
+    }
+});
+```
 
 ### Converted Pages (v2.5.0)
 - dashboard.php
@@ -94,6 +184,7 @@ All API endpoints return standardized JSON response:
 - setting_bunga/index.php
 - permissions/index.php
 - users/index.php
+- app_owner/settings.php (accordion dropdown + client-side rendering)
 
 ---
 
