@@ -1,7 +1,7 @@
 # Kewer Application Analysis
 
-> **Terakhir diperbarui**: 8 Mei 2026 (Batch Implementation Selesai)
-> **Versi Aplikasi**: v2.4.0 (Nasabah Portal + Penagihan System + Enhanced Features + Advanced Analytics)
+> **Terakhir diperbarui**: 10 Mei 2026 (Client-Side Rendering Conversion Selesai)
+> **Versi Aplikasi**: v2.5.0 (Client-Side JSON API Rendering + Interoperable API)
 
 ## Overview
 **Project Name**: Kewer - Koperasi Warga Ekonomi Rakyat
@@ -11,6 +11,7 @@
 **Repository**: https://github.com/82080038/kewer.git
 
 > **PENTING**: Ini BUKAN koperasi simpan pinjam formal. Tidak ada modul simpanan, SHU, atau laporan SAK EP. Fokus utama adalah pencairan pinjaman dan kutipan angsuran lapangan.
+> **ARsitektur Baru**: Aplikasi sekarang menggunakan client-side rendering dengan jQuery dan JSON API untuk interoperabilitas dengan aplikasi lain.
 
 ## Business Model
 - **Target**: Market vendors (pedagang pasar) needing micro-loans
@@ -20,12 +21,14 @@
 - **Platform**: Multi-tenant — setiap Bos punya koperasi sendiri, appOwner mengelola platform
 - **Nasabah Portal**: Self-service portal untuk nasabah (dashboard, profil, pengajuan pinjaman/simpanan)
 - **Penagihan System**: Manajemen penagihan dengan pengingat otomatis
+- **API Interoperability**: RESTful JSON API untuk integrasi dengan aplikasi lain (v2.5.0)
 
 ## Architecture
 - **Backend**: PHP 8.2 with MySQL/MariaDB
-- **Frontend**: Bootstrap 5.3 + Vanilla JavaScript + Chart.js
+- **Frontend**: Bootstrap 5.3 + jQuery + Vanilla JavaScript + Chart.js (Client-Side Rendering)
+- **API Layer**: RESTful JSON API dengan standardized response format (v2.5.0)
 - **Database**: 3 database terpisah (kewer, db_alamat, db_orang)
-- **Authentication**: Session-based with role-based permissions
+- **Authentication**: Session-based with role-based permissions + API token authentication
 - **Platform**: appOwner layer (billing, usage tracking, AI advisor, province activation)
 - **Audit Trail**: CRUD operations logged to audit_log table
 - **Feature Flags**: Dynamic feature toggle system (v2.3.1)
@@ -37,6 +40,60 @@
 - **Geographic Analysis**: Radius search, demographic analysis, heatmap (v2.4.0)
 - **Multi-branch Sync**: Data synchronization service untuk cabang (v2.4.0)
 - **Webhook System**: Third-party API integration dengan webhook triggers (v2.4.0)
+- **Global API Helper**: Standardized AJAX calls via KewerAPI object (v2.5.0)
+- **Client-Side Rendering**: Dynamic HTML rendering using JavaScript template literals (v2.5.0)
+
+## Client-Side Rendering Architecture (v2.5.0)
+
+### Frontend Stack
+- **jQuery**: DOM manipulation and AJAX calls
+- **Bootstrap 5.3**: UI framework
+- **Bootstrap Icons**: Icon library
+- **DataTables.js**: Advanced table functionality
+- **SweetAlert2**: Beautiful alert dialogs
+- **Select2**: Enhanced dropdowns
+- **Flatpickr**: Modern date picker
+- **Chart.js**: Data visualization
+
+### Global JavaScript Files
+- **includes/js/api.js**: Global API helper (KewerAPI object) with standardized AJAX calls
+- **includes/js/app.js**: Master app JavaScript for page initialization
+- **includes/js/page-converter.js**: Guide for converting pages to client-side rendering
+
+### API Response Format
+All API endpoints return standardized JSON response:
+```json
+{
+  "success": true|false,
+  "data": { ... },
+  "error": "Error message if failed",
+  "stats": { ... }  // Optional statistics
+}
+```
+
+### Page Conversion Pattern
+1. Remove PHP queries and server-side data fetching
+2. Replace PHP-rendered HTML with loading spinners
+3. Add JavaScript functions to fetch data via KewerAPI
+4. Implement dynamic HTML rendering using template literals
+5. Maintain role-based access control via API/backend
+
+### Converted Pages (v2.5.0)
+- dashboard.php
+- nasabah/index.php
+- pinjaman/index.php
+- angsuran/index.php
+- pembayaran/index.php
+- cabang/index.php
+- petugas/index.php
+- laporan/index.php
+- audit/index.php
+- pengeluaran/index.php
+- kas_bon/index.php
+- kas_petugas/index.php
+- setting_bunga/index.php
+- permissions/index.php
+- users/index.php
 
 ---
 
@@ -110,14 +167,66 @@
 - `db_orang.addresses` → `db_alamat.provinces/regencies/districts/villages`
 - Models (Nasabah.php, Cabang.php) use `LEFT JOIN db_alamat.provinces` etc.
 
-### v2.4.0 Database Additions
-- `penagihan` - Penagihan management system
-- `penagihan_log` - Log aktivitas penagihan
-- `ref_frekuensi_angsuran` - Reference table untuk frekuensi angsuran (menggantikan enum)
-- `ref_produk_pinjaman` - Catalog produk pinjaman
-- `ref_jenis_penagihan` - Jenis penagihan reference
-- `pinjaman_jaminan` - Jaminan pinjaman
-- `v_penagihan_hari_ini` - View untuk penagihan hari ini
+### v2.5.0 Database Additions
+- `penagihan` - Penagihan management system (v2.4.0)
+- `penagihan_log` - Log aktivitas penagihan (v2.4.0)
+- `ref_frekuensi_angsuran` - Reference table untuk frekuensi angsuran (menggantikan enum) (v2.4.0)
+- `ref_produk_pinjaman` - Catalog produk pinjaman (v2.4.0)
+- `ref_jenis_penagihan` - Jenis penagihan reference (v2.4.0)
+- `pinjaman_jaminan` - Jaminan pinjaman (v2.4.0)
+- `v_penagihan_hari_ini` - View untuk penagihan hari ini (v2.4.0)
+
+## API Interoperability (v2.5.0)
+
+### RESTful API Design
+All endpoints follow RESTful conventions:
+- **GET**: Retrieve data
+- **POST**: Create new resource
+- **PUT**: Update existing resource
+- **DELETE**: Remove resource
+
+### Authentication
+- **Session-based**: For web application
+- **API Token**: For external integrations (Bearer token: kewer-api-token-2024)
+
+### Standard Response Format
+```json
+{
+  "success": true|false,
+  "data": { ... },
+  "error": "Error message if failed",
+  "stats": { ... },
+  "pagination": {
+    "page": 1,
+    "limit": 25,
+    "total": 100
+  }
+}
+```
+
+### Available API Endpoints
+- `/api/dashboard` - Dashboard statistics
+- `/api/nasabah` - CRUD nasabah
+- `/api/pinjaman` - CRUD pinjaman
+- `/api/angsuran` - CRUD angsuran
+- `/api/pembayaran` - CRUD pembayaran
+- `/api/cabang` - CRUD cabang
+- `/api/users` - CRUD users
+- `/api/petugas` - CRUD petugas
+- `/api/laporan` - Generate reports
+- `/api/audit` - Audit logs
+- `/api/pengeluaran` - CRUD pengeluaran
+- `/api/kas_bon` - CRUD kas bon
+- `/api/kas_petugas` - CRUD kas petugas
+- `/api/setting_bunga` - CRUD setting bunga
+- `/api/permissions` - Manage permissions
+
+### Integration with External Applications
+The API is designed to be interoperable with:
+- Mobile applications (React Native, Flutter)
+- Third-party systems
+- Webhooks for event notifications
+- Export/Import data endpoints
 
 ---
 

@@ -1,8 +1,64 @@
 ---
-description: Security improvements dan maintenance untuk aplikasi Kewer
+description: Security improvements dan maintenance untuk aplikasi Kewer v2.5.0
 ---
 
-## Security Workflow
+# Security (v2.5.0)
+
+## API Security
+
+### Authentication
+- **Session-based**: Untuk web application
+- **API Token**: Untuk integrasi eksternal (Bearer token: kewer-api-token-2024)
+- Token harus disimpan di environment variable, bukan hardcoded
+
+### Authorization
+- Role-based access control (RBAC) diterapkan di API level
+- Permissions checked sebelum data access
+- User hanya dapat akses data sesuai role dan cabang
+
+### Input Validation
+- Semua input divalidasi di server-side
+- Gunakan prepared statements untuk SQL queries
+- Sanitasi output untuk mencegah XSS
+
+### Rate Limiting
+- API rate limiting: 60 requests/minute
+- Session timeout: 2 jam inactivity
+- Failed login attempt limiting
+
+## Client-Side Security
+
+### XSS Prevention
+- Escape semua user input sebelum render ke DOM
+- Gunakan jQuery text() bukan html() untuk user content
+- Validasi data dari API sebelum display
+
+### CSRF Protection
+- CSRF token untuk form submissions
+- Verify token pada server-side
+- Token regenerate per request
+
+### Sensitive Data
+- Jangan simpan sensitive data di localStorage
+- Gunakan secure cookies
+- Encrypt sensitive data di transit (HTTPS)
+
+## Security Testing Checklist
+
+### API Security
+- [ ] Test authentication dengan invalid token
+- [ ] Test authorization dengan different roles
+- [ ] Test rate limiting
+- [ ] Test SQL injection attempts
+- [ ] Test XSS attempts
+
+### Client-Side Security
+- [ ] Verify no sensitive data in localStorage
+- [ ] Check XSS vulnerabilities
+- [ ] Verify CSRF protection
+- [ ] Check for exposed API keys
+
+## Legacy Security Workflow (Optional)
 
 ### 1. Security Setup Checklist
 - [ ] CSRF protection telah diimplementasi di semua forms

@@ -1,8 +1,103 @@
 ---
-description: Testing workflow untuk aplikasi Kewer
+description: Testing procedures untuk aplikasi Kewer v2.5.0
 ---
 
-## Testing Workflow
+# Testing Aplikasi Kewer (v2.5.0)
+
+## API Testing
+
+### Test API Endpoints dengan cURL
+```bash
+# Test dashboard API
+curl -H "Authorization: Bearer kewer-api-token-2024" http://localhost/kewer/api/dashboard
+
+# Test nasabah API
+curl -H "Authorization: Bearer kewer-api-token-2024" http://localhost/kewer/api/nasabah
+
+# Test pinjaman API
+curl -H "Authorization: Bearer kewer-api-token-2024" http://localhost/kewer/api/pinjaman
+```
+
+### Test dengan Browser
+- Buka Developer Tools → Network tab
+- Navigasi ke setiap halaman
+- Verifikasi XHR requests ke `/api/`
+- Cek response JSON format
+
+## Client-Side Rendering Testing
+
+### Verifikasi Halaman
+1. Buka setiap halaman yang sudah dikonversi:
+   - dashboard.php
+   - nasabah/index.php
+   - pinjaman/index.php
+   - angsuran/index.php
+   - pembayaran/index.php
+   - cabang/index.php
+   - petugas/index.php
+   - laporan/index.php
+   - audit/index.php
+   - pengeluaran/index.php
+   - kas_bon/index.php
+   - kas_petugas/index.php
+   - setting_bunga/index.php
+   - permissions/index.php
+   - users/index.php
+
+2. Cek:
+   - Data dimuat via AJAX (loading spinner muncul)
+   - Tabel dirender secara dinamis
+   - Tidak ada PHP error di console
+   - SweetAlert2 alerts berfungsi
+
+## Manual Testing Checklist
+
+### CRUD Operations
+- [ ] Create data via modal/form
+- [ ] Read data via table/list
+- [ ] Update data via edit function
+- [ ] Delete data dengan konfirmasi
+
+### API Integration
+- [ ] Response format seragam (success, data, error)
+- [ ] Authentication token berfungsi
+- [ ] Pagination (jika ada)
+- [ ] Filter dan search berfungsi
+
+### Role-Based Access
+- [ ] Permissions diterapkan via API
+- [ ] Role-based filters berfungsi
+- [ ] Unauthorized access ditolak
+
+## API Interoperability Testing
+
+### Test dengan External Applications
+```bash
+# Test API dengan Postman atau curl
+curl -X GET "http://localhost/kewer/api/nasabah" \
+  -H "Authorization: Bearer kewer-api-token-2024" \
+  -H "Content-Type: application/json"
+
+# Test POST request
+curl -X POST "http://localhost/kewer/api/nasabah" \
+  -H "Authorization: Bearer kewer-api-token-2024" \
+  -H "Content-Type: application/json" \
+  -d '{"nama":"Test","alamat":"Test"}'
+```
+
+### Test Response Format
+Verifikasi semua API endpoint mengembalikan format:
+```json
+{
+  "success": true|false,
+  "data": { ... },
+  "error": "Error message if failed"
+}
+```
+
+---
+
+## Legacy Testing (Optional)
 
 ### 1. Quick Full Test (semua halaman + API)
 ```bash

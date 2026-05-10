@@ -1,103 +1,80 @@
 ---
-description: Workflow untuk memperbaiki error secara menyeluruh di aplikasi Kewer
+description: Workflow perbaikan error untuk aplikasi Kewer v2.5.0
 ---
 
-# Workflow Perbaikan Error
+# Bugfix Workflow (v2.5.0)
 
-## Prinsip Utama
-1. **Periksa error serupa di seluruh aplikasi** - Ketika menemukan error, cari pola yang sama di file lain dan perbaiki secara konsisten
-2. **Periksa dampak perbaikan** - Setelah memperbaiki error, periksa bagian lain yang mungkin terdampak oleh perbaikan tersebut
+## Identifikasi Error
 
-## Langkah-langkah
+### 1. Cek Browser Console
+- Buka Developer Tools (F12)
+- Cek Console tab untuk JavaScript errors
+- Cek Network tab untuk failed API requests
+- Cek response status dan error messages
 
-### 1. Identifikasi Error
-- Analisis error yang dilaporkan
-- Pahami root cause dan pola error
-- Catat tipe error (array access, foreach, CORS, dll)
+### 2. Cek API Response
+- Verifikasi API endpoint mengembalikan format yang benar:
+  ```json
+  {
+    "success": true|false,
+    "data": { ... },
+    "error": "Error message if failed"
+  }
+  ```
+- Cek HTTP status codes (200, 400, 401, 403, 500)
 
-### 2. Cari Error Serupa
-- Gunakan grep untuk mencari pola kode yang sama di seluruh aplikasi
-- Fokus pada:
-  - Pola query()[0] yang langsung mengakses array
-  - Variabel yang digunakan dalam foreach tanpa pengecekan array
-  - URL eksternal DataTables language
-  - Error handling yang tidak lengkap
-- Prioritaskan file dengan pola yang sama
+### 3. Cek Server Logs
+- Cek PHP error logs
+- Cek database connection errors
+- Cek API authentication errors
 
-### 3. Perbaiki Secara Menyeluruh
-- Terapkan perbaikan yang konsisten di semua file yang terdampak
-- Gunakan pola yang sama untuk semua perbaikan
-- Tambahkan pengecekan array sebelum akses
-- Tambahkan fallback values yang sesuai
+## Perbaikan Error
 
-### 4. Periksa Dampak Perbaikan
-- Cari file lain yang menggunakan fungsi/variabel yang diperbaiki
-- Periksa apakah perbaikan mempengaruhi fungsionalitas lain
-- Pastikan tidak ada error baru yang muncul akibat perbaikan
-- Test area yang terkait dengan perbaikan
+### Frontend Errors (Client-Side Rendering)
+1. **Loading Spinner Stuck**
+   - Cek API endpoint response
+   - Verifikasi KewerAPI function call
+   - Cek network connectivity
 
-### 5. Update Todo List
-- Buat todo list untuk melacak semua perbaikan yang diperlukan
-- Update status todo saat setiap perbaikan selesai
-- Pastikan semua item dalam todo selesai sebelum menyelesaikan task
+2. **Data Not Rendering**
+   - Verifikasi render function logic
+   - Cek data structure matches template
+   - Cek DOM element IDs
 
-## Contoh Penerapan
+3. **Form Submission Failed**
+   - Cek form data serialization
+   - Verifikasi API endpoint URL
+   - Cek CSRF token (if required)
 
-### Error: Array offset pada query()[0]
-1. Cari semua instance `query(...)[0]` dengan grep
-2. Ganti dengan pola:
-   ```php
-   $result = query("SELECT ...", [$params]);
-   $value = is_array($result) && isset($result[0]) ? $result[0] : ['default' => 0];
-   ```
+### Backend Errors (API)
+1. **API Returns 500 Error**
+   - Cek PHP syntax errors
+   - Verifikasi database queries
+   - Cek authentication logic
 
-### Error: Foreach pada non-array
-1. Cari variabel yang digunakan dalam foreach
-2. Tambahkan pengecekan sebelum foreach:
-   ```php
-   if (!is_array($data)) {
-       $data = [];
-   }
-   foreach ($data as $item) { ... }
-   ```
+2. **Data Not Found**
+   - Verifikasi database records exist
+   - Cek WHERE clause conditions
+   - Verify role-based filters
 
-### Error: CORS DataTables language
-1. Cari semua external language URL
-2. Ganti dengan inline Indonesian translations
+3. **Permission Denied**
+   - Cek user role permissions
+   - Verify API authentication token
+   - Check role-based access control
 
-### Error: SQL column mismatch
-1. Periksa schema tabel dengan `DESCRIBE kewer.<table>`
-2. Common mismatches:
-   - `cabang.nama` → harus `cabang.nama_cabang`
-   - `pembayaran.metode` → harus `pembayaran.cara_bayar`
-   - `pembayaran.dibayar_oleh` → harus `pembayaran.petugas_id`
-   - `angsuran.ke` → harus `angsuran.no_angsuran`
-3. Gunakan `grep -rn "pattern" pages/ api/` untuk cari instance serupa
+## Perbaikan Menyeluruh
 
-### Error: Undefined variable
-1. Pastikan variabel diinisialisasi sebelum digunakan di template
-2. Pola: pindahkan inisialisasi `$error = ''; $success = '';` ke luar blok `if ($_POST)`
+### 1. Cek Pola Serupa
+- Search for similar error patterns in codebase
+- Check if same issue exists in other pages
+- Apply fix to all affected pages
 
-### Error: Layout inconsistency
-1. Semua halaman harus menggunakan `sidebar.php` (bukan inline sidebar)
-2. Pola layout standar: `main-container > sidebar.php > content-area`
-3. Jangan duplikasi navbar — `sidebar.php` sudah menyediakan navbar
+### 2. Update API Helper
+- If issue is with KewerAPI, update `includes/js/api.js`
+- Test with multiple endpoints
+- Update documentation
 
-## Quick Test Command
-```bash
-# Full E2E test semua role
-bash /tmp/kewer_e2e.sh
-
-# Check error log
-cat logs/error.log
-
-# PHP syntax check
-find . -name "*.php" -not -path "*/vendor/*" | xargs -I{} php -l {}
-```
-
-## Catatan Penting
-- Selalu gunakan pendekatan yang konsisten
-- Dokumentasikan perubahan yang dilakukan
-- Pastikan perbaikan tidak merusak fungsionalitas yang sudah ada
-- Test secara menyeluruh setelah perbaikan besar
-- Periksa `logs/error.log` setelah testing — harus kosong
+### 3. Perbarui Workflow
+- Update `.windsurf/analysis.md` if architecture change needed
+- Update relevant workflow documentation
+- Update TODO list

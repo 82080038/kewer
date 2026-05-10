@@ -2,79 +2,59 @@
 description: Setup dan konfigurasi awal aplikasi Kewer
 ---
 
-## Setup Aplikasi Kewer
+# Setup Aplikasi Kewer (v2.5.0)
 
-### 1. Clone Repository
-```bash
-cd /opt/lampp/htdocs
-git clone https://github.com/82080038/kewer.git
-cd kewer
-```
+## Prerequisites
+- XAMPP (Apache + MySQL/MariaDB + PHP 8.2+)
+- Git
+- Composer (untuk dependency management)
 
-### 2. Start XAMPP
-```bash
-echo "8208" | sudo -S /opt/lampp/lampp start
-```
+## Setup Steps
 
-### 3. Database Setup (3 database)
-```bash
-cd /opt/lampp/htdocs/kewer
+1. **Clone Repository**
+   ```bash
+   git clone https://github.com/82080038/kewer.git
+   cd kewer
+   ```
 
-# Buat ketiga database
-/opt/lampp/bin/mysql -u root -proot -e "CREATE DATABASE IF NOT EXISTS kewer;"
-/opt/lampp/bin/mysql -u root -proot -e "CREATE DATABASE IF NOT EXISTS db_alamat_simple;"
-/opt/lampp/bin/mysql -u root -proot -e "CREATE DATABASE IF NOT EXISTS db_orang;"
+2. **Start XAMPP**
+   - Start Apache
+   - Start MySQL/MariaDB
 
-# Import dari folder database/
-/opt/lampp/bin/mysql -u root -proot kewer < database/kewer.sql
-/opt/lampp/bin/mysql -u root -proot db_alamat_simple < database/db_alamat_simple.sql
-/opt/lampp/bin/mysql -u root -proot db_orang < database/db_orang.sql
-```
+3. **Import Database**
+   - Buka phpMyAdmin
+   - Buat 3 database: `kewer`, `db_alamat_simple`, `db_orang`
+   - Import SQL files dari folder `database/`
 
-### 4. Verifikasi Database
-```bash
-# Cek jumlah tabel (kewer: 64 tables + 3 views, alamat: 4, orang: 19 tables + 6 views)
-/opt/lampp/bin/mysql -u root -proot -e "
-SELECT 'kewer' as db, COUNT(*) as tables FROM information_schema.TABLES WHERE TABLE_SCHEMA='kewer' AND TABLE_TYPE='BASE TABLE'
-UNION ALL SELECT 'db_alamat_simple', COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='db_alamat_simple' AND TABLE_TYPE='BASE TABLE'
-UNION ALL SELECT 'db_orang', COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='db_orang' AND TABLE_TYPE='BASE TABLE';
-"
-```
+4. **Install Dependencies**
+   ```bash
+   composer install
+   ```
 
-### 5. Install Dependencies
-```bash
-cd /opt/lampp/htdocs/kewer
-composer install
-```
+5. **Konfigurasi Environment**
+   - Edit `config/database.php` sesuai konfigurasi database
+   - Edit `config/path.php` sesuai lokasi aplikasi
 
-### 6. Set Permissions
-```bash
-echo "8208" | sudo -S chmod -R 755 /opt/lampp/htdocs/kewer
-echo "8208" | sudo -S mkdir -p uploads
-echo "8208" | sudo -S chmod 777 uploads
-```
+6. **Setup Organizational Structure**
+   - Login sebagai appOwner (appowner / AppOwner2024!)
+   - Register Bos
+   - Setup kantor pusat
+   - Delegasi permissions
+   - Assign branch managers
 
-### 7. Akses Aplikasi
-Buka browser: http://localhost/kewer/login.php
+7. **Testing API**
+   - Buka aplikasi di browser
+   - Pastikan semua halaman menggunakan client-side rendering
+   - Verifikasi API endpoint berfungsi dengan benar
 
-### Credentials
+## Client-Side Rendering (v2.5.0)
+- Semua halaman menggunakan jQuery dan JSON API
+- Global API helper di `includes/js/api.js`
+- Master app JavaScript di `includes/js/app.js`
+- Sidebar menginclude global JS files secara otomatis
 
-**appOwner (Platform Owner):**
-- Username: appowner / Password: AppOwner2024!
-
-**Koperasi Users (password: Kewer2024!):**
-| Username | Role | Cabang |
-|----------|------|--------|
-| patri | bos | Kantor Pusat Pangururan |
-| mgr_pusat | manager_pusat | Cabang 1 |
-| mgr_balige | manager_cabang | Cabang Balige |
-| adm_pusat | admin_pusat | Cabang 1 |
-| ptr_pngr1 | petugas_pusat | Cabang 1 |
-| ptr_pngr2 | petugas_cabang | Cabang 1 |
-| krw_pngr | karyawan | Cabang 1 |
-
-### System Requirements
-- PHP 8.0+ (extensions: mysqli, gd, mbstring, curl, json)
-- MySQL/MariaDB 5.7+
-- Apache web server (XAMPP recommended)
-- Composer (PHP dependency manager)
+## API Integration
+- API endpoint tersedia di `/api/`
+- Gunakan Bearer token: `kewer-api-token-2024`
+- Response format JSON yang seragam
+- Dokumentasi API: lihat `.windsurf/analysis.md`
