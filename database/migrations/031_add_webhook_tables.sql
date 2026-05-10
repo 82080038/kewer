@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS webhooks (
     INDEX idx_user_id (user_id),
     INDEX idx_event_type (event_type),
     INDEX idx_is_active (is_active)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Webhook configuration for event notifications';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Webhook configuration for event triggers';
 
 -- Create webhook_logs table
 CREATE TABLE IF NOT EXISTS webhook_logs (

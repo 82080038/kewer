@@ -1,4 +1,4 @@
--- MariaDB dump 10.19  Distrib 10.4.32-MariaDB, for Linux (x86_64)
+-- MariaDB dump 10.19  Distrib 10.4.32-MariaDB, for Win64 (AMD64)
 --
 -- Host: localhost    Database: db_orang
 -- ------------------------------------------------------
@@ -98,7 +98,7 @@ CREATE TABLE `family_relations` (
   CONSTRAINT `family_relations_ibfk_1` FOREIGN KEY (`person_id`) REFERENCES `people` (`id`) ON DELETE CASCADE,
   CONSTRAINT `family_relations_ibfk_2` FOREIGN KEY (`relative_person_id`) REFERENCES `people` (`id`) ON DELETE CASCADE,
   CONSTRAINT `family_relations_ibfk_3` FOREIGN KEY (`relationship_type_id`) REFERENCES `ref_jenis_relasi` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Relasi keluarga per orang';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Relasi keluarga per orang';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -320,7 +320,7 @@ CREATE TABLE `people_documents` (
   CONSTRAINT `people_documents_ibfk_1` FOREIGN KEY (`person_id`) REFERENCES `people` (`id`) ON DELETE CASCADE,
   CONSTRAINT `people_documents_ibfk_2` FOREIGN KEY (`jenis_identitas_id`) REFERENCES `ref_jenis_identitas` (`id`),
   CONSTRAINT `people_documents_ibfk_3` FOREIGN KEY (`verified_by`) REFERENCES `people` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Dokumen identitas per orang';
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Dokumen identitas per orang';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -329,7 +329,7 @@ CREATE TABLE `people_documents` (
 
 LOCK TABLES `people_documents` WRITE;
 /*!40000 ALTER TABLE `people_documents` DISABLE KEYS */;
-INSERT INTO `people_documents` VALUES (1,14,1,'1201010101010001',NULL,NULL,NULL,1,NULL,NULL,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(2,15,1,'1201010101010002',NULL,NULL,NULL,1,NULL,NULL,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(4,18,1,'1234567890123456',NULL,NULL,NULL,1,NULL,NULL,NULL,'2026-05-07 17:03:11','2026-05-07 17:03:11');
+INSERT INTO `people_documents` VALUES (1,14,1,'1201010101010001',NULL,NULL,NULL,1,NULL,NULL,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(2,15,1,'1201010101010002',NULL,NULL,NULL,1,NULL,NULL,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(3,18,1,'1234567890123456',NULL,NULL,NULL,1,NULL,NULL,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11');
 /*!40000 ALTER TABLE `people_documents` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -357,7 +357,7 @@ CREATE TABLE `people_emails` (
   KEY `idx_email` (`email`),
   CONSTRAINT `people_emails_ibfk_1` FOREIGN KEY (`person_id`) REFERENCES `people` (`id`) ON DELETE CASCADE,
   CONSTRAINT `people_emails_ibfk_2` FOREIGN KEY (`jenis_email_id`) REFERENCES `ref_jenis_email` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Email per orang';
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Email per orang';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -366,7 +366,7 @@ CREATE TABLE `people_emails` (
 
 LOCK TABLES `people_emails` WRITE;
 /*!40000 ALTER TABLE `people_emails` DISABLE KEYS */;
-INSERT INTO `people_emails` VALUES (1,3,'patri@kewer.co.id',1,1,0,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(2,4,'',1,1,0,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(3,5,'mgr_balige@kewer.co.id',1,1,0,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(4,6,'adm_pusat@kewer.co.id',1,1,0,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(5,7,'adm_balige@kewer.co.id',1,1,0,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(6,8,'ptr_pusat@kewer.co.id',1,1,0,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(7,9,'ptr_balige@kewer.co.id',1,1,0,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(8,10,'krw_pusat@kewer.co.id',1,1,0,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(9,11,'krw_balige@kewer.co.id',1,1,0,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(10,12,'test@kewer.co.id',1,1,0,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(11,13,'flow@test.co.id',1,1,0,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(12,16,'pusat@kewer.co.id',1,1,0,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(13,17,'balige@kewer.co.id',1,1,0,NULL,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(16,18,'test@example.com',1,1,0,NULL,'2026-05-07 17:03:11','2026-05-07 17:03:11');
+INSERT INTO `people_emails` VALUES (1,3,'patri@kewer.co.id',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(2,4,'',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(3,5,'mgr_balige@kewer.co.id',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(4,6,'adm_pusat@kewer.co.id',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(5,7,'adm_balige@kewer.co.id',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(6,8,'ptr_pusat@kewer.co.id',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(7,9,'ptr_balige@kewer.co.id',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(8,10,'krw_pusat@kewer.co.id',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(9,11,'krw_balige@kewer.co.id',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(10,12,'test@kewer.co.id',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(11,13,'flow@test.co.id',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(12,16,'pusat@kewer.co.id',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(13,17,'balige@kewer.co.id',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11');
 /*!40000 ALTER TABLE `people_emails` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -394,7 +394,7 @@ CREATE TABLE `people_phones` (
   KEY `idx_phone_number` (`phone_number`),
   CONSTRAINT `people_phones_ibfk_1` FOREIGN KEY (`person_id`) REFERENCES `people` (`id`) ON DELETE CASCADE,
   CONSTRAINT `people_phones_ibfk_2` FOREIGN KEY (`jenis_telepon_id`) REFERENCES `ref_jenis_telepon` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Nomor telepon per orang';
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Nomor telepon per orang';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -403,7 +403,7 @@ CREATE TABLE `people_phones` (
 
 LOCK TABLES `people_phones` WRITE;
 /*!40000 ALTER TABLE `people_phones` DISABLE KEYS */;
-INSERT INTO `people_phones` VALUES (1,3,'081234567890',1,1,0,NULL,'2026-05-07 16:56:37','2026-05-07 16:56:37'),(2,4,'',1,1,0,NULL,'2026-05-07 16:56:37','2026-05-07 16:56:37'),(3,12,'081299990000',1,1,0,NULL,'2026-05-07 16:56:37','2026-05-07 16:56:37'),(4,13,'081288880001',1,1,0,NULL,'2026-05-07 16:56:37','2026-05-07 16:56:37'),(5,14,'081234500001',1,1,0,NULL,'2026-05-07 16:56:37','2026-05-07 16:56:37'),(6,15,'081234500002',1,1,0,NULL,'2026-05-07 16:56:37','2026-05-07 16:56:37'),(7,16,'062163212345',1,1,0,NULL,'2026-05-07 16:56:37','2026-05-07 16:56:37'),(8,17,'062163254321',1,1,0,NULL,'2026-05-07 16:56:37','2026-05-07 16:56:37'),(16,18,'081234567890',1,1,0,NULL,'2026-05-07 17:03:11','2026-05-07 17:03:11');
+INSERT INTO `people_phones` VALUES (1,3,'081234567890',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(2,4,'',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(3,12,'081299990000',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(4,13,'081288880001',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(5,14,'081234500001',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(6,15,'081234500002',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(7,16,'062163212345',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(8,17,'062163254321',1,1,0,NULL,'2026-05-10 04:23:11','2026-05-10 04:23:11');
 /*!40000 ALTER TABLE `people_phones` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -527,7 +527,7 @@ CREATE TABLE `ref_jenis_email` (
 
 LOCK TABLES `ref_jenis_email` WRITE;
 /*!40000 ALTER TABLE `ref_jenis_email` DISABLE KEYS */;
-INSERT INTO `ref_jenis_email` VALUES (1,'Personal','PERSONAL',1,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(2,'Kantor','WORK',2,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(3,'Lainnya','OTHER',99,1,'2026-05-07 16:56:38','2026-05-07 16:56:38');
+INSERT INTO `ref_jenis_email` VALUES (1,'Personal','PERSONAL',1,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(2,'Kantor','WORK',2,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(3,'Lainnya','OTHER',99,1,'2026-05-10 04:23:11','2026-05-10 04:23:11');
 /*!40000 ALTER TABLE `ref_jenis_email` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -559,7 +559,7 @@ CREATE TABLE `ref_jenis_gelar` (
 
 LOCK TABLES `ref_jenis_gelar` WRITE;
 /*!40000 ALTER TABLE `ref_jenis_gelar` DISABLE KEYS */;
-INSERT INTO `ref_jenis_gelar` VALUES (1,'Dr.','DR','depan',1,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(2,'Ir.','IR','depan',2,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(3,'H.','H','depan',3,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(4,'Drs.','DRS','depan',4,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(5,'S.Kom','SKOM','belakang',5,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(6,'S.E.','SE','belakang',6,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(7,'M.M.','MM','belakang',7,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(8,'M.Si.','MSI','belakang',8,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(9,'Lainnya','OTHER','depan',99,1,'2026-05-07 16:56:38','2026-05-07 16:56:38');
+INSERT INTO `ref_jenis_gelar` VALUES (1,'Dr.','DR','depan',1,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(2,'Ir.','IR','depan',2,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(3,'H.','H','depan',3,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(4,'Drs.','DRS','depan',4,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(5,'S.Kom','SKOM','belakang',5,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(6,'S.E.','SE','belakang',6,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(7,'M.M.','MM','belakang',7,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(8,'M.Si.','MSI','belakang',8,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(9,'Lainnya','OTHER','depan',99,1,'2026-05-10 04:23:11','2026-05-10 04:23:11');
 /*!40000 ALTER TABLE `ref_jenis_gelar` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -653,7 +653,7 @@ CREATE TABLE `ref_jenis_properti` (
 
 LOCK TABLES `ref_jenis_properti` WRITE;
 /*!40000 ALTER TABLE `ref_jenis_properti` DISABLE KEYS */;
-INSERT INTO `ref_jenis_properti` VALUES (1,'Rumah Tinggal','RUMAH_TINGGAL',1,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(2,'Ruko','RUKO',2,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(3,'Apartemen','APARTEMEN',3,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(4,'Tanah','TANAH',4,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(5,'Kos','KOS',5,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(6,'Kontrakan','KONTRAKAN',6,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(7,'Gudang','GUDANG',7,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(8,'Toko','TOKO',8,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(9,'Kantor','KANTOR',9,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(10,'Lainnya','OTHER',99,1,'2026-05-07 16:56:38','2026-05-07 16:56:38');
+INSERT INTO `ref_jenis_properti` VALUES (1,'Rumah Tinggal','RUMAH_TINGGAL',1,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(2,'Ruko','RUKO',2,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(3,'Apartemen','APARTEMEN',3,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(4,'Tanah','TANAH',4,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(5,'Kos','KOS',5,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(6,'Kontrakan','KONTRAKAN',6,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(7,'Gudang','GUDANG',7,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(8,'Toko','TOKO',8,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(9,'Kantor','KANTOR',9,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(10,'Lainnya','OTHER',99,1,'2026-05-10 04:23:11','2026-05-10 04:23:11');
 /*!40000 ALTER TABLE `ref_jenis_properti` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -684,7 +684,7 @@ CREATE TABLE `ref_jenis_relasi` (
 
 LOCK TABLES `ref_jenis_relasi` WRITE;
 /*!40000 ALTER TABLE `ref_jenis_relasi` DISABLE KEYS */;
-INSERT INTO `ref_jenis_relasi` VALUES (1,'Ayah','FATHER',1,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(2,'Ibu','MOTHER',2,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(3,'Suami','HUSBAND',3,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(4,'Istri','WIFE',4,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(5,'Anak','CHILD',5,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(6,'Saudara Kandung','SIBLING',6,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(7,'Kakek','GRANDFATHER',7,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(8,'Nenek','GRANDMOTHER',8,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(9,'Paman','UNCLE',9,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(10,'Bibi','AUNT',10,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(11,'Keponakan','NEPHEW',11,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(12,'Cucu','GRANDCHILD',12,1,'2026-05-07 16:56:38','2026-05-07 16:56:38'),(13,'Lainnya','OTHER',99,1,'2026-05-07 16:56:38','2026-05-07 16:56:38');
+INSERT INTO `ref_jenis_relasi` VALUES (1,'Ayah','FATHER',1,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(2,'Ibu','MOTHER',2,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(3,'Suami','HUSBAND',3,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(4,'Istri','WIFE',4,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(5,'Anak','CHILD',5,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(6,'Saudara Kandung','SIBLING',6,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(7,'Kakek','GRANDFATHER',7,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(8,'Nenek','GRANDMOTHER',8,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(9,'Paman','UNCLE',9,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(10,'Bibi','AUNT',10,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(11,'Keponakan','NEPHEW',11,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(12,'Cucu','GRANDCHILD',12,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(13,'Lainnya','OTHER',99,1,'2026-05-10 04:23:11','2026-05-10 04:23:11');
 /*!40000 ALTER TABLE `ref_jenis_relasi` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -715,7 +715,7 @@ CREATE TABLE `ref_jenis_telepon` (
 
 LOCK TABLES `ref_jenis_telepon` WRITE;
 /*!40000 ALTER TABLE `ref_jenis_telepon` DISABLE KEYS */;
-INSERT INTO `ref_jenis_telepon` VALUES (1,'Mobile','MOBILE',1,1,'2026-05-07 16:56:37','2026-05-07 16:56:37'),(2,'Rumah','HOME',2,1,'2026-05-07 16:56:37','2026-05-07 16:56:37'),(3,'Kantor','OFFICE',3,1,'2026-05-07 16:56:37','2026-05-07 16:56:37'),(4,'WhatsApp','WHATSAPP',4,1,'2026-05-07 16:56:37','2026-05-07 16:56:37'),(5,'Fax','FAX',5,1,'2026-05-07 16:56:37','2026-05-07 16:56:37'),(6,'Lainnya','OTHER',99,1,'2026-05-07 16:56:37','2026-05-07 16:56:37');
+INSERT INTO `ref_jenis_telepon` VALUES (1,'Mobile','MOBILE',1,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(2,'Rumah','HOME',2,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(3,'Kantor','OFFICE',3,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(4,'WhatsApp','WHATSAPP',4,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(5,'Fax','FAX',5,1,'2026-05-10 04:23:11','2026-05-10 04:23:11'),(6,'Lainnya','OTHER',99,1,'2026-05-10 04:23:11','2026-05-10 04:23:11');
 /*!40000 ALTER TABLE `ref_jenis_telepon` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -819,4 +819,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-05-08 20:07:02
+-- Dump completed on 2026-05-10 11:24:48
