@@ -16,71 +16,83 @@
         }
 
         // Generic GET request
-        async get(endpoint, params = {}) {
-            try {
-                const response = await $.ajax({
-                    url: this.baseUrl + endpoint,
-                    method: 'GET',
-                    data: params,
-                    dataType: 'json'
-                });
-                return this.handleResponse(response);
-            } catch (error) {
-                return this.handleError(error);
-            }
+        get(endpoint, params = {}) {
+            const deferred = $.Deferred();
+            $.ajax({
+                url: this.baseUrl + endpoint,
+                method: 'GET',
+                data: params,
+                dataType: 'json'
+            })
+            .done(response => {
+                deferred.resolve(this.handleResponse(response));
+            })
+            .fail(error => {
+                deferred.resolve(this.handleError(error));
+            });
+            return deferred.promise();
         }
 
         // Generic POST request
-        async post(endpoint, data = {}) {
-            try {
-                const response = await $.ajax({
-                    url: this.baseUrl + endpoint,
-                    method: 'POST',
-                    data: JSON.stringify(data),
-                    contentType: 'application/json',
-                    dataType: 'json'
-                });
-                return this.handleResponse(response);
-            } catch (error) {
-                return this.handleError(error);
-            }
+        post(endpoint, data = {}) {
+            const deferred = $.Deferred();
+            $.ajax({
+                url: this.baseUrl + endpoint,
+                method: 'POST',
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                dataType: 'json'
+            })
+            .done(response => {
+                deferred.resolve(this.handleResponse(response));
+            })
+            .fail(error => {
+                deferred.resolve(this.handleError(error));
+            });
+            return deferred.promise();
         }
 
         // Generic PUT request
-        async put(endpoint, data = {}) {
-            try {
-                const response = await $.ajax({
-                    url: this.baseUrl + endpoint,
-                    method: 'PUT',
-                    data: JSON.stringify(data),
-                    contentType: 'application/json',
-                    dataType: 'json'
-                });
-                return this.handleResponse(response);
-            } catch (error) {
-                return this.handleError(error);
-            }
+        put(endpoint, data = {}) {
+            const deferred = $.Deferred();
+            $.ajax({
+                url: this.baseUrl + endpoint,
+                method: 'PUT',
+                data: JSON.stringify(data),
+                contentType: 'application/json',
+                dataType: 'json'
+            })
+            .done(response => {
+                deferred.resolve(this.handleResponse(response));
+            })
+            .fail(error => {
+                deferred.resolve(this.handleError(error));
+            });
+            return deferred.promise();
         }
 
         // Generic DELETE request
-        async delete(endpoint, params = {}) {
-            try {
-                const response = await $.ajax({
-                    url: this.baseUrl + endpoint,
-                    method: 'DELETE',
-                    data: params,
-                    dataType: 'json'
-                });
-                return this.handleResponse(response);
-            } catch (error) {
-                return this.handleError(error);
-            }
+        delete(endpoint, params = {}) {
+            const deferred = $.Deferred();
+            $.ajax({
+                url: this.baseUrl + endpoint,
+                method: 'DELETE',
+                data: params,
+                dataType: 'json'
+            })
+            .done(response => {
+                deferred.resolve(this.handleResponse(response));
+            })
+            .fail(error => {
+                deferred.resolve(this.handleError(error));
+            });
+            return deferred.promise();
         }
 
         // Handle successful response
         handleResponse(response) {
             if (response.success === false) {
-                throw new Error(response.error || 'Unknown error');
+                console.error('API Error:', response.error);
             }
             return response;
         }
