@@ -12,35 +12,6 @@ if (!hasPermission('users.create') && !hasPermission('users.read')) {
 $currentUser = getCurrentUser();
 $role = $currentUser['role'];
 $user_cabang_id = $currentUser['cabang_id'] ?? null;
-
-// Filter users based on role
-if ($role === 'appOwner') {
-    // appOwner can see all users except other appOwners
-    $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.cabang_id = c.id WHERE u.role != 'appOwner' ORDER BY u.created_at DESC");
-} elseif ($role === 'bos') {
-    // Bos can see users from their branches
-    $owned_cabangs = getBosOwnedCabangIds();
-    if (!empty($owned_cabangs)) {
-        $placeholders = implode(',', array_fill(0, count($owned_cabangs), '?'));
-        $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.cabang_id = c.id WHERE u.cabang_id IN ($placeholders) AND u.role != 'appOwner' AND u.role != 'bos' ORDER BY u.created_at DESC", $owned_cabangs);
-    } else {
-        $users = [];
-    }
-} elseif (in_array($role, ['manager_pusat', 'admin_pusat'])) {
-    // Manager/Admin pusat can see all users from all branches
-    $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.cabang_id = c.id WHERE u.role != 'appOwner' ORDER BY u.created_at DESC");
-} else {
-    // Other roles can only see users from their own branch
-    if ($user_cabang_id) {
-        $users = query("SELECT u.*, c.nama_cabang FROM users u LEFT JOIN cabang c ON u.cabang_id = c.id WHERE u.cabang_id = ? AND u.role != 'appOwner' ORDER BY u.created_at DESC", [$user_cabang_id]);
-    } else {
-        $users = [];
-    }
-}
-
-if (!is_array($users)) {
-    $users = [];
-}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -86,56 +57,12 @@ if (!is_array($users)) {
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <?php foreach ($users as $u): ?>
+                                <tbody id="users-table-body">
                                     <tr>
-                                        <td><?= $u['id'] ?></td>
-                                        <td><?= $u['username'] ?></td>
-                                        <td><?= $u['nama'] ?></td>
-                                        <td><?= $u['email'] ?? '-' ?></td>
-                                        <td>
-                                            <?php
-                                            $roleColors = [
-                                                'bos' => 'danger',
-                                                'manager_pusat' => 'primary',
-                                                'manager_cabang' => 'success',
-                                                'admin_pusat' => 'warning',
-                                                'admin_cabang' => 'info',
-                                                'petugas_pusat' => 'secondary',
-                                                'petugas_cabang' => 'dark',
-                                                'teller' => 'light text-dark'
-                                            ];
-                                            ?>
-                                            <span class="badge bg-<?= $roleColors[$u['role']] ?? 'secondary' ?>">
-                                                <?= ucfirst($u['role']) ?>
-                                            </span>
-                                        </td>
-                                        <td><?= $u['nama_cabang'] ?? '-' ?></td>
-                                        <td><?= formatRupiah($u['gaji'] ?? 0) ?></td>
-                                        <td>
-                                            <?php if ($u['status'] == 'aktif'): ?>
-                                                <span class="badge bg-success">Aktif</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-danger">Nonaktif</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <a href="edit.php?id=<?= $u['id'] ?>" class="btn btn-sm btn-warning">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <?php if (hasPermission('assign_permissions') && canManageRole($u['role'])): ?>
-                                            <a href="permissions/index.php?user_id=<?= $u['id'] ?>" class="btn btn-sm btn-info">
-                                                <i class="bi bi-shield-lock"></i>
-                                            </a>
-                                            <?php endif; ?>
-                                            <?php if ($u['id'] != getCurrentUser()['id']): ?>
-                                            <a href="hapus.php?id=<?= $u['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus user ini?')">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
-                                            <?php endif; ?>
+                                        <td colspan="9" class="text-center">
+                                            <div class="spinner-border spinner-border-sm" role="status"></div>
                                         </td>
                                     </tr>
-                                    <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -199,14 +126,6 @@ if (!is_array($users)) {
                             <label>Cabang</label>
                             <select name="cabang_id" class="form-select">
                                 <option value="">Tanpa Cabang</option>
-                                <?php
-                                $cabang = query("SELECT * FROM cabang");
-                                if (!is_array($cabang)) {
-                                    $cabang = [];
-                                }
-                                foreach ($cabang as $c): ?>
-                                    <option value="<?= $c['id'] ?>"><?= $c['nama_cabang'] ?></option>
-                                <?php endforeach; ?>
                             </select>
                             <small class="text-muted">Role pusat (bos, manager_pusat, admin_pusat, petugas_pusat) tidak memerlukan cabang</small>
                         </div>
@@ -235,21 +154,18 @@ if (!is_array($users)) {
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/id.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/id.js"></script>
     <script>
+        function formatRupiah(angka) {
+            return new Intl.NumberFormat('id-ID').format(angka);
+        }
+
         $(document).ready(function() {
             // Handle role selection to show/hide cabang field
             $('#roleSelect').on('change', function() {
                 const role = $(this).val();
                 const pusatRoles = ['bos', 'manager_pusat', 'admin_pusat', 'petugas_pusat'];
-                const cabangRoles = ['manager_cabang', 'admin_cabang', 'petugas_cabang', 'teller'];
+                const cabangRoles = ['manager_cabang', 'admin_cabang', 'petugas_cabang', 'karyawan'];
                 
                 if (pusatRoles.includes(role)) {
                     $('#cabangField').hide();
@@ -267,66 +183,93 @@ if (!is_array($users)) {
             // Initialize with current selection
             $('#roleSelect').trigger('change');
             
-            // Only initialize DataTable if there's data
-            var hasData = <?php echo !empty($users) ? 'true' : 'false'; ?>;
-
-            if (hasData) {
-                try {
-                    var table = $('#usersTable').DataTable({
-                        language: {
-                            search: "Cari:",
-                            lengthMenu: "Tampilkan _MENU_ data per halaman",
-                            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-                            infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
-                            infoFiltered: "(difilter dari _MAX_ total data)",
-                            paginate: {
-                                first: "Pertama",
-                                last: "Terakhir",
-                                next: "Selanjutnya",
-                                previous: "Sebelumnya"
-                            },
-                            emptyTable: "Tidak ada data tersedia",
-                            zeroRecords: "Tidak ada data yang cocok"
-                        },
-                        pageLength: 25,
-                        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-                        responsive: true,
-                        order: [[0, 'desc']]
-                    });
-                } catch (e) {
-                    console.error('DataTables initialization error:', e);
-                    $('#usersTable').removeClass('table-striped table-hover');
-                }
-            } else {
-                // Hide DataTables controls when no data
-                $('#usersTable').removeClass('table-striped table-hover');
-                $('#usersTable_wrapper').hide();
-            }
+            // Load cabang options via API
+            loadCabangOptions();
             
-            // Initialize Select2
-            $('.form-select').select2({
-                theme: 'bootstrap-5',
-                language: 'id',
-                width: '100%'
-            });
-            
-            // Initialize Flatpickr for date inputs
-            flatpickr('input[type="date"]', {
-                locale: 'id',
-                dateFormat: 'Y-m-d',
-                allowInput: true,
-                altInput: true,
-                altFormat: 'd F Y',
-                theme: 'light'
-            });
+            // Load users data via JSON API
+            loadUsersData();
         });
-        
-        function showPending() {
-            window.location.href = '?status=pending';
+
+        function loadCabangOptions() {
+            window.KewerAPI.getCabang().done(response => {
+                if (response.success && response.data) {
+                    const cabangSelect = $('select[name="cabang_id"]');
+                    response.data.forEach(c => {
+                        cabangSelect.append(`<option value="${c.id}">${c.nama_cabang}</option>`);
+                    });
+                }
+            });
         }
 
-        // Convert session alerts to SweetAlert2
-        <?= getSessionAlertsJS() ?>
+        function loadUsersData() {
+            window.KewerAPI.getUsers().done(response => {
+                if (response.success) {
+                    renderUsersTable(response.data);
+                } else {
+                    $('#users-table-body').html('<tr><td colspan="9" class="text-center text-danger">Gagal memuat data</td></tr>');
+                }
+            }).fail(error => {
+                $('#users-table-body').html('<tr><td colspan="9" class="text-center text-danger">Gagal memuat data</td></tr>');
+            });
+        }
+
+        function renderUsersTable(data) {
+            if (!data || data.length === 0) {
+                $('#users-table-body').html('<tr><td colspan="9" class="text-center text-muted">Tidak ada data users</td></tr>');
+                return;
+            }
+
+            const roleColors = {
+                'bos': 'danger',
+                'manager_pusat': 'primary',
+                'manager_cabang': 'success',
+                'admin_pusat': 'warning',
+                'admin_cabang': 'info',
+                'petugas_pusat': 'secondary',
+                'petugas_cabang': 'dark',
+                'karyawan': 'light text-dark'
+            };
+
+            const currentUserId = getCurrentUser().id;
+
+            let html = '';
+            data.forEach(u => {
+                const roleColor = roleColors[u.role] || 'secondary';
+                const statusClass = u.status === 'aktif' ? 'success' : 'danger';
+
+                html += `
+                    <tr>
+                        <td>${u.id || '-'}</td>
+                        <td>${u.username || '-'}</td>
+                        <td>${u.nama || '-'}</td>
+                        <td>${u.email || '-'}</td>
+                        <td>
+                            <span class="badge bg-${roleColor}">${u.role ? u.role.charAt(0).toUpperCase() + u.role.slice(1) : '-'}</span>
+                        </td>
+                        <td>${u.nama_cabang || '-'}</td>
+                        <td>Rp ${formatRupiah(u.gaji || 0)}</td>
+                        <td>
+                            <span class="badge bg-${statusClass}">${u.status ? u.status.charAt(0).toUpperCase() + u.status.slice(1) : 'Aktif'}</span>
+                        </td>
+                        <td>
+                            <a href="edit.php?id=${u.id}" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="permissions/index.php?user_id=${u.id}" class="btn btn-sm btn-info">
+                                <i class="bi bi-shield-lock"></i>
+                            </a>
+                            ${u.id !== currentUserId ? `
+                                <a href="hapus.php?id=${u.id}" class="btn btn-sm btn-danger" onclick="return confirm('Hapus user ini?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $('#users-table-body').html(html);
+        }
     </script>
 </body>
 </html>

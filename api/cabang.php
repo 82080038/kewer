@@ -75,7 +75,7 @@ switch ($method) {
             $params[] = $status;
         }
         
-        $where_clause = "WHERE " . implode(" AND ", $where);
+        $where_clause = !empty($where) ? "WHERE " . implode(" AND ", $where) : "";
         
         $cabang = query("
             SELECT c.*, u.nama as owner_name, u.username as owner_username

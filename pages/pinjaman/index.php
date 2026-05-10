@@ -6,79 +6,6 @@ requireLogin();
 $user = getCurrentUser();
 $role = $user['role'];
 $user_cabang_id = $user['cabang_id'] ?? null;
-
-$search = $_GET['search'] ?? '';
-$status = $_GET['status'] ?? '';
-
-// Get cabang filter based on role (using shared function from includes/functions.php)
-$cabang_filter = getPageCabangFilter($role, $user_cabang_id, $user['id'], 'p');
-if ($cabang_filter) {
-    $cabang_filter = "AND " . $cabang_filter;
-}
-
-// Build query
-$where = ["1=1"];
-$params = [];
-
-if ($search) {
-    $where[] = "(p.kode_pinjaman LIKE ? OR n.nama LIKE ? OR n.ktp LIKE ? OR n.telp LIKE ?)";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-}
-
-if ($status) {
-    $where[] = "p.status = ?";
-    $params[] = $status;
-}
-
-// Add cabang filter
-if ($cabang_filter) {
-    $where[] = ltrim($cabang_filter, 'AND ');
-}
-
-$where_clause = "WHERE " . implode(" AND ", $where);
-
-// Get pinjaman data
-$pinjaman = query("
-    SELECT p.*, n.nama, n.telp, n.kode_nasabah
-    FROM pinjaman p
-    JOIN nasabah n ON p.nasabah_id = n.id
-    $where_clause
-    ORDER BY p.created_at DESC
-", $params);
-
-// Ensure pinjaman is an array
-if (!is_array($pinjaman)) {
-    $pinjaman = [];
-}
-
-// Get statistics with cabang filter
-$stats_where = "WHERE 1=1 " . str_replace("p.cabang_id", "cabang_id", $cabang_filter);
-$stats_result = query("
-    SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'pengajuan' THEN 1 ELSE 0 END) as pengajuan,
-        SUM(CASE WHEN status = 'disetujui' THEN 1 ELSE 0 END) as disetujui,
-        SUM(CASE WHEN status = 'aktif' THEN 1 ELSE 0 END) as aktif,
-        SUM(CASE WHEN status = 'lunas' THEN 1 ELSE 0 END) as lunas,
-        SUM(plafon) as total_plafon
-    FROM pinjaman
-    $stats_where
-");
-
-$stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] : ['total' => 0, 'pengajuan' => 0, 'disetujui' => 0, 'aktif' => 0, 'lunas' => 0, 'total_plafon' => 0];
-
-// Get active nasabah list for modal with cabang filter
-$nasabah_cabang_filter = getCabangFilterForRole($role, $user_cabang_id, $user['id']);
-if ($nasabah_cabang_filter) {
-    $nasabah_cabang_filter = "AND " . $nasabah_cabang_filter;
-}
-$nasabah_list = query("SELECT id, kode_nasabah, nama FROM nasabah WHERE status = 'aktif' $nasabah_cabang_filter ORDER BY nama", []);
-if (!is_array($nasabah_list)) {
-    $nasabah_list = [];
-}
 ?>
 
 <!DOCTYPE html>
@@ -103,9 +30,14 @@ if (!is_array($nasabah_list)) {
         <main class="content-area">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Data Pinjaman</h1>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
-                        <i class="bi bi-plus-circle"></i> Ajukan Pinjaman
-                    </button>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
+                            <i class="bi bi-plus-circle"></i> Ajukan Pinjaman
+                        </button>
+                        <button class="btn btn-success" onclick="exportData('pinjaman')">
+                            <i class="bi bi-download"></i> Export CSV
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Statistics Cards -->
@@ -209,72 +141,12 @@ if (!is_array($nasabah_list)) {
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <?php if (empty($pinjaman)): ?>
-                                        <tr>
-                                            <td colspan="9" class="text-center text-muted">Tidak ada data pinjaman</td>
-                                        </tr>
-                                    <?php else: ?>
-                                        <?php foreach ($pinjaman as $p): ?>
-                                            <tr>
-                                                <td><?php echo $p['kode_pinjaman']; ?></td>
-                                                <td>
-                                                    <div>
-                                                        <strong><?php echo $p['nama']; ?></strong>
-                                                        <br>
-                                                        <small class="text-muted"><?php echo $p['kode_nasabah']; ?></small>
-                                                    </div>
-                                                </td>
-                                                <td><?php echo formatRupiah($p['plafon']); ?></td>
-                                                <td>
-                                                    <?php
-                                                    $freq_class = ['harian' => 'warning', 'mingguan' => 'info', 'bulanan' => 'primary', 'HARIAN' => 'warning', 'MINGGUAN' => 'info', 'BULANAN' => 'primary'];
-                                                    $frek = $p['frekuensi_id'] ?? $p['frekuensi'] ?? 'bulanan';
-                                                    ?>
-                                                    <span class="badge bg-<?php echo $freq_class[$frek] ?? 'primary'; ?>">
-                                                        <?php echo getFrequencyLabel($frek); ?>
-                                                    </span>
-                                                </td>
-                                                <td><?php echo $p['tenor']; ?> <?php echo getFrequencyPeriodLabel($frek); ?></td>
-                                                <td><?php echo $p['bunga_per_bulan']; ?>%</td>
-                                                <td><?php echo formatRupiah($p['angsuran_total']); ?></td>
-                                                <td>
-                                                    <?php
-                                                    $status_class = [
-                                                        'pengajuan' => 'info',
-                                                        'disetujui' => 'warning',
-                                                        'aktif' => 'success',
-                                                        'lunas' => 'secondary',
-                                                        'ditolak' => 'danger'
-                                                    ];
-                                                    ?>
-                                                    <span class="badge bg-<?php echo $status_class[$p['status']]; ?>">
-                                                        <?php echo ucfirst($p['status']); ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <div class="btn-group btn-group-sm" role="group">
-                                                        <a href="detail.php?id=<?php echo $p['id']; ?>" class="btn btn-outline-primary" title="Detail">
-                                                            <i class="bi bi-eye"></i>
-                                                        </a>
-                                                        <?php if ($p['status'] === 'pengajuan'): ?>
-                                                            <a href="edit.php?id=<?php echo $p['id']; ?>" class="btn btn-outline-warning" title="Edit">
-                                                                <i class="bi bi-pencil"></i>
-                                                            </a>
-                                                        <?php endif; ?>
-                                                        <?php if ($p['status'] === 'pengajuan' && !in_array(getCurrentUser()['role'], ['petugas_pusat', 'petugas_cabang'])): ?>
-                                                            <button onclick="approveLoan(<?php echo $p['id']; ?>)" class="btn btn-outline-success" title="Setujui">
-                                                                <i class="bi bi-check-circle"></i>
-                                                            </button>
-                                                            <button onclick="rejectLoan(<?php echo $p['id']; ?>)" class="btn btn-outline-danger" title="Tolak">
-                                                                <i class="bi bi-x-circle"></i>
-                                                            </button>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
+                                <tbody id="pinjaman-table-body">
+                                    <tr>
+                                        <td colspan="9" class="text-center">
+                                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -662,69 +534,106 @@ if (!is_array($nasabah_list)) {
             });
         });
         
-        function approveLoan(id) {
-            Swal.fire({
-                title: 'Setujui Pinjaman',
-                text: 'Apakah Anda yakin ingin menyetujui pinjaman ini?',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Ya, Setujui',
-                cancelButtonText: 'Batal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = `proses.php?action=approve&id=${id}`;
+        // Load pinjaman data via JSON API
+        $(document).ready(function() {
+            loadPinjamanData();
+        });
+
+        function loadPinjamanData() {
+            const search = '<?php echo $_GET['search'] ?? ''; ?>';
+            const status = '<?php echo $_GET['status'] ?? ''; ?>';
+            
+            window.KewerAPI.getPinjaman({ search, status }).done(response => {
+                if (response.success) {
+                    renderPinjamanTable(response.data);
+                } else {
+                    $('#pinjaman-table-body').html('<tr><td colspan="9" class="text-center text-danger">Gagal memuat data</td></tr>');
                 }
+            }).fail(error => {
+                $('#pinjaman-table-body').html('<tr><td colspan="9" class="text-center text-danger">Gagal memuat data</td></tr>');
+            });
+        }
+
+        function renderPinjamanTable(data) {
+            if (!data || data.length === 0) {
+                $('#pinjaman-table-body').html('<tr><td colspan="9" class="text-center text-muted">Tidak ada data pinjaman</td></tr>');
+                return;
+            }
+
+            let html = '';
+            data.forEach(p => {
+                const freqClass = {1: 'warning', 2: 'info', 3: 'primary'}[p.frekuensi_id] || 'primary';
+                const freqLabel = ['harian', 'mingguan', 'bulanan'][p.frekuensi_id - 1] || 'bulanan';
+                const freqPeriod = ['hari', 'minggu', 'bulan'][p.frekuensi_id - 1] || 'bulan';
+                const statusClass = {
+                    'pengajuan': 'info',
+                    'disetujui': 'warning',
+                    'aktif': 'success',
+                    'lunas': 'secondary',
+                    'ditolak': 'danger'
+                }[p.status] || 'secondary';
+
+                html += `
+                    <tr>
+                        <td>${p.kode_pinjaman || '-'}</td>
+                        <td>
+                            <div>
+                                <strong>${p.nama || ''}</strong>
+                                <br>
+                                <small class="text-muted">${p.kode_nasabah || '-'}</small>
+                            </div>
+                        </td>
+                        <td>Rp ${formatRupiah(p.plafon)}</td>
+                        <td>
+                            <span class="badge bg-${freqClass}">${freqLabel.charAt(0).toUpperCase() + freqLabel.slice(1)}</span>
+                        </td>
+                        <td>${p.tenor || 0} ${freqPeriod}</td>
+                        <td>${p.bunga_per_bulan || 0}%</td>
+                        <td>Rp ${formatRupiah(p.angsuran_total)}</td>
+                        <td>
+                            <span class="badge bg-${statusClass}">${p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : 'Aktif'}</span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="detail.php?id=${p.id}" class="btn btn-outline-primary" title="Detail">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                ${p.status === 'pengajuan' ? `<a href="edit.php?id=${p.id}" class="btn btn-outline-warning" title="Edit"><i class="bi bi-pencil"></i></a>` : ''}
+                                ${p.status === 'pengajuan' ? `<button onclick="approveLoan(${p.id})" class="btn btn-outline-success" title="Setujui"><i class="bi bi-check-circle"></i></button>` : ''}
+                                ${p.status === 'pengajuan' ? `<button onclick="rejectLoan(${p.id})" class="btn btn-outline-danger" title="Tolak"><i class="bi bi-x-circle"></i></button>` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $('#pinjaman-table-body').html(html);
+        }
+
+        function approveLoan(id) {
+            window.KewerAPI.approvePinjaman(id).done(response => {
+                if (response.success) {
+                    Swal.fire('Berhasil', 'Pinjaman disetujui', 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Error', response.error || 'Gagal menyetujui', 'error');
+                }
+            }).fail(error => {
+                Swal.fire('Error', 'Terjadi kesalahan sistem', 'error');
             });
         }
         
         function rejectLoan(id) {
-            Swal.fire({
-                title: 'Tolak Pinjaman',
-                text: 'Apakah Anda yakin ingin menolak pinjaman ini?',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Ya, Tolak',
-                cancelButtonText: 'Batal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch(`/api/pinjaman?id=${id}&action=reject`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': 'Bearer kewer-api-token-2024'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Berhasil',
-                                text: 'Pinjaman berhasil ditolak',
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                location.reload();
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Gagal',
-                                text: 'Gagal menolak pinjaman: ' + data.error
-                            });
-                        }
-                    });
+            window.KewerAPI.rejectPinjaman(id).done(response => {
+                if (response.success) {
+                    Swal.fire('Berhasil', 'Pinjaman ditolak', 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Error', response.error || 'Gagal menolak', 'error');
                 }
+            }).fail(error => {
+                Swal.fire('Error', 'Terjadi kesalahan sistem', 'error');
             });
         }
-    </script>
-    
-    <script>
-        <?= getSessionAlertsJS() ?>
+
     </script>
 </body>
 </html>

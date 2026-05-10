@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/../../config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
-require_once BASE_PATH . '/includes/alamat_helper.php';
 requireLogin();
 
 // Only users with cabang management permission can access
@@ -11,30 +10,6 @@ if (!hasPermission('manage_cabang') && !hasPermission('view_cabang')) {
 }
 
 $currentUser = getCurrentUser();
-
-// Filter cabang based on user role
-if ($currentUser['role'] === 'bos') {
-    // Bos can only see their own branches
-    $cabang = query("SELECT c.*, u.nama as owner_name FROM cabang c LEFT JOIN users u ON c.owner_bos_id = u.id WHERE c.owner_bos_id = ? ORDER BY c.is_headquarters DESC, c.created_at DESC", [$currentUser['id']]);
-} elseif (in_array($currentUser['role'], ['manager_pusat', 'admin_pusat'])) {
-    // Manager/Admin pusat can see all branches
-    $cabang = query("SELECT c.*, u.nama as owner_name FROM cabang c LEFT JOIN users u ON c.owner_bos_id = u.id ORDER BY c.is_headquarters DESC, c.created_at DESC");
-} elseif (in_array($currentUser['role'], ['manager_cabang', 'admin_cabang', 'petugas_pusat', 'petugas_cabang', 'teller'])) {
-    // Other roles can only see their assigned branch
-    $user_cabang_id = $currentUser['cabang_id'] ?? null;
-    if ($user_cabang_id) {
-        $cabang = query("SELECT c.*, u.nama as owner_name FROM cabang c LEFT JOIN users u ON c.owner_bos_id = u.id WHERE c.id = ? ORDER BY c.is_headquarters DESC, c.created_at DESC", [$user_cabang_id]);
-    } else {
-        $cabang = [];
-    }
-} else {
-    // Default: no access
-    $cabang = [];
-}
-
-if (!is_array($cabang)) {
-    $cabang = [];
-}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -79,39 +54,12 @@ if (!is_array($cabang)) {
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <?php foreach ($cabang as $c): ?>
+                                <tbody id="cabang-table-body">
                                     <tr>
-                                        <td><?= $c['kode_cabang'] ?></td>
-                                        <td>
-                                            <?= $c['nama_cabang'] ?>
-                                            <?php if ($c['is_headquarters'] == 1): ?>
-                                                <span class="badge bg-primary ms-1">Pusat</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td><?= $c['is_headquarters'] == 1 ? 'Kantor Pusat' : 'Cabang' ?></td>
-                                        <td><?= $c['owner_name'] ?? '-' ?></td>
-                                        <td><?= $c['alamat'] ?? '-' ?></td>
-                                        <td><?= $c['telp'] ?? '-' ?></td>
-                                        <td>
-                                            <?php if ($c['status'] == 'aktif'): ?>
-                                                <span class="badge bg-success">Aktif</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-danger">Nonaktif</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <a href="edit.php?id=<?= $c['id'] ?>" class="btn btn-sm btn-warning">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <?php if ($currentUser['role'] === 'bos' && $c['owner_bos_id'] == $currentUser['id']): ?>
-                                            <a href="hapus.php?id=<?= $c['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus cabang ini?')">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
-                                            <?php endif; ?>
+                                        <td colspan="8" class="text-center">
+                                            <div class="spinner-border spinner-border-sm" role="status"></div>
                                         </td>
                                     </tr>
-                                    <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -275,6 +223,57 @@ if (!is_array($cabang)) {
             .catch(error => {
                 Swal.fire('Error', 'Terjadi kesalahan: ' + error.message, 'error');
             });
+        }
+        
+        // Load cabang data via JSON API
+        $(document).ready(function() {
+            loadCabangData();
+        });
+
+        function loadCabangData() {
+            window.KewerAPI.getCabang().done(response => {
+                if (response.success) {
+                    renderCabangTable(response.data);
+                } else {
+                    $('#cabang-table-body').html('<tr><td colspan="8" class="text-center text-danger">Gagal memuat data</td></tr>');
+                }
+            }).fail(error => {
+                $('#cabang-table-body').html('<tr><td colspan="8" class="text-center text-danger">Gagal memuat data</td></tr>');
+            });
+        }
+
+        function renderCabangTable(data) {
+            if (!data || data.length === 0) {
+                $('#cabang-table-body').html('<tr><td colspan="8" class="text-center text-muted">Tidak ada data cabang</td></tr>');
+                return;
+            }
+
+            let html = '';
+            data.forEach(c => {
+                html += `
+                    <tr>
+                        <td>${c.kode_cabang || '-'}</td>
+                        <td>
+                            ${c.nama_cabang || ''}
+                            ${c.is_headquarters ? '<span class="badge bg-primary ms-1">Pusat</span>' : ''}
+                        </td>
+                        <td>${c.is_headquarters ? 'Kantor Pusat' : 'Cabang'}</td>
+                        <td>${c.owner_name || '-'}</td>
+                        <td>${c.alamat || '-'}</td>
+                        <td>${c.telp || '-'}</td>
+                        <td>
+                            <span class="badge bg-${c.status === 'aktif' ? 'success' : 'danger'}">${c.status === 'aktif' ? 'Aktif' : 'Nonaktif'}</span>
+                        </td>
+                        <td>
+                            <a href="edit.php?id=${c.id}" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $('#cabang-table-body').html(html);
         }
         
         // Load regencies when province changes

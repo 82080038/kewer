@@ -12,19 +12,7 @@ if (!hasPermission('manage_kas_bon') && !hasPermission('view_kas_bon')) {
 $user = getCurrentUser();
 $role = $user['role'];
 $user_cabang_id = $user['cabang_id'] ?? null;
-$kantor_id = $user_cabang_id ?? 1; // Use user's cabang_id or default to 1
-
-require_once BASE_PATH . '/includes/kas_bon.php';
-$kasBon = new KasBon($kantor_id);
-
-$search = $_GET['search'] ?? '';
-$status = $_GET['status'] ?? '';
-$kasbons = $kasBon->getAll(['status' => $status]);
-if (!is_array($kasbons)) {
-    $kasbons = [];
-}
-$pending = $kasBon->getPendingRequests();
-$stats = $kasBon->getStatistics();
+$kantor_id = $user_cabang_id ?? 1;
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -60,23 +48,20 @@ $stats = $kasBon->getStatistics();
                 </div>
 
                 <!-- Pending Approvals Alert -->
-                <?php if (!empty($pending)): ?>
-                <div class="alert alert-warning mb-4">
-                    <h6><i class="bi bi-exclamation-triangle"></i> <?= count($pending) ?> Pengajuan Kas Bon Menunggu Approval</h6>
+                <div id="pending-alert" class="alert alert-warning mb-4" style="display: none;">
+                    <h6><i class="bi bi-exclamation-triangle"></i> <span id="pending-count">0</span> Pengajuan Kas Bon Menunggu Approval</h6>
                     <button class="btn btn-sm btn-primary" onclick="showPending()">
                         <i class="bi bi-eye"></i> Lihat Pending
                     </button>
                 </div>
-                <?php endif; ?>
 
                 <!-- Summary Cards -->
-                <?php if ($stats): ?>
                 <div class="row mb-4">
                     <div class="col-md-3">
                         <div class="card bg-primary text-white">
                             <div class="card-body">
                                 <h6>Total Kas Bon</h6>
-                                <h3><?= $stats['total_kasbon'] ?? 0 ?></h3>
+                                <h3 id="total-kasbon">0</h3>
                             </div>
                         </div>
                     </div>
@@ -84,7 +69,7 @@ $stats = $kasBon->getStatistics();
                         <div class="card bg-info text-white">
                             <div class="card-body">
                                 <h6>Total Jumlah</h6>
-                                <h3><?= formatRupiah($stats['total_jumlah'] ?? 0) ?></h3>
+                                <h3 id="total-jumlah">Rp 0</h3>
                             </div>
                         </div>
                     </div>
@@ -92,7 +77,7 @@ $stats = $kasBon->getStatistics();
                         <div class="card bg-warning text-dark">
                             <div class="card-body">
                                 <h6>Total Sisa</h6>
-                                <h3><?= formatRupiah($stats['total_sisa'] ?? 0) ?></h3>
+                                <h3 id="total-sisa">Rp 0</h3>
                             </div>
                         </div>
                     </div>
@@ -100,12 +85,11 @@ $stats = $kasBon->getStatistics();
                         <div class="card bg-success text-white">
                             <div class="card-body">
                                 <h6>Selesai</h6>
-                                <h3><?= $stats['selesai'] ?? 0 ?></h3>
+                                <h3 id="selesai">0</h3>
                             </div>
                         </div>
                     </div>
                 </div>
-                <?php endif; ?>
 
                 <!-- Filter -->
                 <div class="card mb-4">
@@ -157,54 +141,12 @@ $stats = $kasBon->getStatistics();
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <?php foreach ($kasbons as $kb): ?>
+                                <tbody id="kasbon-table-body">
                                     <tr>
-                                        <td><?= $kb['kode_kasbon'] ?></td>
-                                        <td><?= $kb['nama_karyawan'] ?></td>
-                                        <td><?= formatDate($kb['tanggal_pengajuan']) ?></td>
-                                        <td><?= formatRupiah($kb['jumlah']) ?></td>
-                                        <td><?= $kb['tenor_bulan'] ?> bulan</td>
-                                        <td><?= formatRupiah($kb['potongan_per_bulan']) ?></td>
-                                        <td><?= formatRupiah($kb['sisa_bon']) ?></td>
-                                        <td>
-                                            <?php if ($kb['status'] == 'pengajuan'): ?>
-                                                <span class="badge bg-warning">Pengajuan</span>
-                                            <?php elseif ($kb['status'] == 'disetujui'): ?>
-                                                <span class="badge bg-info">Disetujui</span>
-                                            <?php elseif ($kb['status'] == 'diberikan'): ?>
-                                                <span class="badge bg-primary">Diberikan</span>
-                                            <?php elseif ($kb['status'] == 'dipotong'): ?>
-                                                <span class="badge bg-secondary">Dipotong</span>
-                                            <?php elseif ($kb['status'] == 'selesai'): ?>
-                                                <span class="badge bg-success">Selesai</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-danger">Ditolak</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php if ($kb['status'] == 'pengajuan' && (hasRole('bos') || hasRole('manager_pusat') || hasRole('manager_cabang') || hasRole('admin_pusat') || hasRole('admin_cabang'))): ?>
-                                            <button class="btn btn-sm btn-success" onclick="approveKasBon(<?= $kb['id'] ?>)">
-                                                <i class="bi bi-check"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-danger" onclick="rejectKasBon(<?= $kb['id'] ?>)">
-                                                <i class="bi bi-x"></i>
-                                            </button>
-                                            <?php elseif ($kb['status'] == 'disetujui' && (hasRole('bos') || hasRole('manager_pusat') || hasRole('manager_cabang') || hasRole('admin_pusat') || hasRole('admin_cabang'))): ?>
-                                            <button class="btn btn-sm btn-primary" onclick="giveKasBon(<?= $kb['id'] ?>)">
-                                                <i class="bi bi-cash"></i> Berikan
-                                            </button>
-                                            <?php elseif ($kb['status'] == 'diberikan' || $kb['status'] == 'dipotong'): ?>
-                                            <button class="btn btn-sm btn-warning" onclick="potongKasBon(<?= $kb['id'] ?>)">
-                                                <i class="bi bi-arrow-down-circle"></i> Potong
-                                            </button>
-                                            <?php endif; ?>
-                                            <button class="btn btn-sm btn-info" onclick="viewDetail(<?= $kb['id'] ?>)">
-                                                <i class="bi bi-eye"></i>
-                                            </button>
+                                        <td colspan="9" class="text-center">
+                                            <div class="spinner-border spinner-border-sm" role="status"></div>
                                         </td>
                                     </tr>
-                                    <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -331,6 +273,105 @@ $stats = $kasBon->getStatistics();
                 theme: 'light'
             });
         });
+        
+        // Load kas bon data via JSON API
+        $(document).ready(function() {
+            loadKasBonData();
+        });
+
+        function loadKasBonData() {
+            const status = '<?php echo $_GET['status'] ?? ''; ?>';
+            
+            window.KewerAPI.getKasBon({ status }).done(response => {
+                if (response.success) {
+                    if (response.stats) {
+                        $('#total-kasbon').text(response.stats.total_kasbon || 0);
+                        $('#total-jumlah').text('Rp ' + formatRupiah(response.stats.total_jumlah || 0));
+                        $('#total-sisa').text('Rp ' + formatRupiah(response.stats.total_sisa || 0));
+                        $('#selesai').text(response.stats.selesai || 0);
+                    }
+                    if (response.pending && response.pending.length > 0) {
+                        $('#pending-count').text(response.pending.length);
+                        $('#pending-alert').show();
+                    }
+                    renderKasBonTable(response.data);
+                } else {
+                    $('#kasbon-table-body').html('<tr><td colspan="9" class="text-center text-danger">Gagal memuat data</td></tr>');
+                }
+            }).fail(error => {
+                $('#kasbon-table-body').html('<tr><td colspan="9" class="text-center text-danger">Gagal memuat data</td></tr>');
+            });
+        }
+
+        function renderKasBonTable(data) {
+            if (!data || data.length === 0) {
+                $('#kasbon-table-body').html('<tr><td colspan="9" class="text-center text-muted">Tidak ada data kas bon</td></tr>');
+                return;
+            }
+
+            let html = '';
+            data.forEach(kb => {
+                const statusClass = {
+                    'pengajuan': 'warning',
+                    'disetujui': 'info',
+                    'diberikan': 'primary',
+                    'dipotong': 'secondary',
+                    'selesai': 'success',
+                    'ditolak': 'danger'
+                }[kb.status] || 'secondary';
+
+                html += `
+                    <tr>
+                        <td>${kb.kode_kasbon || '-'}</td>
+                        <td>${kb.nama_karyawan || '-'}</td>
+                        <td>${formatDate(kb.tanggal_pengajuan)}</td>
+                        <td>Rp ${formatRupiah(kb.jumlah)}</td>
+                        <td>${kb.tenor_bulan || 0} bulan</td>
+                        <td>Rp ${formatRupiah(kb.potongan_per_bulan)}</td>
+                        <td>Rp ${formatRupiah(kb.sisa_bon)}</td>
+                        <td>
+                            <span class="badge bg-${statusClass}">${kb.status ? kb.status.charAt(0).toUpperCase() + kb.status.slice(1) : 'Pengajuan'}</span>
+                        </td>
+                        <td>
+                            ${kb.status === 'pengajuan' ? `
+                                <button class="btn btn-sm btn-success" onclick="approveKasBon(${kb.id})">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="rejectKasBon(${kb.id})">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            ` : ''}
+                            ${kb.status === 'disetujui' ? `
+                                <button class="btn btn-sm btn-primary" onclick="giveKasBon(${kb.id})">
+                                    <i class="bi bi-cash"></i> Berikan
+                                </button>
+                            ` : ''}
+                            ${kb.status === 'diberikan' || kb.status === 'dipotong' ? `
+                                <button class="btn btn-sm btn-warning" onclick="potongKasBon(${kb.id})">
+                                    <i class="bi bi-arrow-down-circle"></i> Potong
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-sm btn-info" onclick="viewDetail(${kb.id})">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $('#kasbon-table-body').html(html);
+        }
+
+        function formatRupiah(angka) {
+            return new Intl.NumberFormat('id-ID').format(angka);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
         function saveKasBon() {
             const form = document.getElementById('addForm');
             const formData = new FormData(form);

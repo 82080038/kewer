@@ -37,6 +37,17 @@ if (!isLoggedIn()) {
     exit();
 }
 
+// Feature flag — disabled until koperasi_rekening / kode_pembayaran schema is built
+if (function_exists('isFeatureEnabled') && !isFeatureEnabled('pembayaran_elektronik')) {
+    http_response_code(503);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Electronic payment feature is currently disabled (pending schema build-out).',
+        'feature_flag' => 'pembayaran_elektronik'
+    ]);
+    exit();
+}
+
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['role'];
 $current_koperasi_id = getCurrentKoperasiId();

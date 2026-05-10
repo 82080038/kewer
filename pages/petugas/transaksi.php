@@ -265,5 +265,13 @@ if (!is_array($transaksi)) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Include Notifications JS for standalone pages -->
+    <script src="<?php echo baseUrl('includes/js/notifications.js'); ?>"></script>
+    <script>
+    // Initialize notifications for standalone page
+    $(document).ready(function() {
+        window.KewerNotifications.updateBadge();
+    });
+    </script>
 </body>
 </html>

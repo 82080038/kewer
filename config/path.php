@@ -6,7 +6,9 @@ ini_set('display_startup_errors', 1);
 
 // Path Configuration
 // Define base path for the application
-define('BASE_PATH', dirname(__DIR__));
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', dirname(__DIR__));
+}
 
 // Load environment configuration first
 require_once BASE_PATH . '/config/env.php';

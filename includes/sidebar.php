@@ -18,23 +18,8 @@ $role = $user['role'] ?? '';
 $cabang_id = getCurrentCabang();
 $current_page = $_SERVER['PHP_SELF'];
 
-// Hitung notifikasi belum dibaca (hanya jika bukan appOwner)
-if (function_exists('isFeatureEnabled') === false && file_exists(BASE_PATH . '/includes/feature_flags.php')) {
-    require_once BASE_PATH . '/includes/feature_flags.php';
-}
-
+// Notification count will be handled by jQuery
 $notif_count = 0;
-if ($role !== 'appOwner' && function_exists('query')) {
-    try {
-        $notif_rows = query(
-            "SELECT COUNT(*) as jml FROM notifikasi
-             WHERE is_read = 0
-               AND (user_id = ? OR (target_role = ? AND (cabang_id = ? OR cabang_id IS NULL)))",
-            [$user['id'], $role, $cabang_id]
-        );
-        $notif_count = (int)($notif_rows[0]['jml'] ?? 0);
-    } catch (Exception $e) { $notif_count = 0; }
-}
 
 // Helper function to check if current page matches a specific path
 function isCurrentPage($current, $path) {
@@ -213,10 +198,23 @@ function safeHasPermission($permission_code) {
             <li class="nav-item">
                 <a class="nav-link position-relative <?php echo isCurrentPage($current_page, '/pages/notifikasi/index.php') ? 'active' : ''; ?>" href="<?php echo baseUrl('pages/notifikasi/index.php'); ?>">
                     <i class="bi bi-bell"></i> Notifikasi
-                    <?php if ($notif_count > 0): ?>
-                        <span class="badge bg-danger rounded-pill ms-1" style="font-size:10px"><?= $notif_count > 99 ? '99+' : $notif_count ?></span>
-                    <?php endif; ?>
+                    <span id="notification-badge" class="badge bg-danger rounded-pill ms-1" style="font-size:10px; display:none;"></span>
                 </a>
+                <!-- Notification Dropdown -->
+                <div id="notification-dropdown" class="dropdown-menu notification-dropdown" style="position: fixed; left: 16.666667%; top: 56px; width: 350px; max-height: 400px; overflow-y: auto; display: none; z-index: 1030;">
+                    <div class="dropdown-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Notifikasi</h6>
+                        <button id="mark-all-read" class="btn btn-sm btn-link text-decoration-none">Tandai semua dibaca</button>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <div id="notification-list" class="notification-list">
+                        <div class="text-center p-3">
+                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                        </div>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a href="<?php echo baseUrl('pages/notifikasi/index.php'); ?>" class="dropdown-item text-center">Lihat semua notifikasi</a>
+                </div>
             </li>
             <?php endif; ?>
             <li class="nav-item">
@@ -434,4 +432,30 @@ function safeHasPermission($permission_code) {
             }, 100);
         });
     });
+</script>
+<!-- Include Global JS Files -->
+<script src="<?php echo baseUrl('includes/js/api.js'); ?>"></script>
+<script src="<?php echo baseUrl('includes/js/app.js'); ?>"></script>
+<script src="<?php echo baseUrl('includes/js/notifications.js'); ?>"></script>
+<script>
+// Toggle notification dropdown
+document.querySelector('.sidebar .nav-link[href*="notifikasi"]').addEventListener('click', function(e) {
+    e.preventDefault();
+    const dropdown = document.getElementById('notification-dropdown');
+    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    
+    if (dropdown.style.display === 'block') {
+        window.KewerNotifications.loadNotifications('#notification-list');
+    }
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('notification-dropdown');
+    const notifLink = document.querySelector('.sidebar .nav-link[href*="notifikasi"]');
+    
+    if (dropdown.style.display === 'block' && !dropdown.contains(e.target) && !notifLink.contains(e.target)) {
+        dropdown.style.display = 'none';
+    }
+});
 </script>

@@ -1,6 +1,7 @@
 <?php
-require_once '../../includes/auth.php';
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/path.php';
+require_once BASE_PATH . '/includes/functions.php';
+requireLogin();
 
 $user = getCurrentUser();
 $cabang_id = getCurrentCabang();
@@ -31,10 +32,10 @@ if (!is_array($penagihan)) {
 $stats = query("
     SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN status = 'dalam_proses' THEN 1 ELSE 0 END) as dalam_proses,
-        SUM(CASE WHEN status = 'berhasil' THEN 1 ELSE 0 END) as berhasil,
-        SUM(CASE WHEN status = 'gagal' THEN 1 ELSE 0 END) as gagal
+        SUM(CASE WHEN p.status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN p.status = 'dalam_proses' THEN 1 ELSE 0 END) as dalam_proses,
+        SUM(CASE WHEN p.status = 'berhasil' THEN 1 ELSE 0 END) as berhasil,
+        SUM(CASE WHEN p.status = 'gagal' THEN 1 ELSE 0 END) as gagal
     FROM penagihan p
     JOIN pinjaman pin ON p.pinjaman_id = pin.id
     WHERE pin.cabang_id = ? OR ? IS NULL

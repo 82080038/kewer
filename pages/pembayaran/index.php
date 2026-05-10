@@ -2,20 +2,6 @@
 require_once __DIR__ . '/../../config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
 requireLogin();
-
-$kantor_id = 1; // Single office
-$pembayaran = query("SELECT p.*, n.nama as nama_nasabah, u.nama as nama_petugas, pin.kode_pinjaman
-                     FROM pembayaran p
-                     JOIN angsuran a ON p.angsuran_id = a.id
-                     JOIN pinjaman pin ON a.pinjaman_id = pin.id
-                     JOIN nasabah n ON pin.nasabah_id = n.id
-                     JOIN users u ON p.petugas_id = u.id
-                     ORDER BY p.tanggal_bayar DESC");
-
-// Ensure pembayaran is an array
-if (!is_array($pembayaran)) {
-    $pembayaran = [];
-}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -62,28 +48,12 @@ if (!is_array($pembayaran)) {
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <?php foreach ($pembayaran as $p): ?>
+                                <tbody id="pembayaran-table-body">
                                     <tr>
-                                        <td><?= $p['kode_pembayaran'] ?></td>
-                                        <td><?= $p['kode_pinjaman'] ?></td>
-                                        <td><?= $p['nama_nasabah'] ?></td>
-                                        <td><?= formatDate($p['tanggal_bayar']) ?></td>
-                                        <td><?= formatRupiah($p['jumlah_bayar']) ?></td>
-                                        <td><?= formatRupiah($p['denda']) ?></td>
-                                        <td><?= formatRupiah($p['total_bayar']) ?></td>
-                                        <td><?= $p['cara_bayar'] ?></td>
-                                        <td><?= $p['nama_petugas'] ?></td>
-                                        <td>
-                                            <a href="edit.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-warning">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <a href="hapus.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus pembayaran ini?')">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
+                                        <td colspan="10" class="text-center">
+                                            <div class="spinner-border spinner-border-sm" role="status"></div>
                                         </td>
                                     </tr>
-                                    <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -230,6 +200,89 @@ if (!is_array($pembayaran)) {
                 theme: 'light'
             });
         });
+        
+        // Load pembayaran data via JSON API
+        $(document).ready(function() {
+            loadPembayaranData();
+        });
+
+        function loadPembayaranData() {
+            window.KewerAPI.getPembayaran().done(response => {
+                if (response.success) {
+                    renderPembayaranTable(response.data);
+                } else {
+                    $('#pembayaran-table-body').html('<tr><td colspan="10" class="text-center text-danger">Gagal memuat data</td></tr>');
+                }
+            }).fail(error => {
+                $('#pembayaran-table-body').html('<tr><td colspan="10" class="text-center text-danger">Gagal memuat data</td></tr>');
+            });
+        }
+
+        function renderPembayaranTable(data) {
+            if (!data || data.length === 0) {
+                $('#pembayaran-table-body').html('<tr><td colspan="10" class="text-center text-muted">Tidak ada data pembayaran</td></tr>');
+                return;
+            }
+
+            let html = '';
+            data.forEach(p => {
+                html += `
+                    <tr>
+                        <td>${p.kode_pembayaran || '-'}</td>
+                        <td>${p.kode_pinjaman || '-'}</td>
+                        <td>${p.nama_nasabah || '-'}</td>
+                        <td>${formatDate(p.tanggal_bayar)}</td>
+                        <td>Rp ${formatRupiah(p.jumlah_bayar)}</td>
+                        <td>Rp ${formatRupiah(p.denda)}</td>
+                        <td>Rp ${formatRupiah(p.total_bayar)}</td>
+                        <td>${p.cara_bayar || '-'}</td>
+                        <td>${p.nama_petugas || '-'}</td>
+                        <td>
+                            <a href="edit.php?id=${p.id}" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <button onclick="confirmDelete(${p.id})" class="btn btn-sm btn-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $('#pembayaran-table-body').html(html);
+        }
+
+        function confirmDelete(id) {
+            Swal.fire({
+                title: 'Konfirmasi Hapus',
+                text: 'Apakah Anda yakin ingin menghapus pembayaran ini?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    deletePembayaran(id);
+                }
+            });
+        }
+
+        function deletePembayaran(id) {
+            window.KewerAPI.deletePembayaran(id).done(response => {
+                if (response.success) {
+                    Swal.fire('Berhasil', 'Pembayaran berhasil dihapus', 'success').then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', response.error || 'Gagal menghapus pembayaran', 'error');
+                }
+            }).fail(error => {
+                Swal.fire('Error', 'Terjadi kesalahan sistem', 'error');
+            });
+        }
+
         // Load angsuran when pinjaman is selected
         document.querySelector('select[name="pinjaman_id"]').addEventListener('change', function() {
             const pinjamanId = this.value;

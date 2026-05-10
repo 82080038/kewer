@@ -16,8 +16,9 @@ CREATE TABLE IF NOT EXISTS platform_features (
 
 -- Seed: semua fitur v2.3.0 — default OFF
 INSERT INTO platform_features (feature_key, label, description, category, is_enabled) VALUES
-('wa_notifikasi',    'WhatsApp Notifikasi',       'Kirim notifikasi WA ke nasabah via Fonnte API. Butuh token WA_TOKEN di .env.',     'wa',      0),
-('wa_pengingat_auto','WA Pengingat Otomatis',     'Cron harian kirim WA pengingat H-1 dan H-0 jatuh tempo ke nasabah.',             'wa',      0),
+('wa_notifikasi',    'In-App Notifikasi',       'Kirim notifikasi in-app via notification queue. Tidak memerlukan layanan eksternal.',     'wa',      0),
+('wa_pengingat_auto','Pengingat Otomatis',     'Cron harian kirim notifikasi pengingat H-3, H-1 dan H-0 jatuh tempo ke nasabah.',            'wa',      0),
+('wa_notifikasi_queue','Notification Queue',   'Queue system untuk notifikasi in-app. Proses batch via cron.',           'wa',      0),
 ('two_factor_auth',  '2FA Login (TOTP)',           'Autentikasi dua faktor untuk role bos/manager menggunakan Google Authenticator.', 'auth',    0),
 ('pwa',              'PWA (Progressive Web App)', 'Service worker, manifest, install-to-homescreen, offline fallback.',              'pwa',     0),
 ('gps_pembayaran',   'GPS pada Pembayaran',        'Rekam koordinat GPS saat petugas mencatat pembayaran di lapangan.',              'lapangan', 0),

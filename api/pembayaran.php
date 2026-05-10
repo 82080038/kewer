@@ -325,7 +325,7 @@ switch ($method) {
 
             // Trigger webhook for pembayaran received
             require_once BASE_PATH . '/includes/webhook_trigger.php';
-            $nasabah_info = query("SELECT n.nama, n.id FROM pinjaman pin JOIN nasabah n ON pin.nasabah_id = n.id WHERE pin.id = ?", [$angsuran['pinjaman_id']]);
+            $nasabah_info = query("SELECT n.nama, n.id, n.telepon FROM pinjaman pin JOIN nasabah n ON pin.nasabah_id = n.id WHERE pin.id = ?", [$angsuran['pinjaman_id']]);
             $pembayaran_data = [
                 'nasabah_id' => $nasabah_info[0]['id'] ?? null,
                 'nama_nasabah' => $nasabah_info[0]['nama'] ?? '',
@@ -338,7 +338,24 @@ switch ($method) {
                 'tanggal_bayar' => $tanggal_bayar
             ];
             triggerPembayaranReceived($pembayaran_id, $pembayaran_data);
-            
+
+            // ── WA Notifikasi Integration ─────────────────────
+            if (isFeatureEnabled('wa_notifikasi') && !empty($nasabah_info[0]['telepon'])) {
+                require_once BASE_PATH . '/includes/wa_notifikasi.php';
+                $pinjaman_info = query("SELECT kode_pinjaman FROM pinjaman WHERE id = ?", [$angsuran['pinjaman_id']]);
+                $pesan = templateWaKonfirmasiBayar(
+                    ['nama' => $nasabah_info[0]['nama']],
+                    ['kode_pinjaman' => $pinjaman_info[0]['kode_pinjaman'] ?? ''],
+                    [
+                        'kode_pembayaran' => $kode_pembayaran,
+                        'total_bayar' => $total_pembayaran,
+                        'tanggal_bayar' => $tanggal_bayar
+                    ]
+                );
+                kirimWA($nasabah_info[0]['telepon'], $pesan, $nasabah_info[0]['id'], getCurrentUser()['id'], 'konfirmasi_bayar');
+            }
+            // ─────────────────────────────────────────────────────
+
             $new_pembayaran = query("
                 SELECT p.*, a.no_angsuran, pin.kode_pinjaman, n.nama as nasabah_nama
                 FROM pembayaran p

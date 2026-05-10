@@ -9,70 +9,6 @@ if (!hasPermission('view_laporan') && !hasPermission('assign_permissions')) {
 }
 
 $cabang_id = getCurrentCabang();
-
-// Filters
-$filter_action = $_GET['action'] ?? '';
-$filter_table = $_GET['table_name'] ?? '';
-$filter_user = $_GET['user_id'] ?? '';
-$filter_date_from = $_GET['date_from'] ?? date('Y-m-d', strtotime('-7 days'));
-$filter_date_to = $_GET['date_to'] ?? date('Y-m-d');
-
-// Build query
-$where = ["1=1"];
-$params = [];
-
-if ($filter_action) {
-    $where[] = "a.action = ?";
-    $params[] = $filter_action;
-}
-if ($filter_table) {
-    $where[] = "a.table_name = ?";
-    $params[] = $filter_table;
-}
-if ($filter_user) {
-    $where[] = "a.user_id = ?";
-    $params[] = $filter_user;
-}
-if ($filter_date_from) {
-    $where[] = "DATE(a.created_at) >= ?";
-    $params[] = $filter_date_from;
-}
-if ($filter_date_to) {
-    $where[] = "DATE(a.created_at) <= ?";
-    $params[] = $filter_date_to;
-}
-
-$where_clause = implode(" AND ", $where);
-
-$logs = query("
-    SELECT a.*, u.nama as nama_user, u.role
-    FROM audit_log a
-    LEFT JOIN users u ON a.user_id = u.id
-    WHERE $where_clause
-    ORDER BY a.created_at DESC
-    LIMIT 500
-", $params);
-if (!is_array($logs)) $logs = [];
-
-// Get distinct actions and tables for filter dropdowns
-$actions = query("SELECT DISTINCT action FROM audit_log ORDER BY action");
-if (!is_array($actions)) $actions = [];
-$tables = query("SELECT DISTINCT table_name FROM audit_log ORDER BY table_name");
-if (!is_array($tables)) $tables = [];
-$users = query("SELECT id, nama FROM users ORDER BY nama");
-if (!is_array($users)) $users = [];
-
-// Stats
-$stats = query("
-    SELECT 
-        COUNT(*) as total,
-        COUNT(DISTINCT user_id) as unique_users,
-        COUNT(DISTINCT action) as unique_actions,
-        COUNT(DISTINCT table_name) as unique_tables
-    FROM audit_log
-    WHERE DATE(created_at) >= ? AND DATE(created_at) <= ?
-", [$filter_date_from, $filter_date_to]);
-$stat = is_array($stats) && isset($stats[0]) ? $stats[0] : ['total' => 0, 'unique_users' => 0, 'unique_actions' => 0, 'unique_tables' => 0];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -202,74 +138,104 @@ $stat = is_array($stats) && isset($stats[0]) ? $stats[0] : ['total' => 0, 'uniqu
                                         <th style="width:34%">Detail</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <?php if (empty($logs)): ?>
-                                        <tr><td colspan="8" class="text-center text-muted">Tidak ada data audit</td></tr>
-                                    <?php else: ?>
-                                        <?php foreach ($logs as $log): ?>
-                                            <tr>
-                                                <td><?php echo $log['id']; ?></td>
-                                                <td><small><?php echo date('d/m/Y H:i:s', strtotime($log['created_at'])); ?></small></td>
-                                                <td>
-                                                    <small>
-                                                        <?php echo $log['nama_user'] ?? 'System'; ?>
-                                                        <?php if ($log['role']): ?>
-                                                            <br><span class="badge bg-secondary"><?php echo $log['role']; ?></span>
-                                                        <?php endif; ?>
-                                                    </small>
-                                                </td>
-                                                <td>
-                                                    <?php
-                                                    $action_colors = [
-                                                        'create' => 'success', 'insert' => 'success',
-                                                        'update' => 'warning', 'edit' => 'warning',
-                                                        'delete' => 'danger', 'hapus' => 'danger',
-                                                        'login' => 'info', 'logout' => 'secondary',
-                                                        'approve' => 'primary', 'reject' => 'danger',
-                                                        'blacklist' => 'danger', 'unblacklist' => 'success',
-                                                        'pembayaran' => 'success'
-                                                    ];
-                                                    $color = $action_colors[$log['action']] ?? 'secondary';
-                                                    ?>
-                                                    <span class="badge bg-<?php echo $color; ?>"><?php echo ucfirst($log['action']); ?></span>
-                                                </td>
-                                                <td><small><?php echo $log['table_name']; ?></small></td>
-                                                <td><?php echo $log['record_id'] ?? '-'; ?></td>
-                                                <td><small><?php echo $log['ip_address'] ?? '-'; ?></small></td>
-                                                <td>
-                                                    <?php if ($log['old_value'] || $log['new_value']): ?>
-                                                        <button class="btn btn-xs btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#detail-<?php echo $log['id']; ?>">
-                                                            <i class="bi bi-eye"></i> Detail
-                                                        </button>
-                                                        <div class="collapse mt-1" id="detail-<?php echo $log['id']; ?>">
-                                                            <?php if ($log['old_value']): ?>
-                                                                <div class="mb-1"><small class="text-danger">Sebelum:</small></div>
-                                                                <div class="json-preview"><?php echo htmlspecialchars($log['old_value']); ?></div>
-                                                            <?php endif; ?>
-                                                            <?php if ($log['new_value']): ?>
-                                                                <div class="mb-1 mt-1"><small class="text-success">Sesudah:</small></div>
-                                                                <div class="json-preview"><?php echo htmlspecialchars($log['new_value']); ?></div>
-                                                            <?php endif; ?>
-                                                        </div>
-                                                    <?php else: ?>
-                                                        <small class="text-muted">-</small>
-                                                    <?php endif; ?>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
+                                <tbody id="audit-table-body">
+                                    <tr>
+                                        <td colspan="8" class="text-center">
+                                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
-                        </div>
-                        <div class="text-muted mt-2">
-                            <small>Menampilkan <?php echo count($logs); ?> log terbaru (max 500)</small>
                         </div>
                     </div>
                 </div>
             </main>
         </div>
     </div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        // Load audit data via JSON API
+        $(document).ready(function() {
+            loadAuditData();
+        });
+
+        function loadAuditData() {
+            const action = '<?php echo $_GET['action'] ?? ''; ?>';
+            const table_name = '<?php echo $_GET['table_name'] ?? ''; ?>';
+            const user_id = '<?php echo $_GET['user_id'] ?? ''; ?>';
+            const date_from = '<?php echo $_GET['date_from'] ?? date('Y-m-d', strtotime('-7 days')); ?>';
+            const date_to = '<?php echo $_GET['date_to'] ?? date('Y-m-d'); ?>';
+
+            window.KewerAPI.getAuditLog({ action, table_name, user_id, date_from, date_to }).done(response => {
+                if (response.success) {
+                    renderAuditTable(response.data);
+                } else {
+                    $('#audit-table-body').html('<tr><td colspan="8" class="text-center text-danger">Gagal memuat data</td></tr>');
+                }
+            }).fail(error => {
+                $('#audit-table-body').html('<tr><td colspan="8" class="text-center text-danger">Gagal memuat data</td></tr>');
+            });
+        }
+
+        function renderAuditTable(data) {
+            if (!data || data.length === 0) {
+                $('#audit-table-body').html('<tr><td colspan="8" class="text-center text-muted">Tidak ada data audit</td></tr>');
+                return;
+            }
+
+            const actionColors = {
+                'create': 'success', 'insert': 'success',
+                'update': 'warning', 'edit': 'warning',
+                'delete': 'danger', 'hapus': 'danger',
+                'login': 'info', 'logout': 'secondary',
+                'approve': 'primary', 'reject': 'danger',
+                'blacklist': 'danger', 'unblacklist': 'success',
+                'pembayaran': 'success'
+            };
+
+            let html = '';
+            data.forEach(log => {
+                const color = actionColors[log.action] || 'secondary';
+                const hasDetails = log.old_value || log.new_value;
+
+                html += `
+                    <tr>
+                        <td>${log.id || '-'}</td>
+                        <td><small>${formatDate(log.created_at)}</small></td>
+                        <td>
+                            <small>${log.nama_user || 'System'}</small>
+                            ${log.role ? `<br><span class="badge bg-secondary">${log.role}</span>` : ''}
+                        </td>
+                        <td>
+                            <span class="badge bg-${color}">${log.action ? log.action.charAt(0).toUpperCase() + log.action.slice(1) : '-'}</span>
+                        </td>
+                        <td><small>${log.table_name || '-'}</small></td>
+                        <td>${log.record_id || '-'}</td>
+                        <td><small>${log.ip_address || '-'}</small></td>
+                        <td>
+                            ${hasDetails ? `
+                                <button class="btn btn-xs btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#detail-${log.id}">
+                                    <i class="bi bi-eye"></i> Detail
+                                </button>
+                                <div class="collapse mt-1" id="detail-${log.id}">
+                                    ${log.old_value ? `<div class="mb-1"><small class="text-danger">Sebelum:</small></div><div class="json-preview">${log.old_value}</div>` : ''}
+                                    ${log.new_value ? `<div class="mb-1 mt-1"><small class="text-success">Sesudah:</small></div><div class="json-preview">${log.new_value}</div>` : ''}
+                                </div>
+                            ` : '<small class="text-muted">-</small>'}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $('#audit-table-body').html(html);
+        }
+    </script>
 </body>
 </html>

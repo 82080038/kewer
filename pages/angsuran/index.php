@@ -6,91 +6,6 @@ requireLogin();
 $user = getCurrentUser();
 $role = $user['role'];
 $user_cabang_id = $user['cabang_id'] ?? null;
-
-$search = $_GET['search'] ?? '';
-$status = $_GET['status'] ?? '';
-$bulan = $_GET['bulan'] ?? date('Y-m');
-
-// Get cabang filter based on role (using shared function from includes/functions.php)
-$cabang_filter = getPageCabangFilter($role, $user_cabang_id, $user['id'], 'p');
-if ($cabang_filter) {
-    $cabang_filter = "AND " . $cabang_filter;
-}
-
-// Build query
-$where = ["1=1"];
-$params = [];
-
-if ($search) {
-    $where[] = "(a.no_angsuran LIKE ? OR n.nama LIKE ? OR n.kode_nasabah LIKE ? OR p.kode_pinjaman LIKE ?)";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-}
-
-if ($status) {
-    $where[] = "a.status = ?";
-    $params[] = $status;
-}
-
-if ($bulan) {
-    $where[] = "DATE_FORMAT(a.jatuh_tempo, '%Y-%m') = ?";
-    $params[] = $bulan;
-}
-
-// Add cabang filter
-if ($cabang_filter) {
-    $where[] = ltrim($cabang_filter, 'AND ');
-}
-
-$where_clause = "WHERE " . implode(" AND ", $where);
-
-// Get angsuran data
-$angsuran = query("
-    SELECT a.*, n.nama, n.kode_nasabah, p.kode_pinjaman, p.tenor
-    FROM angsuran a
-    JOIN pinjaman p ON a.pinjaman_id = p.id
-    JOIN nasabah n ON p.nasabah_id = n.id
-    $where_clause
-    ORDER BY a.jatuh_tempo ASC
-", $params);
-
-// Ensure angsuran is an array
-if (!is_array($angsuran)) {
-    $angsuran = [];
-}
-
-// Get statistics with cabang filter (need to join through pinjaman)
-$stats_where = "";
-if ($cabang_filter) {
-    // Transform filter for angsuran table (need to join through pinjaman)
-    if ($role === 'bos') {
-        $owned_cabangs = getBosOwnedCabangIds();
-        if (!empty($owned_cabangs)) {
-            $stats_where = "WHERE a.pinjaman_id IN (SELECT id FROM pinjaman WHERE cabang_id IN (" . implode(',', array_map('intval', $owned_cabangs)) . "))";
-        }
-    } elseif ($user_cabang_id) {
-        $stats_where = "WHERE a.pinjaman_id IN (SELECT id FROM pinjaman WHERE cabang_id = " . intval($user_cabang_id) . ")";
-    }
-}
-
-$stats_result = query("
-    SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'belum' THEN 1 ELSE 0 END) as belum,
-        SUM(CASE WHEN status = 'lunas' THEN 1 ELSE 0 END) as lunas,
-        SUM(CASE WHEN status = 'telat' THEN 1 ELSE 0 END) as telat,
-        SUM(total_angsuran) as total_tagihan,
-        SUM(total_bayar) as total_dibayar,
-        SUM(denda) as total_denda
-    FROM angsuran a
-    $stats_where
-");
-$stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] : ['total' => 0, 'belum' => 0, 'lunas' => 0, 'telat' => 0, 'total_tagihan' => 0, 'total_dibayar' => 0, 'total_denda' => 0];
-
-// Get late payments with cabang filter
-$late_payments = checkLatePayments();
 ?>
 
 <!DOCTYPE html>
@@ -115,9 +30,14 @@ $late_payments = checkLatePayments();
         <main class="content-area">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Data Angsuran</h1>
-                    <a href="bayar.php" class="btn btn-success">
-                        <i class="bi bi-cash"></i> Bayar Angsuran
-                    </a>
+                    <div class="btn-group">
+                        <a href="bayar.php" class="btn btn-success">
+                            <i class="bi bi-cash"></i> Bayar Angsuran
+                        </a>
+                        <button class="btn btn-success" onclick="exportData('angsuran')">
+                            <i class="bi bi-download"></i> Export CSV
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Statistics Cards -->
@@ -283,65 +203,12 @@ $late_payments = checkLatePayments();
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <?php if (empty($angsuran)): ?>
-                                        <tr>
-                                            <td colspan="9" class="text-center text-muted">Tidak ada data angsuran</td>
-                                        </tr>
-                                    <?php else: ?>
-                                        <?php foreach ($angsuran as $a): ?>
-                                            <tr>
-                                                <td><?php echo $a['no_angsuran']; ?></td>
-                                                <td>
-                                                    <div>
-                                                        <strong><?php echo $a['nama']; ?></strong>
-                                                        <br>
-                                                        <small class="text-muted"><?php echo $a['kode_nasabah']; ?></small>
-                                                    </div>
-                                                </td>
-                                                <td><?php echo $a['kode_pinjaman']; ?></td>
-                                                <td><?php echo formatDate($a['jatuh_tempo']); ?></td>
-                                                <td><?php echo formatRupiah($a['total_angsuran']); ?></td>
-                                                <td>
-                                                    <?php if ($a['denda'] > 0): ?>
-                                                        <span class="text-danger"><?php echo formatRupiah($a['denda']); ?></span>
-                                                    <?php else: ?>
-                                                        -
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <?php 
-                                                    $total = $a['total_angsuran'] + $a['denda'];
-                                                    echo formatRupiah($total);
-                                                    ?>
-                                                </td>
-                                                <td>
-                                                    <?php
-                                                    $status_class = [
-                                                        'belum' => 'warning',
-                                                        'lunas' => 'success',
-                                                        'telat' => 'danger'
-                                                    ];
-                                                    ?>
-                                                    <span class="badge bg-<?php echo $status_class[$a['status']]; ?>">
-                                                        <?php echo ucfirst($a['status']); ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <div class="btn-group btn-group-sm" role="group">
-                                                        <a href="../pinjaman/detail.php?id=<?php echo $a['pinjaman_id']; ?>" class="btn btn-outline-primary" title="Detail Pinjaman">
-                                                            <i class="bi bi-eye"></i>
-                                                        </a>
-                                                        <?php if ($a['status'] !== 'lunas'): ?>
-                                                            <a href="bayar.php?id=<?php echo $a['id']; ?>" class="btn btn-outline-success" title="Bayar">
-                                                                <i class="bi bi-cash"></i>
-                                                            </a>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
+                                <tbody id="angsuran-table-body">
+                                    <tr>
+                                        <td colspan="9" class="text-center">
+                                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -425,6 +292,78 @@ $late_payments = checkLatePayments();
             });
         });
         
+        // Load angsuran data via JSON API
+        $(document).ready(function() {
+            loadAngsuranData();
+        });
+
+        function loadAngsuranData() {
+            const search = '<?php echo $_GET['search'] ?? ''; ?>';
+            const status = '<?php echo $_GET['status'] ?? ''; ?>';
+            const bulan = '<?php echo $_GET['bulan'] ?? ''; ?>';
+            
+            window.KewerAPI.getAngsuran({ search, status, bulan }).done(response => {
+                if (response.success) {
+                    renderAngsuranTable(response.data);
+                } else {
+                    $('#angsuran-table-body').html('<tr><td colspan="9" class="text-center text-danger">Gagal memuat data</td></tr>');
+                }
+            }).fail(error => {
+                $('#angsuran-table-body').html('<tr><td colspan="9" class="text-center text-danger">Gagal memuat data</td></tr>');
+            });
+        }
+
+        function renderAngsuranTable(data) {
+            if (!data || data.length === 0) {
+                $('#angsuran-table-body').html('<tr><td colspan="9" class="text-center text-muted">Tidak ada data angsuran</td></tr>');
+                return;
+            }
+
+            let html = '';
+            data.forEach(a => {
+                const statusClass = {
+                    'belum': 'warning',
+                    'lunas': 'success',
+                    'telat': 'danger'
+                }[a.status] || 'secondary';
+
+                const total = (a.total_angsuran || 0) + (a.denda || 0);
+
+                html += `
+                    <tr>
+                        <td>${a.no_angsuran || '-'}</td>
+                        <td>
+                            <div>
+                                <strong>${a.nama || ''}</strong>
+                                <br>
+                                <small class="text-muted">${a.kode_nasabah || '-'}</small>
+                            </div>
+                        </td>
+                        <td>${a.kode_pinjaman || '-'}</td>
+                        <td>${formatDate(a.jatuh_tempo)}</td>
+                        <td>Rp ${formatRupiah(a.total_angsuran)}</td>
+                        <td>
+                            ${a.denda > 0 ? `<span class="text-danger">Rp ${formatRupiah(a.denda)}</span>` : '-'}
+                        </td>
+                        <td>Rp ${formatRupiah(total)}</td>
+                        <td>
+                            <span class="badge bg-${statusClass}">${a.status ? a.status.charAt(0).toUpperCase() + a.status.slice(1) : 'Belum'}</span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="../pinjaman/detail.php?id=${a.pinjaman_id}" class="btn btn-outline-primary" title="Detail Pinjaman">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                ${a.status !== 'lunas' ? `<a href="bayar.php?id=${a.id}" class="btn btn-outline-success" title="Bayar"><i class="bi bi-cash"></i></a>` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $('#angsuran-table-body').html(html);
+        }
+
         function showLatePayments() {
             new bootstrap.Modal(document.getElementById('latePaymentsModal')).show();
         }
@@ -433,8 +372,10 @@ $late_payments = checkLatePayments();
             window.location.href = '?status=pending';
         }
 
-        // Convert session alerts to SweetAlert2
-        <?= getSessionAlertsJS() ?>
+        function exportData(entity) {
+            window.location.href = `/api/export_data.php?entity=${entity}`;
+        }
+
     </script>
 </body>
 </html>

@@ -8,68 +8,6 @@ if (!hasPermission('manage_petugas') && !hasPermission('view_petugas')) {
     header('Location: ' . baseUrl('dashboard.php'));
     exit();
 }
-
-$kantor_id = 1; // Single office
-$search = $_GET['search'] ?? '';
-$role_filter = $_GET['role'] ?? '';
-$cabang_filter = $_GET['cabang_id'] ?? '';
-
-// Build query
-$where = ["1=1"];
-$params = [];
-
-if ($search) {
-    $where[] = "(u.username LIKE ? OR u.nama LIKE ? OR u.email LIKE ?)";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-    $params[] = "%$search%";
-}
-
-if ($role_filter) {
-    $where[] = "u.role = ?";
-    $params[] = $role_filter;
-}
-
-$where_clause = "WHERE " . implode(" AND ", $where);
-
-// Get petugas data
-$petugas = query("
-    SELECT u.*, c.nama_cabang
-    FROM users u
-    LEFT JOIN cabang c ON u.cabang_id = c.id
-    $where_clause
-    ORDER BY u.created_at DESC
-", $params);
-
-// Ensure petugas is an array
-if (!is_array($petugas)) {
-    $petugas = [];
-}
-
-// Get statistics
-$stats_result = query("
-    SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN role = 'bos' THEN 1 ELSE 0 END) as bos,
-        SUM(CASE WHEN role IN ('manager_pusat','manager_cabang') THEN 1 ELSE 0 END) as manager,
-        SUM(CASE WHEN role IN ('admin_pusat','admin_cabang') THEN 1 ELSE 0 END) as admin,
-        SUM(CASE WHEN role IN ('petugas_pusat','petugas_cabang') THEN 1 ELSE 0 END) as petugas,
-        SUM(CASE WHEN status = 'aktif' THEN 1 ELSE 0 END) as aktif,
-        SUM(CASE WHEN status = 'nonaktif' THEN 1 ELSE 0 END) as nonaktif
-    FROM users
-", []);
-$stats = is_array($stats_result) && isset($stats_result[0]) ? $stats_result[0] : ['total' => 0, 'bos' => 0, 'manager' => 0, 'admin' => 0, 'petugas' => 0, 'aktif' => 0, 'nonaktif' => 0];
-
-// Get cabang list
-$cabang_list = query("SELECT * FROM cabang WHERE status = 'aktif' ORDER BY nama_cabang");
-if (!is_array($cabang_list)) {
-    $cabang_list = [];
-}
-
-// Ensure petugas is an array
-if (!is_array($petugas)) {
-    $petugas = [];
-}
 ?>
 
 <!DOCTYPE html>
@@ -213,66 +151,12 @@ if (!is_array($petugas)) {
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <?php if (empty($petugas)): ?>
-                                        <tr>
-                                            <td colspan="7" class="text-center text-muted">Tidak ada data petugas</td>
-                                        </tr>
-                                    <?php else: ?>
-                                        <?php foreach ($petugas as $p): ?>
-                                            <tr>
-                                                <td><?php echo $p['username']; ?></td>
-                                                <td><?php echo $p['nama']; ?></td>
-                                                <td><?php echo $p['email'] ?: '-'; ?></td>
-                                                <td>
-                                                    <?php
-                                                    $role_class = [
-                                                        'bos' => 'danger',
-                                                        'manager_pusat' => 'primary',
-                                                        'manager_cabang' => 'success',
-                                                        'admin_pusat' => 'warning',
-                                                        'admin_cabang' => 'info',
-                                                        'petugas_pusat' => 'secondary',
-                                                        'petugas_cabang' => 'dark',
-                                                        'teller' => 'light'
-                                                    ];
-                                                    ?>
-                                                    <span class="badge bg-<?php echo $role_class[$p['role']] ?? 'secondary'; ?>">
-                                                        <?php echo ucfirst($p['role']); ?>
-                                                    </span>
-                                                </td>
-                                                <td><?php echo $p['nama_cabang'] ?: '-'; ?></td>
-                                                <td>
-                                                    <?php
-                                                    $status_class = [
-                                                        'aktif' => 'success',
-                                                        'nonaktif' => 'secondary'
-                                                    ];
-                                                    ?>
-                                                    <span class="badge bg-<?php echo $status_class[$p['status']]; ?>">
-                                                        <?php echo ucfirst($p['status']); ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <div class="btn-group btn-group-sm" role="group">
-                                                        <a href="edit.php?id=<?php echo $p['id']; ?>" class="btn btn-outline-warning" title="Edit">
-                                                            <i class="bi bi-pencil"></i>
-                                                        </a>
-                                                        <?php if ($p['id'] != getCurrentUser()['id']): ?>
-                                                            <button onclick="toggleStatus(<?php echo $p['id']; ?>, '<?php echo $p['status']; ?>')" class="btn btn-outline-<?php echo $p['status'] === 'aktif' ? 'secondary' : 'success'; ?>" title="<?php echo $p['status'] === 'aktif' ? 'Nonaktifkan' : 'Aktifkan'; ?>">
-                                                                <i class="bi bi-<?php echo $p['status'] === 'aktif' ? 'pause' : 'play'; ?>"></i>
-                                                            </button>
-                                                            <?php if ($p['role'] !== 'bos' || getCurrentUser()['role'] === 'bos'): ?>
-                                                                <button onclick="confirmDelete(<?php echo $p['id']; ?>, '<?php echo $p['nama']; ?>')" class="btn btn-outline-danger" title="Hapus">
-                                                                    <i class="bi bi-trash"></i>
-                                                                </button>
-                                                            <?php endif; ?>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
+                                <tbody id="petugas-table-body">
+                                    <tr>
+                                        <td colspan="7" class="text-center">
+                                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -403,6 +287,76 @@ if (!is_array($petugas)) {
                     roleSelect.dispatchEvent(new Event('change'));
                 }
             });
+        }
+        
+        // Load petugas data via JSON API
+        $(document).ready(function() {
+            loadPetugasData();
+        });
+
+        function loadPetugasData() {
+            const search = '<?php echo $_GET['search'] ?? ''; ?>';
+            const role = '<?php echo $_GET['role'] ?? ''; ?>';
+            
+            window.KewerAPI.getPetugas({ search, role }).done(response => {
+                if (response.success) {
+                    renderPetugasTable(response.data);
+                } else {
+                    $('#petugas-table-body').html('<tr><td colspan="7" class="text-center text-danger">Gagal memuat data</td></tr>');
+                }
+            }).fail(error => {
+                $('#petugas-table-body').html('<tr><td colspan="7" class="text-center text-danger">Gagal memuat data</td></tr>');
+            });
+        }
+
+        function renderPetugasTable(data) {
+            if (!data || data.length === 0) {
+                $('#petugas-table-body').html('<tr><td colspan="7" class="text-center text-muted">Tidak ada data petugas</td></tr>');
+                return;
+            }
+
+            let html = '';
+            data.forEach(p => {
+                const roleClass = {
+                    'bos': 'danger',
+                    'manager_pusat': 'primary',
+                    'manager_cabang': 'success',
+                    'admin_pusat': 'warning',
+                    'admin_cabang': 'info',
+                    'petugas_pusat': 'secondary',
+                    'petugas_cabang': 'dark',
+                    'teller': 'light'
+                }[p.role] || 'secondary';
+
+                const statusClass = {
+                    'aktif': 'success',
+                    'nonaktif': 'secondary'
+                }[p.status] || 'secondary';
+
+                html += `
+                    <tr>
+                        <td>${p.username || '-'}</td>
+                        <td>${p.nama || ''}</td>
+                        <td>${p.email || '-'}</td>
+                        <td>
+                            <span class="badge bg-${roleClass}">${p.role ? p.role.charAt(0).toUpperCase() + p.role.slice(1).replace('_', ' ') : 'User'}</span>
+                        </td>
+                        <td>${p.nama_cabang || '-'}</td>
+                        <td>
+                            <span class="badge bg-${statusClass}">${p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : 'Aktif'}</span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="edit.php?id=${p.id}" class="btn btn-outline-warning" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $('#petugas-table-body').html(html);
         }
         
         function savePetugas() {

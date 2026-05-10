@@ -17,6 +17,13 @@ require_once BASE_PATH . '/includes/functions.php';
 require_once BASE_PATH . '/includes/business_logic.php';
 require_once BASE_PATH . '/includes/wa_notifikasi.php';
 
+// ── Process Notification Queue ─────────────────────
+if (isFeatureEnabled('wa_notifikasi_queue')) {
+    $queue_result = processNotificationQueue(10);
+    $log[] = "WA Queue: sent={$queue_result['sent']}, failed={$queue_result['failed']}, processed={$queue_result['processed']}";
+}
+// ─────────────────────────────────────────────────────
+
 $log = function(string $msg) {
     $ts = date('[Y-m-d H:i:s]');
     echo "$ts $msg\n";

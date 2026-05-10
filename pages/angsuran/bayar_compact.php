@@ -420,5 +420,13 @@ $metode_list = ['Tunai', 'Transfer Bank', 'QRIS', 'Debit', 'Lainnya'];
         window.open(`cetak_kwitansi.php?id=${$('input[name="angsuran_id"]').val()}`, '_blank');
     }
     </script>
+    <!-- Include Notifications JS for compact pages -->
+    <script src="<?php echo baseUrl('includes/js/notifications.js'); ?>"></script>
+    <script>
+    // Initialize notifications for compact page
+    $(document).ready(function() {
+        window.KewerNotifications.updateBadge();
+    });
+    </script>
 </body>
 </html>

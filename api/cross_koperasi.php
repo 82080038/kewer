@@ -34,6 +34,17 @@ if (!isLoggedIn()) {
     exit();
 }
 
+// Feature flag — disabled until koperasi_master / warning_cross_koperasi schema is built
+if (function_exists('isFeatureEnabled') && !isFeatureEnabled('cross_koperasi_check')) {
+    http_response_code(503);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Cross-koperasi feature is currently disabled (pending schema build-out).',
+        'feature_flag' => 'cross_koperasi_check'
+    ]);
+    exit();
+}
+
 // Only specific roles can access cross-koperasi data
 $allowed_roles = ['appOwner', 'bos', 'manager_pusat', 'manager_cabang', 'admin_pusat', 'admin_cabang', 'petugas_pusat', 'petugas_cabang'];
 if (!in_array($_SESSION['role'], $allowed_roles)) {

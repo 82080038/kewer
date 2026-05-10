@@ -110,14 +110,25 @@ switch ($method) {
         ", [$reason, $nasabah_id]);
         
         if ($result) {
+            // Get nasabah info for WA notification
+            $nasabah_info = query("SELECT nama, telepon FROM nasabah WHERE id = ?", [$nasabah_id]);
+
             // Log to audit
             query("
                 INSERT INTO audit_log (table_name, record_id, action, old_value, new_value, reason, created_by, created_at)
                 VALUES ('nasabah', ?, 'blacklist', 'aktif', 'blacklist', ?, ?, NOW())
             ", [$nasabah_id, $reason, $user['id']]);
-            
+
+            // ── WA Notifikasi Integration ─────────────────────
+            if (isFeatureEnabled('wa_notifikasi') && !empty($nasabah_info[0]['telepon'])) {
+                require_once BASE_PATH . '/includes/wa_notifikasi.php';
+                $pesan = "Yth. *{$nasabah_info[0]['nama']}*,\n\nMohon maaf, status akun Anda telah ditangguhkan (blacklist) karena: {$reason}\n\nSilakan hubungi kantor kami untuk informasi lebih lanjut.\n\n*Kewer Koperasi*";
+                kirimWA($nasabah_info[0]['telepon'], $pesan, $nasabah_id, $user['id'], 'blacklist');
+            }
+            // ─────────────────────────────────────────────────────
+
             echo json_encode([
-                'success' => true, 
+                'success' => true,
                 'message' => 'Nasabah berhasil di-blacklist',
                 'nasabah_id' => $nasabah_id
             ]);

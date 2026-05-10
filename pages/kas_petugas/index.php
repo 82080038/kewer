@@ -1,8 +1,6 @@
 <?php
 require_once __DIR__ . '/../../config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
-require_once BASE_PATH . '/includes/business_logic.php';
-require_once BASE_PATH . '/config/session.php';
 requireLogin();
 
 // Permission check
@@ -14,53 +12,6 @@ if (!hasPermission('kas_petugas.read')) {
 $user = getCurrentUser();
 $cabang_id = getCurrentCabang();
 $role = $user['role'];
-
-// Get setoran data via API
-$apiUrl = baseUrl('api/kas_petugas_setoran.php');
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $apiUrl . '?cabang_id=' . $cabang_id);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Authorization: Bearer kewer-api-token-2024',
-    'Content-Type: application/json'
-]);
-$response = curl_exec($ch);
-curl_close($ch);
-
-$setoranData = json_decode($response, true);
-$setoranList = ($setoranData['success'] ?? false) && isset($setoranData['data']) ? $setoranData['data'] : [];
-
-// Get petugas list for filter (manager and above)
-$petugasList = [];
-if (!in_array($role, ['petugas_pusat', 'petugas_cabang']) && $cabang_id) {
-    $petugasList = query("SELECT id, nama FROM users WHERE cabang_id = ? AND role IN ('petugas_pusat', 'petugas_cabang')", [$cabang_id]);
-    if (!is_array($petugasList)) {
-        $petugasList = [];
-    }
-}
-
-// Get tanggal filter parameter or default to today
-$tanggal = $_GET['tanggal'] ?? date('Y-m-d');
-
-// Ambil data kas_petugas langsung (lebih akurat dari API setoran)
-$kas_harian = query("
-    SELECT kp.*, u.nama as petugas_nama, v.nama as verified_nama
-    FROM kas_petugas kp
-    JOIN users u ON kp.petugas_id = u.id
-    LEFT JOIN users v ON kp.verified_by = v.id
-    WHERE kp.cabang_id = ? AND kp.tanggal = ?
-    ORDER BY kp.created_at DESC
-", [$cabang_id, $tanggal]) ?: [];
-
-// Pengganti petugas hari ini
-$pengganti_hari = query("
-    SELECT pp.*, u.nama as petugas_nama, pg.nama as pengganti_nama
-    FROM pengganti_petugas pp
-    JOIN users u ON pp.petugas_id = u.id
-    JOIN users pg ON pp.pengganti_id = pg.id
-    WHERE pp.cabang_id = ? AND pp.tanggal_mulai <= ? AND pp.tanggal_selesai >= ?
-    ORDER BY pp.created_at DESC LIMIT 10
-", [$cabang_id, $tanggal, $tanggal]) ?: [];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -202,50 +153,12 @@ $pengganti_hari = query("
                                         <?php if (hasPermission('manage_kas')): ?><th>Aksi</th><?php endif; ?>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <?php foreach ($kas_harian as $kp):
-                                        $selisih_abs = abs($kp['selisih'] ?? 0);
-                                        $ada_masalah = $selisih_abs > 10000;
-                                    ?>
-                                    <tr class="<?= $ada_masalah && !$kp['verified_by'] ? 'table-danger' : '' ?>" data-petugas="<?= $kp['petugas_id'] ?>" data-status="<?= $kp['status'] ?>">
-                                        <td><strong><?= htmlspecialchars($kp['petugas_nama']) ?></strong></td>
-                                        <td>Rp <?= number_format($kp['saldo_awal'], 0, ',', '.') ?></td>
-                                        <td>Rp <?= number_format($kp['total_terima'], 0, ',', '.') ?></td>
-                                        <td>Rp <?= number_format($kp['total_disetor'], 0, ',', '.') ?></td>
-                                        <td>Rp <?= number_format($kp['saldo_akhir'], 0, ',', '.') ?></td>
-                                        <td class="<?= $ada_masalah ? 'text-danger fw-bold' : 'text-success' ?>">
-                                            <?= $ada_masalah ? '⚠ ' : '' ?>Rp <?= number_format($kp['selisih'], 0, ',', '.') ?>
-                                            <?php if ($kp['selisih_keterangan']): ?>
-                                            <br><small class="text-muted"><?= htmlspecialchars($kp['selisih_keterangan']) ?></small>
-                                            <?php endif; ?>
+                                <tbody id="kaspetugas-table-body">
+                                    <tr>
+                                        <td colspan="9" class="text-center">
+                                            <div class="spinner-border spinner-border-sm" role="status"></div>
                                         </td>
-                                        <td>
-                                            <?php if ($kp['verified_by']): ?>
-                                                <span class="badge bg-success"><i class="bi bi-check2"></i> <?= htmlspecialchars($kp['verified_nama'] ?? '-') ?></span>
-                                                <br><small class="text-muted"><?= date('d/m H:i', strtotime($kp['verified_at'])) ?></small>
-                                            <?php else: ?>
-                                                <span class="badge bg-warning text-dark">Belum</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td><?= $kp['is_locked'] ? '<span class="badge bg-secondary"><i class="bi bi-lock"></i> Terkunci</span>' : '<span class="badge bg-light text-dark">Terbuka</span>' ?></td>
-                                        <?php if (hasPermission('manage_kas')): ?>
-                                        <td>
-                                            <?php if (!$kp['verified_by'] && !$kp['is_locked']): ?>
-                                            <button class="btn btn-sm btn-success" onclick="verifikasiKas(<?= $kp['id'] ?>, '<?= htmlspecialchars($kp['petugas_nama']) ?>', <?= $kp['selisih'] ?>)">
-                                                <i class="bi bi-shield-check"></i> Verifikasi
-                                            </button>
-                                            <?php elseif ($kp['verified_by'] && !$kp['is_locked']): ?>
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="kunciKas(<?= $kp['id'] ?>)">
-                                                <i class="bi bi-lock"></i> Kunci
-                                            </button>
-                                            <?php endif; ?>
-                                        </td>
-                                        <?php endif; ?>
                                     </tr>
-                                    <?php endforeach; ?>
-                                    <?php if (empty($kas_harian)): ?>
-                                    <tr><td colspan="9" class="text-center text-muted py-3">Belum ada data kas untuk tanggal ini</td></tr>
-                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -476,6 +389,105 @@ $pengganti_hari = query("
                 html: ada_selisih
                     ? `<div class="alert alert-warning">Ditemukan selisih <strong>Rp ${Math.abs(selisih).toLocaleString('id-ID')}</strong>. Wajib beri keterangan.</div>
                        <textarea class="form-control" id="ket_selisih" rows="3" placeholder="Keterangan selisih (wajib jika ada selisih)..."></textarea>`
+                    : `<p>Kas petugas tidak ada selisih. Konfirmasi verifikasi?</p>
+                       <textarea class="form-control" id="ket_selisih" rows="2" placeholder="Catatan opsional..."></textarea>`,
+                showCancelButton: true, confirmButtonText: 'Verifikasi', cancelButtonText: 'Batal',
+                confirmButtonColor: '#198754',
+                preConfirm: () => {
+                    const ket = document.getElementById('ket_selisih').value.trim();
+                    if (ada_selisih && !ket) { Swal.showValidationMessage('Keterangan wajib diisi jika ada selisih'); return false; }
+                    return ket;
+                }
+            });
+        }
+        
+        // Load kas petugas data via JSON API
+        $(document).ready(function() {
+            loadKasPetugasData();
+        });
+
+        function loadKasPetugasData() {
+            const tanggal = '<?php echo $_GET['tanggal'] ?? date('Y-m-d'); ?>';
+            
+            window.KewerAPI.getKasPetugas({ tanggal }).done(response => {
+                if (response.success) {
+                    if (response.stats) {
+                        $('#total-setoran').text('Rp ' + formatRupiah(response.stats.total_setoran || 0));
+                        $('#belum-verify').text(response.stats.belum_verify || 0);
+                    }
+                    renderKasPetugasTable(response.data);
+                } else {
+                    $('#kaspetugas-table-body').html('<tr><td colspan="9" class="text-center text-danger">Gagal memuat data</td></tr>');
+                }
+            }).fail(error => {
+                $('#kaspetugas-table-body').html('<tr><td colspan="9" class="text-center text-danger">Gagal memuat data</td></tr>');
+            });
+        }
+
+        function renderKasPetugasTable(data) {
+            if (!data || data.length === 0) {
+                $('#kaspetugas-table-body').html('<tr><td colspan="9" class="text-center text-muted">Belum ada data kas untuk tanggal ini</td></tr>');
+                return;
+            }
+
+            let html = '';
+            data.forEach(kp => {
+                const selisihAbs = Math.abs(kp.selisih || 0);
+                const adaMasalah = selisihAbs > 10000;
+                const rowClass = adaMasalah && !kp.verified_by ? 'table-danger' : '';
+
+                html += `
+                    <tr class="${rowClass}">
+                        <td><strong>${kp.petugas_nama || '-'}</strong></td>
+                        <td>Rp ${formatRupiah(kp.saldo_awal)}</td>
+                        <td>Rp ${formatRupiah(kp.total_terima)}</td>
+                        <td>Rp ${formatRupiah(kp.total_disetor)}</td>
+                        <td>Rp ${formatRupiah(kp.saldo_akhir)}</td>
+                        <td class="${adaMasalah ? 'text-danger fw-bold' : 'text-success'}">
+                            ${adaMasalah ? '⚠ ' : ''}Rp ${formatRupiah(kp.selisih)}
+                            ${kp.selisih_keterangan ? `<br><small class="text-muted">${kp.selisih_keterangan}</small>` : ''}
+                        </td>
+                        <td>
+                            ${kp.verified_by 
+                                ? `<span class="badge bg-success"><i class="bi bi-check2"></i> ${kp.verified_nama || '-'}</span><br><small class="text-muted">${formatDate(kp.verified_at)}</small>`
+                                : `<span class="badge bg-warning text-dark">Belum</span>`
+                            }
+                        </td>
+                        <td>${kp.is_locked ? '<span class="badge bg-secondary"><i class="bi bi-lock"></i> Terkunci</span>' : '<span class="badge bg-light text-dark">Terbuka</span>'}</td>
+                        <td>
+                            ${!kp.verified_by && !kp.is_locked 
+                                ? `<button class="btn btn-sm btn-success" onclick="verifikasiKas(${kp.id}, '${kp.petugas_nama}', ${kp.selisih})"><i class="bi bi-shield-check"></i> Verifikasi</button>`
+                                : ''
+                            }
+                            ${kp.verified_by && !kp.is_locked
+                                ? `<button class="btn btn-sm btn-outline-secondary" onclick="kunciKas(${kp.id})"><i class="bi bi-lock"></i> Kunci</button>`
+                                : ''
+                            }
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $('#kaspetugas-table-body').html(html);
+        }
+
+        function formatRupiah(angka) {
+            return new Intl.NumberFormat('id-ID').format(angka || 0);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        async function verifikasiKas(kas_id, petugas_nama, selisih) {
+            const ada_selisih = Math.abs(selisih) > 10000;
+            const keterangan = await Swal.fire({
+                title: 'Verifikasi Kas Petugas',
+                html: ada_selisih
+                    ? `<p>Ada selisih Rp ${formatRupiah(selisih)}. Keterangan wajib diisi.</p>
+                       <textarea class="form-control" id="ket_selisih" rows="2" placeholder="Keterangan selisih..."></textarea>`
                     : `<p>Kas petugas tidak ada selisih. Konfirmasi verifikasi?</p>
                        <textarea class="form-control" id="ket_selisih" rows="2" placeholder="Catatan opsional..."></textarea>`,
                 showCancelButton: true, confirmButtonText: 'Verifikasi', cancelButtonText: 'Batal',

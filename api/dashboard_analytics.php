@@ -69,14 +69,14 @@ function getOverviewMetrics($cabang_id, $start_date, $end_date) {
     $params = $cabang_id ? [$cabang_id] : [];
     
     // Total pinjaman aktif
-    $sql = "SELECT COUNT(*) as total, SUM(p.jumlah_pinjaman) as total_jumlah 
+    $sql = "SELECT COUNT(*) as total, SUM(p.plafon) as total_jumlah 
             FROM pinjaman p 
             WHERE p.status = 'disetujui' $cabang_filter";
     $result = query($sql, $params);
     $pinjaman = is_array($result) && isset($result[0]) ? $result[0] : ['total' => 0, 'total_jumlah' => 0];
     
     // Total angsuran bulan ini
-    $sql = "SELECT COUNT(*) as total, SUM(a.nominal) as total_nominal 
+    $sql = "SELECT COUNT(*) as total, SUM(a.total_bayar) as total_nominal 
             FROM angsuran a 
             JOIN pinjaman p ON a.pinjaman_id = p.id
             WHERE a.status = 'lunas' 
@@ -157,7 +157,7 @@ function getNPLRatio($cabang_id, $start_date, $end_date) {
     $params = $cabang_id ? [$cabang_id] : [];
     
     // Total pinjaman aktif
-    $sql = "SELECT SUM(p.jumlah_pinjaman) as total 
+    $sql = "SELECT SUM(p.plafon) as total 
             FROM pinjaman p 
             WHERE p.status = 'disetujui' 
             $cabang_filter";
@@ -165,7 +165,7 @@ function getNPLRatio($cabang_id, $start_date, $end_date) {
     $total_pinjaman = is_array($result) && isset($result[0]) ? $result[0]['total'] : 0;
     
     // Total pinjaman bermasalah (tunggakan > 30 hari)
-    $sql = "SELECT SUM(p.jumlah_pinjaman) as total 
+    $sql = "SELECT SUM(p.plafon) as total 
             FROM pinjaman p 
             WHERE p.status = 'disetujui' 
             AND EXISTS (
@@ -197,12 +197,13 @@ function getPinjamanAktif($cabang_id) {
     $cabang_filter = $cabang_id ? "WHERE p.cabang_id = ?" : "";
     $params = $cabang_id ? [$cabang_id] : [];
     
-    $sql = "SELECT p.id, p.no_pinjaman, p.nama_nasabah, p.jumlah_pinjaman, 
-            p.tanggal_pengajuan, p.status, c.nama_cabang
+    $sql = "SELECT p.id, p.kode_pinjaman AS no_pinjaman, n.nama AS nama_nasabah, p.plafon, 
+            p.tanggal_akad AS tanggal_pengajuan, p.status, c.nama_cabang
             FROM pinjaman p
+            LEFT JOIN nasabah n ON p.nasabah_id = n.id
             LEFT JOIN cabang c ON p.cabang_id = c.id
             $cabang_filter
-            ORDER BY p.tanggal_pengajuan DESC
+            ORDER BY p.tanggal_akad DESC
             LIMIT 50";
     
     $result = query($sql, $params);
@@ -222,7 +223,7 @@ function getAngsuranBulanan($cabang_id, $start_date, $end_date) {
     
     $sql = "SELECT DATE_FORMAT(a.tanggal_bayar, '%Y-%m') as bulan,
             COUNT(*) as total_angsuran,
-            SUM(a.nominal) as total_nominal
+            SUM(a.total_bayar) as total_nominal
             FROM angsuran a
             JOIN pinjaman p ON a.pinjaman_id = p.id
             WHERE a.status = 'lunas'
@@ -246,8 +247,8 @@ function getAngsuranBulanan($cabang_id, $start_date, $end_date) {
 function getCabangComparison($start_date, $end_date) {
     $sql = "SELECT c.id, c.nama_cabang,
             COUNT(DISTINCT p.id) as total_pinjaman,
-            SUM(p.jumlah_pinjaman) as total_jumlah,
-            SUM(CASE WHEN a.status = 'lunas' THEN a.nominal ELSE 0 END) as total_dibayar
+            SUM(p.plafon) as total_jumlah,
+            SUM(CASE WHEN a.status = 'lunas' THEN a.total_bayar ELSE 0 END) as total_dibayar
             FROM cabang c
             LEFT JOIN pinjaman p ON c.id = p.cabang_id AND p.status = 'disetujui'
             LEFT JOIN angsuran a ON p.id = a.pinjaman_id AND a.status = 'lunas'
@@ -273,7 +274,7 @@ function getTrendAnalysis($cabang_id, $period) {
     // Daily trend for last N days
     $sql = "SELECT DATE(a.tanggal_bayar) as tanggal,
             COUNT(*) as total_angsuran,
-            SUM(a.nominal) as total_nominal
+            SUM(a.total_bayar) as total_nominal
             FROM angsuran a
             JOIN pinjaman p ON a.pinjaman_id = p.id
             WHERE a.status = 'lunas'
@@ -300,8 +301,8 @@ function getTopNasabah($cabang_id, $start_date, $end_date) {
     
     $sql = "SELECT n.id, n.nama, n.ktp,
             COUNT(DISTINCT p.id) as total_pinjaman,
-            SUM(p.jumlah_pinjaman) as total_jumlah,
-            SUM(CASE WHEN a.status = 'lunas' THEN a.nominal ELSE 0 END) as total_dibayar
+            SUM(p.plafon) as total_jumlah,
+            SUM(CASE WHEN a.status = 'lunas' THEN a.total_bayar ELSE 0 END) as total_dibayar
             FROM nasabah n
             LEFT JOIN pinjaman p ON n.id = p.nasabah_id AND p.status = 'disetujui'
             LEFT JOIN angsuran a ON p.id = a.pinjaman_id AND a.status = 'lunas'

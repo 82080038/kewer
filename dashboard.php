@@ -2,7 +2,6 @@
 require_once 'config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
 require_once BASE_PATH . '/includes/feature_flags.php';
-require_once BASE_PATH . '/includes/chart_helper.php';
 requireLogin();
 
 $user = getCurrentUser();
@@ -13,48 +12,6 @@ $user_cabang_id = $user['cabang_id'] ?? null;
 if ($role === 'appOwner') {
     header('Location: ' . baseUrl('pages/app_owner/dashboard.php'));
     exit();
-}
-
-// Get cabang filter based on role
-$cabang_filter = getCabangFilterForRole($role, $user_cabang_id, $user['id']);
-if ($cabang_filter) {
-    $cabang_filter = "AND " . $cabang_filter;
-}
-
-// Get stats with cabang filter
-$nasabah_result = query("SELECT COUNT(*) as total FROM nasabah WHERE status = 'aktif' $cabang_filter");
-$total_nasabah = is_array($nasabah_result) && isset($nasabah_result[0]) ? $nasabah_result[0]['total'] : 0;
-
-$pinjaman_result = query("SELECT COUNT(*) as total FROM pinjaman WHERE status = 'aktif' $cabang_filter");
-$total_pinjaman = is_array($pinjaman_result) && isset($pinjaman_result[0]) ? $pinjaman_result[0]['total'] : 0;
-
-$outstanding_result = query("SELECT SUM(plafon) as total FROM pinjaman WHERE status = 'aktif' $cabang_filter");
-$outstanding = is_array($outstanding_result) && isset($outstanding_result[0]) ? ($outstanding_result[0]['total'] ?? 0) : 0;
-
-// Get late payments with cabang filter
-$late_payments_result = query("SELECT COUNT(*) as total FROM pinjaman WHERE status = 'aktif' AND tanggal_jatuh_tempo < CURDATE() $cabang_filter");
-$late_payments = is_array($late_payments_result) && isset($late_payments_result[0]) ? $late_payments_result[0]['total'] : 0;
-
-// Get today's payments (for petugas)
-$today_payments_result = query("SELECT COUNT(*) as total FROM pembayaran WHERE DATE(created_at) = CURDATE() $cabang_filter");
-$today_payments = is_array($today_payments_result) && isset($today_payments_result[0]) ? $today_payments_result[0]['total'] : 0;
-
-// Get pending approvals (for bos/manager)
-$pending_approvals_result = query("SELECT COUNT(*) as total FROM pinjaman WHERE status = 'pengajuan' $cabang_filter");
-$pending_approvals = is_array($pending_approvals_result) && isset($pending_approvals_result[0]) ? $pending_approvals_result[0]['total'] : 0;
-
-// Get recent activities from audit_log
-$recent_activities = query("
-    SELECT 
-        a.action as activity,
-        a.created_at
-    FROM audit_log a
-    ORDER BY a.created_at DESC
-    LIMIT 5
-");
-
-if (!is_array($recent_activities)) {
-    $recent_activities = [];
 }
 ?>
 
@@ -117,22 +74,12 @@ if (!is_array($recent_activities)) {
                 </div>
                 
                 <!-- Stats Cards -->
-                <div class="row mb-4">
+                <div class="row mb-4" id="stats-container">
                     <div class="col-xl-3 col-md-6 mb-4">
                         <div class="card border-left-primary shadow h-100 py-2">
                             <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                            Total Nasabah
-                                        </div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                            <?php echo $total_nasabah; ?>
-                                        </div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="bi bi-people fa-2x text-gray-300"></i>
-                                    </div>
+                                <div class="text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
                                 </div>
                             </div>
                         </div>
@@ -140,18 +87,8 @@ if (!is_array($recent_activities)) {
                     <div class="col-xl-3 col-md-6 mb-4">
                         <div class="card border-left-success shadow h-100 py-2">
                             <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                            Pinjaman Aktif
-                                        </div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                            <?php echo $total_pinjaman; ?>
-                                        </div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="bi bi-cash-stack fa-2x text-gray-300"></i>
-                                    </div>
+                                <div class="text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
                                 </div>
                             </div>
                         </div>
@@ -159,18 +96,8 @@ if (!is_array($recent_activities)) {
                     <div class="col-xl-3 col-md-6 mb-4">
                         <div class="card border-left-info shadow h-100 py-2">
                             <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                            Outstanding
-                                        </div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                            Rp <?php echo number_format($outstanding, 0, ',', '.'); ?>
-                                        </div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="bi bi-currency-dollar fa-2x text-gray-300"></i>
-                                    </div>
+                                <div class="text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
                                 </div>
                             </div>
                         </div>
@@ -178,18 +105,8 @@ if (!is_array($recent_activities)) {
                     <div class="col-xl-3 col-md-6 mb-4">
                         <div class="card border-left-warning shadow h-100 py-2">
                             <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                            Telat Bayar
-                                        </div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                            <?php echo $late_payments; ?>
-                                        </div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="bi bi-exclamation-triangle fa-2x text-gray-300"></i>
-                                    </div>
+                                <div class="text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
                                 </div>
                             </div>
                         </div>
@@ -197,23 +114,12 @@ if (!is_array($recent_activities)) {
                 </div>
                 
                 <!-- Additional Stats for Petugas -->
-                <?php if (in_array($role, ['petugas_pusat', 'petugas_cabang'])): ?>
-                <div class="row mb-4">
+                <div class="row mb-4" id="petugas-stats-container" style="display:none;">
                     <div class="col-xl-6 col-md-6 mb-4">
                         <div class="card border-left-primary shadow h-100 py-2">
                             <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                            Pembayaran Hari Ini
-                                        </div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                            <?php echo $today_payments; ?>
-                                        </div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="bi bi-calendar-check fa-2x text-gray-300"></i>
-                                    </div>
+                                <div class="text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
                                 </div>
                             </div>
                         </div>
@@ -221,43 +127,21 @@ if (!is_array($recent_activities)) {
                     <div class="col-xl-6 col-md-6 mb-4">
                         <div class="card border-left-success shadow h-100 py-2">
                             <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                            Aktivitas Lapangan
-                                        </div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                            <?php echo $today_payments; ?> Kunjungan
-                                        </div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="bi bi-geo-alt fa-2x text-gray-300"></i>
-                                    </div>
+                                <div class="text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <?php endif; ?>
                 
                 <!-- Additional Stats for Bos/Manager -->
-                <?php if (in_array($role, ['bos', 'manager_pusat'])): ?>
-                <div class="row mb-4">
+                <div class="row mb-4" id="manager-stats-container" style="display:none;">
                     <div class="col-xl-6 col-md-6 mb-4">
                         <div class="card border-left-warning shadow h-100 py-2">
                             <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                            Menunggu Approval
-                                        </div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                            <?php echo $pending_approvals; ?>
-                                        </div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="bi bi-clock fa-2x text-gray-300"></i>
-                                    </div>
+                                <div class="text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
                                 </div>
                             </div>
                         </div>
@@ -265,31 +149,13 @@ if (!is_array($recent_activities)) {
                     <div class="col-xl-6 col-md-6 mb-4">
                         <div class="card border-left-danger shadow h-100 py-2">
                             <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col mr-2">
-                                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                            Total Cabang
-                                        </div>
-                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                            <?php 
-                                            if ($role === 'bos') {
-                                                echo count(getBosOwnedCabangIds());
-                                            } else {
-                                                $cabang_count = query("SELECT COUNT(*) as total FROM cabang WHERE status = 'aktif'");
-                                                echo $cabang_count[0]['total'] ?? 0;
-                                            }
-                                            ?>
-                                        </div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="bi bi-building fa-2x text-gray-300"></i>
-                                    </div>
+                                <div class="text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <?php endif; ?>
 
                 <!-- Recent Activities -->
                 <div class="row mb-4">
@@ -298,21 +164,10 @@ if (!is_array($recent_activities)) {
                             <div class="card-header py-3">
                                 <h6 class="m-0 font-weight-bold text-primary">Aktivitas Terbaru</h6>
                             </div>
-                            <div class="card-body">
-                                <?php if (is_array($recent_activities) && count($recent_activities) > 0): ?>
-                                    <div class="list-group">
-                                        <?php foreach ($recent_activities as $activity): ?>
-                                            <div class="list-group-item">
-                                                <div class="d-flex w-100 justify-content-between">
-                                                    <h6 class="mb-1"><?php echo htmlspecialchars($activity['activity']); ?></h6>
-                                                    <small><?php echo date('d/m/Y H:i', strtotime($activity['created_at'])); ?></small>
-                                                </div>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php else: ?>
-                                    <p class="text-muted">Belum ada aktivitas.</p>
-                                <?php endif; ?>
+                            <div class="card-body" id="recent-activities-container">
+                                <div class="text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -345,31 +200,6 @@ if (!is_array($recent_activities)) {
                         </div>
                     </div>
                 </div>
-
-                <!-- Recent Activities -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="bi bi-clock-history"></i> Aktivitas Terkini</h5>
-                    </div>
-                    <div class="card-body">
-                        <?php if (empty($recent_activities)): ?>
-                            <p class="text-muted">Belum ada aktivitas</p>
-                        <?php else: ?>
-                            <div class="list-group list-group-flush">
-                                <?php foreach ($recent_activities as $activity): ?>
-                                    <div class="list-group-item d-flex justify-content-between">
-                                        <div>
-                                            <?php echo $activity['activity']; ?>
-                                        </div>
-                                        <small class="text-muted">
-                                            <?php echo formatDate($activity['created_at'], 'd F Y H:i'); ?>
-                                        </small>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
             </main>
         </div>
     </div>
@@ -377,163 +207,280 @@ if (!is_array($recent_activities)) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
+        // Dashboard Data Loading via JSON API
+        $(document).ready(function() {
+            loadDashboardData();
+        });
+
+        function loadDashboardData() {
+            // Load main stats
+            window.KewerAPI.getDashboardStats().done(response => {
+                renderMainStats(response.data);
+            });
+
+            // Load role-specific stats
+            const role = '<?php echo $role; ?>';
+            if (['petugas_pusat', 'petugas_cabang'].includes(role)) {
+                $('#petugas-stats-container').show();
+                loadPetugasStats();
+            } else if (['bos', 'manager_pusat'].includes(role)) {
+                $('#manager-stats-container').show();
+                loadManagerStats();
+            }
+
+            // Load recent activities
+            window.KewerAPI.getDashboardRecent().done(response => {
+                renderRecentActivities(response.data);
+            });
+
+            // Load charts
+            loadCharts();
+        }
+
+        function renderMainStats(data) {
+            const html = `
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-primary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                        Total Nasabah
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        ${data.total_nasabah || 0}
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="bi bi-people fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-success shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                        Pinjaman Aktif
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        ${data.total_pinjaman || 0}
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="bi bi-cash-stack fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-info shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                        Outstanding
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        Rp ${formatNumber(data.outstanding || 0)}
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="bi bi-currency-dollar fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-warning shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                        Telat Bayar
+                                    </div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                        ${data.late_payments || 0}
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="bi bi-exclamation-triangle fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            $('#stats-container').html(html);
+        }
+
+        function loadPetugasStats() {
+            window.KewerAPI.getDashboardStats().done(response => {
+                const html = `
+                    <div class="col-xl-6 col-md-6 mb-4">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            Pembayaran Hari Ini
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            ${response.data.today_payments || 0}
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-calendar-check fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-6 col-md-6 mb-4">
+                        <div class="card border-left-success shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            Aktivitas Lapangan
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            ${response.data.today_payments || 0} Kunjungan
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-geo-alt fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                $('#petugas-stats-container').html(html);
+            });
+        }
+
+        function loadManagerStats() {
+            window.KewerAPI.getDashboardStats().done(response => {
+                const html = `
+                    <div class="col-xl-6 col-md-6 mb-4">
+                        <div class="card border-left-warning shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                            Menunggu Approval
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            ${response.data.pending_approvals || 0}
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-clock fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-6 col-md-6 mb-4">
+                        <div class="card border-left-danger shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                            Total Cabang
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                            ${response.data.total_cabang || 0}
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-building fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                $('#manager-stats-container').html(html);
+            });
+        }
+
+        function renderRecentActivities(activities) {
+            if (!activities || activities.length === 0) {
+                $('#recent-activities-container').html('<p class="text-muted">Belum ada aktivitas.</p>');
+                return;
+            }
+
+            let html = '<div class="list-group">';
+            activities.forEach(activity => {
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${activity.activity || activity.action}</h6>
+                            <small>${new Date(activity.created_at).toLocaleString('id-ID')}</small>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            $('#recent-activities-container').html(html);
+        }
+
+        function loadCharts() {
+            window.KewerAPI.getDashboardCharts().done(response => {
+                renderCharts(response.data);
+            });
+        }
+
+        function renderCharts(data) {
+            // Pinjaman Chart
+            const pinjamanCtx = document.getElementById('pinjamanChart');
+            if (pinjamanCtx) {
+                new Chart(pinjamanCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.months || [],
+                        datasets: [{
+                            label: 'Pinjaman',
+                            data: data.monthly_loans || [],
+                            backgroundColor: 'rgba(78, 115, 223, 0.8)'
+                        }]
+                    }
+                });
+            }
+
+            // Status Chart
+            const statusCtx = document.getElementById('statusChart');
+            if (statusCtx) {
+                new Chart(statusCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: data.status_labels || [],
+                        datasets: [{
+                            data: data.status_data || [],
+                            backgroundColor: ['#4e73df', '#1cc88a', '#f6c23e', '#e74a3b']
+                        }]
+                    }
+                });
+            }
+        }
+
+        function formatNumber(num) {
+            return new Intl.NumberFormat('id-ID').format(num);
+        }
+
         // Cabang selector
         document.getElementById('cabangSelector')?.addEventListener('change', function() {
             const url = new URL(window.location);
             url.searchParams.set('cabang_id', this.value);
             window.location = url;
         });
-
-        // Get chart data from PHP
-        const chartData = <?php
-            // Monthly loan data for last 6 months with cabang filter
-            $monthly_loans = [];
-            for ($i = 5; $i >= 0; $i--) {
-                $month = date('Y-m', strtotime("-$i months"));
-                $month_name = formatDate(strtotime("-$i months"), 'M Y');
-
-                $count = query("SELECT COUNT(*) as total FROM pinjaman WHERE DATE_FORMAT(created_at, '%Y-%m') = ? $cabang_filter", [$month]);
-
-                $monthly_loans[] = [
-                    'month' => $month_name,
-                    'count' => is_array($count) && isset($count[0]) ? $count[0]['total'] : 0
-                ];
-            }
-
-            // Loan status distribution with cabang filter
-            $status_data = query("SELECT status, COUNT(*) as total FROM pinjaman WHERE 1=1 $cabang_filter GROUP BY status");
-
-            $status_labels = [];
-            $status_counts = [];
-            if ($status_data && is_array($status_data)) {
-                foreach ($status_data as $s) {
-                    $status_labels[] = ucfirst($s['status']);
-                    $status_counts[] = $s['total'];
-                }
-            }
-
-            echo json_encode([
-                'monthly' => $monthly_loans,
-                'status' => [
-                    'labels' => $status_labels,
-                    'counts' => $status_counts
-                ]
-            ]);
-        ?>;
-
-        // Chart helper functions
-        function createBarChart(canvasId, labels, datasets, label) {
-            const ctx = document.getElementById(canvasId);
-            if (!ctx) return null;
-
-            const colors = [
-                'rgba(54, 162, 235, 0.8)',
-                'rgba(255, 99, 132, 0.8)',
-                'rgba(255, 206, 86, 0.8)',
-                'rgba(75, 192, 192, 0.8)',
-                'rgba(153, 102, 255, 0.8)'
-            ];
-
-            const borderColors = [
-                'rgba(54, 162, 235, 1)',
-                'rgba(255, 99, 132, 1)',
-                'rgba(255, 206, 86, 1)',
-                'rgba(75, 192, 192, 1)',
-                'rgba(153, 102, 255, 1)'
-            ];
-
-            const chartDatasets = datasets.map((data, index) => ({
-                label: Array.isArray(label) ? label[index] : label,
-                data: data,
-                backgroundColor: colors[index % colors.length],
-                borderColor: borderColors[index % borderColors.length],
-                borderWidth: 1
-            }));
-
-            return new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: chartDatasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        }
-
-        function createDoughnutChart(canvasId, labels, data, label) {
-            const ctx = document.getElementById(canvasId);
-            if (!ctx) return null;
-
-            const colors = [
-                'rgba(54, 162, 235, 0.8)',
-                'rgba(255, 99, 132, 0.8)',
-                'rgba(255, 206, 86, 0.8)',
-                'rgba(75, 192, 192, 0.8)',
-                'rgba(153, 102, 255, 0.8)',
-                'rgba(255, 159, 64, 0.8)'
-            ];
-
-            const borderColors = [
-                'rgba(54, 162, 235, 1)',
-                'rgba(255, 99, 132, 1)',
-                'rgba(255, 206, 86, 1)',
-                'rgba(75, 192, 192, 1)',
-                'rgba(153, 102, 255, 1)',
-                'rgba(255, 159, 64, 1)'
-            ];
-
-            return new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: label,
-                        data: data,
-                        backgroundColor: colors.slice(0, data.length),
-                        borderColor: borderColors.slice(0, data.length),
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right'
-                        }
-                    }
-                }
-            });
-        }
-
-        // Create charts
-        const monthlyChart = createBarChart('pinjamanChart',
-            chartData.monthly.map(d => d.month),
-            [chartData.monthly.map(d => d.count)],
-            'Jumlah Pinjaman'
-        );
-
-        const statusChart = createDoughnutChart('statusChart',
-            chartData.status.labels,
-            chartData.status.counts,
-            'Status Pinjaman'
-        );
-
-        // Service worker disabled to prevent MIME type errors
-        // If PWA is needed in production, re-enable with proper configuration
     </script>
 </body>
 </html>

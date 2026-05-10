@@ -305,5 +305,13 @@ $stats = $stats[0] ?? ['aktif' => 0, 'blacklist_count' => 0, 'nonaktif' => 0];
         });
     });
     </script>
+    <!-- Include Notifications JS for compact pages -->
+    <script src="<?php echo baseUrl('includes/js/notifications.js'); ?>"></script>
+    <script>
+    // Initialize notifications for compact page
+    $(document).ready(function() {
+        window.KewerNotifications.updateBadge();
+    });
+    </script>
 </body>
 </html>

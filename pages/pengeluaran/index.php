@@ -1,24 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config/path.php';
 require_once BASE_PATH . '/includes/functions.php';
-require_once BASE_PATH . '/includes/pengeluaran.php';
 requireLogin();
-
-$pengeluaran = new Pengeluaran();
-
-$filters = [
-    'kategori' => $_GET['kategori'] ?? null,
-    'status' => $_GET['status'] ?? null,
-    'tanggal_mulai' => $_GET['tanggal_mulai'] ?? date('Y-m-01'),
-    'tanggal_selesai' => $_GET['tanggal_selesai'] ?? date('Y-m-t')
-];
-
-$expenses = $pengeluaran->getBranchExpenses($filters);
-if (!is_array($expenses)) {
-    $expenses = [];
-}
-$pending = $pengeluaran->getPendingExpenses();
-$total = $pengeluaran->getTotalExpenses($filters['tanggal_mulai'], $filters['tanggal_selesai']);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -53,24 +36,13 @@ $total = $pengeluaran->getTotalExpenses($filters['tanggal_mulai'], $filters['tan
                     Tracking biaya operasional: gaji, lembur, bonus, operasional, belanja rutin.
                 </div>
 
-                <!-- Pending Approvals Alert -->
-                <?php if (!empty($pending)): ?>
-                <div class="alert alert-warning mb-4">
-                    <h6><i class="bi bi-exclamation-triangle"></i> <?= count($pending) ?> Pengeluaran Menunggu Approval</h6>
-                    <button class="btn btn-sm btn-primary" onclick="showPending()">
-                        <i class="bi bi-eye"></i> Lihat Pending
-                    </button>
-                </div>
-                <?php endif; ?>
-
                 <!-- Summary Cards -->
-                <?php if ($total): ?>
                 <div class="row mb-4">
                     <div class="col-md-4">
                         <div class="card bg-primary text-white">
                             <div class="card-body">
                                 <h6>Total Pengeluaran</h6>
-                                <h3><?= formatRupiah($total['total_pengeluaran']) ?></h3>
+                                <h3 id="total-pengeluaran">Rp 0</h3>
                             </div>
                         </div>
                     </div>
@@ -78,12 +50,19 @@ $total = $pengeluaran->getTotalExpenses($filters['tanggal_mulai'], $filters['tan
                         <div class="card bg-info text-white">
                             <div class="card-body">
                                 <h6>Jumlah Transaksi</h6>
-                                <h3><?= $total['jumlah_transaksi'] ?></h3>
+                                <h3 id="jumlah-transaksi">0</h3>
                             </div>
                         </div>
                     </div>
                 </div>
-                <?php endif; ?>
+
+                <!-- Pending Approvals Alert -->
+                <div id="pending-alert" class="alert alert-warning mb-4" style="display: none;">
+                    <h6><i class="bi bi-exclamation-triangle"></i> <span id="pending-count">0</span> Pengeluaran Menunggu Approval</h6>
+                    <button class="btn btn-sm btn-primary" onclick="showPending()">
+                        <i class="bi bi-eye"></i> Lihat Pending
+                    </button>
+                </div>
 
                 <!-- Filter -->
                 <div class="card mb-4">
@@ -161,35 +140,12 @@ $total = $pengeluaran->getTotalExpenses($filters['tanggal_mulai'], $filters['tan
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <?php foreach ($expenses as $expense): ?>
+                                <tbody id="pengeluaran-table-body">
                                     <tr>
-                                        <td><?= formatDate($expense['tanggal']) ?></td>
-                                        <td><?= ucfirst($expense['kategori']) ?></td>
-                                        <td><?= $expense['sub_kategori'] ?? '-' ?></td>
-                                        <td><?= formatRupiah($expense['jumlah']) ?></td>
-                                        <td><?= $expense['keterangan'] ?? '-' ?></td>
-                                        <td>
-                                            <?php if ($expense['status'] == 'pending'): ?>
-                                                <span class="badge bg-warning">Pending</span>
-                                            <?php elseif ($expense['status'] == 'approved'): ?>
-                                                <span class="badge bg-success">Approved</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-danger">Rejected</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php if ($expense['status'] == 'pending' && (hasPermission('manage_pengeluaran') || hasPermission('view_pengeluaran'))): ?>
-                                            <button class="btn btn-sm btn-success" onclick="approveExpense(<?= $expense['id'] ?>)">
-                                                <i class="bi bi-check"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-danger" onclick="rejectExpense(<?= $expense['id'] ?>)">
-                                                <i class="bi bi-x"></i>
-                                            </button>
-                                            <?php endif; ?>
+                                        <td colspan="7" class="text-center">
+                                            <div class="spinner-border spinner-border-sm" role="status"></div>
                                         </td>
                                     </tr>
-                                    <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -320,6 +276,88 @@ $total = $pengeluaran->getTotalExpenses($filters['tanggal_mulai'], $filters['tan
                 theme: 'light'
             });
         });
+        
+        // Load pengeluaran data via JSON API
+        $(document).ready(function() {
+            loadPengeluaranData();
+        });
+
+        function loadPengeluaranData() {
+            const kategori = '<?php echo $_GET['kategori'] ?? ''; ?>';
+            const status = '<?php echo $_GET['status'] ?? ''; ?>';
+            const tanggal_mulai = '<?php echo $_GET['tanggal_mulai'] ?? date('Y-m-01'); ?>';
+            const tanggal_selesai = '<?php echo $_GET['tanggal_selesai'] ?? date('Y-m-t'); ?>';
+            
+            window.KewerAPI.getPengeluaran({ kategori, status, tanggal_mulai, tanggal_selesai }).done(response => {
+                if (response.success) {
+                    if (response.total) {
+                        $('#total-pengeluaran').text('Rp ' + formatRupiah(response.total.total_pengeluaran));
+                        $('#jumlah-transaksi').text(response.total.jumlah_transaksi);
+                    }
+                    if (response.pending && response.pending.length > 0) {
+                        $('#pending-count').text(response.pending.length);
+                        $('#pending-alert').show();
+                    }
+                    renderPengeluaranTable(response.data);
+                } else {
+                    $('#pengeluaran-table-body').html('<tr><td colspan="7" class="text-center text-danger">Gagal memuat data</td></tr>');
+                }
+            }).fail(error => {
+                $('#pengeluaran-table-body').html('<tr><td colspan="7" class="text-center text-danger">Gagal memuat data</td></tr>');
+            });
+        }
+
+        function renderPengeluaranTable(data) {
+            if (!data || data.length === 0) {
+                $('#pengeluaran-table-body').html('<tr><td colspan="7" class="text-center text-muted">Tidak ada data pengeluaran</td></tr>');
+                return;
+            }
+
+            let html = '';
+            data.forEach(exp => {
+                const statusClass = {
+                    'pending': 'warning',
+                    'approved': 'success',
+                    'rejected': 'danger'
+                }[exp.status] || 'secondary';
+
+                html += `
+                    <tr>
+                        <td>${formatDate(exp.tanggal)}</td>
+                        <td>${exp.kategori ? exp.kategori.charAt(0).toUpperCase() + exp.kategori.slice(1) : '-'}</td>
+                        <td>${exp.sub_kategori || '-'}</td>
+                        <td>Rp ${formatRupiah(exp.jumlah)}</td>
+                        <td>${exp.keterangan || '-'}</td>
+                        <td>
+                            <span class="badge bg-${statusClass}">${exp.status ? exp.status.charAt(0).toUpperCase() + exp.status.slice(1) : 'Pending'}</span>
+                        </td>
+                        <td>
+                            ${exp.status === 'pending' ? `
+                                <button class="btn btn-sm btn-success" onclick="approveExpense(${exp.id})">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="rejectExpense(${exp.id})">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $('#pengeluaran-table-body').html(html);
+        }
+
+        function formatRupiah(angka) {
+            return new Intl.NumberFormat('id-ID').format(angka);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
         function saveExpense() {
             const form = document.getElementById('addForm');
             const formData = new FormData(form);

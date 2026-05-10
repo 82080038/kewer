@@ -33,11 +33,10 @@ if ($method === 'GET') {
         $logs  = query("SELECT wl.*, n.nama as nama_nasabah FROM wa_log wl LEFT JOIN nasabah n ON wl.nasabah_id = n.id ORDER BY wl.created_at DESC LIMIT ?", [$limit]);
         echo json_encode($logs ?: []);
     } elseif ($action === 'status') {
-        $token = getenv('WA_TOKEN') ?: (defined('WA_TOKEN') ? WA_TOKEN : '');
         echo json_encode([
-            'enabled'   => !empty($token) && (getenv('WA_ENABLED') === 'true' || (defined('WA_ENABLED') && WA_ENABLED)),
-            'provider'  => 'fonnte',
-            'has_token' => !empty($token),
+            'enabled'   => isFeatureEnabled('wa_notifikasi'),
+            'provider'  => 'in_app',
+            'has_token' => true, // In-app system doesn't require external tokens
         ]);
     }
     exit();

@@ -701,9 +701,9 @@ function logCrudOperation($table, $action, $record_id, $old_data = null, $new_da
 }
 
 /**
- * Send WhatsApp notification
+ * Send WhatsApp notification (In-App System)
  * 
- * Uses WhatsApp Business API or third-party service like Twilio, Wablas, or Fonnte
+ * Uses in-app notification system - no external services required
  * 
  * @param string $phone Phone number (format: 628xxxxxxxxxx or 08xxxxxxxxxx)
  * @param string $message Message content
@@ -712,38 +712,20 @@ function logCrudOperation($table, $action, $record_id, $old_data = null, $new_da
 function sendWhatsApp($phone, $message) {
     // Check feature flag for WhatsApp notifications
     if (!isFeatureEnabled('wa_notifikasi')) {
-        error_log("WhatsApp notification feature disabled - WA to $phone: $message");
+        error_log("In-app notification feature disabled - WA to $phone: $message");
         return false;
     }
     
     // Normalize phone number to international format (62)
     $phone = normalizePhoneNumber($phone);
     
-    // Check if WhatsApp API configuration exists
-    $waProvider = getenv('WA_PROVIDER') ?? 'twilio';
-    $waEnabled = getenv('WA_ENABLED') ?? 'false';
-    
-    if ($waEnabled !== 'true') {
-        // If WhatsApp is disabled, just log the message
-        error_log("WhatsApp disabled - WA to $phone: $message");
-        return true;
-    }
-    
+    // Use in-app notification system
     try {
-        switch ($waProvider) {
-            case 'twilio':
-                return sendWhatsAppTwilio($phone, $message);
-            case 'wablas':
-                return sendWhatsAppWablas($phone, $message);
-            case 'fonnte':
-                return sendWhatsAppFonnte($phone, $message);
-            default:
-                // Fallback to logging
-                error_log("WA to $phone: $message (provider: $waProvider)");
-                return true;
-        }
+        require_once BASE_PATH . '/includes/wa_notifikasi.php';
+        $result = kirimWA($phone, $message, null, null, 'notification', true);
+        return $result['success'] ?? false;
     } catch (Exception $e) {
-        error_log("WhatsApp send failed: " . $e->getMessage());
+        error_log("In-app notification send failed: " . $e->getMessage());
         return false;
     }
 }
@@ -761,124 +743,6 @@ function normalizePhoneNumber($phone) {
     }
     
     return $phone;
-}
-
-/**
- * Send WhatsApp via Twilio
- */
-function sendWhatsAppTwilio($phone, $message) {
-    $sid = getenv('TWILIO_SID');
-    $token = getenv('TWILIO_TOKEN');
-    $from = getenv('TWILIO_WHATSAPP_FROM');
-    
-    if (!$sid || !$token || !$from) {
-        throw new Exception('Twilio credentials not configured');
-    }
-    
-    $url = "https://api.twilio.com/2010-04-01/Accounts/$sid/Messages.json";
-    
-    $data = [
-        'From' => $from,
-        'To' => "whatsapp:$phone",
-        'Body' => $message
-    ];
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_USERPWD, "$sid:$token");
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    if ($httpCode >= 200 && $httpCode < 300) {
-        return true;
-    }
-    
-    throw new Exception("Twilio API error: HTTP $httpCode");
-}
-
-/**
- * Send WhatsApp via Wablas
- */
-function sendWhatsAppWablas($phone, $message) {
-    $apiKey = getenv('WABLAS_API_KEY');
-    $domain = getenv('WABLAS_DOMAIN');
-    
-    if (!$apiKey || !$domain) {
-        throw new Exception('Wablas credentials not configured');
-    }
-    
-    $url = "https://$domain/api/v2/send-message";
-    
-    $data = [
-        'data' => [
-            [
-                'phone' => $phone,
-                'message' => $message
-            ]
-        ]
-    ];
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: $apiKey',
-        'Content-Type: application/json'
-    ]);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    if ($httpCode >= 200 && $httpCode < 300) {
-        return true;
-    }
-    
-    throw new Exception("Wablas API error: HTTP $httpCode");
-}
-
-/**
- * Send WhatsApp via Fonnte
- */
-function sendWhatsAppFonnte($phone, $message) {
-    $token = getenv('FONNTE_TOKEN');
-    
-    if (!$token) {
-        throw new Exception('Fonnte token not configured');
-    }
-    
-    $url = "https://api.fonnte.com/send";
-    
-    $data = [
-        'target' => $phone,
-        'message' => $message
-    ];
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: $token'
-    ]);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
-    if ($httpCode >= 200 && $httpCode < 300) {
-        return true;
-    }
-    
-    throw new Exception("Fonnte API error: HTTP $httpCode");
 }
 
 // Validate loan application with family risk check (NEW)

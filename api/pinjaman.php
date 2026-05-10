@@ -349,6 +349,18 @@ switch ($_SERVER['REQUEST_METHOD']) {
                     require_once BASE_PATH . '/includes/webhook_trigger.php';
                     triggerPinjamanApproved($pinjaman_id, $pinjaman);
 
+                    // ── WA Notifikasi Integration ─────────────────────
+                    if (isFeatureEnabled('wa_notifikasi')) {
+                        require_once BASE_PATH . '/includes/wa_notifikasi.php';
+                        $nasabah_info = query("SELECT nama, telepon FROM nasabah WHERE id = ?", [$pinjaman['nasabah_id']]);
+                        if (!empty($nasabah_info[0]['telepon'])) {
+                            $plafon_fmt = 'Rp ' . number_format($pinjaman['plafon'], 0, ',', '.');
+                            $pesan = "Yth. *{$nasabah_info[0]['nama']}*,\n\nSelamat! Pengajuan pinjaman Anda telah disetujui ✅\n\nDetail:\n• Kode: {$pinjaman['kode_pinjaman']}\n• Plafon: *{$plafon_fmt}*\n• Tenor: {$pinjaman['tenor']} bulan\n• Tanggal Akad: " . date('d/m/Y', strtotime($pinjaman['tanggal_akad'])) . "\n\nDana akan segera dicairkan. Silakan siapkan dokumen yang diperlukan.\n\n*Kewer Koperasi*";
+                            kirimWA($nasabah_info[0]['telepon'], $pesan, $pinjaman['nasabah_id'], $user['id'], 'approval_pinjaman');
+                        }
+                    }
+                    // ─────────────────────────────────────────────────────
+
                     echo json_encode(['success' => true, 'message' => 'Pinjaman berhasil disetujui dan diaktifkan']);
                 } else {
                     http_response_code(500);

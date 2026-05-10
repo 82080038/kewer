@@ -16,51 +16,6 @@ if (!$user_id) {
     exit();
 }
 
-// Get target user
-$target_user = query("SELECT * FROM users WHERE id = ?", [$user_id]);
-if (!$target_user) {
-    header('Location: ' . baseUrl('pages/users/index.php'));
-    exit();
-}
-
-$target_user = $target_user[0];
-
-// Check if current user can manage this target user
-if (!canManageRole($target_user['role'])) {
-    header('Location: ' . baseUrl('pages/users/index.php'));
-    exit();
-}
-
-// Get all permissions grouped by category
-$all_permissions = query("SELECT * FROM permissions ORDER BY kategori, nama");
-$permissions_by_category = [];
-foreach ($all_permissions as $perm) {
-    $permissions_by_category[$perm['kategori']][] = $perm;
-}
-
-// Get user's current permissions
-$user_permissions = getUserPermissions($user_id);
-$user_permission_codes = [];
-foreach ($user_permissions as $perm) {
-    if ($perm['granted']) {
-        $user_permission_codes[] = $perm['kode'];
-    }
-}
-
-// Handle permission updates
-if ($_POST) {
-    $permissions_to_grant = $_POST['permissions'] ?? [];
-    
-    // Get all permission codes
-    foreach ($all_permissions as $perm) {
-        $granted = in_array($perm['kode'], $permissions_to_grant);
-        grantPermission($user_id, $perm['kode'], $granted);
-    }
-    
-    header('Location: index.php?user_id=' . $user_id . '&success=1');
-    exit();
-}
-
 // Get current user info
 $current_user = getCurrentUser();
 ?>
@@ -118,50 +73,34 @@ $current_user = getCurrentUser();
                         <table class="table table-sm">
                             <tr>
                                 <th>Username:</th>
-                                <td><?= htmlspecialchars($target_user['username']) ?></td>
+                                <td id="user-username">-</td>
                             </tr>
                             <tr>
                                 <th>Nama:</th>
-                                <td><?= htmlspecialchars($target_user['nama']) ?></td>
+                                <td id="user-nama">-</td>
                             </tr>
                             <tr>
                                 <th>Role:</th>
-                                <td><?= htmlspecialchars($target_user['role']) ?></td>
+                                <td id="user-role">-</td>
                             </tr>
                             <tr>
                                 <th>Email:</th>
-                                <td><?= htmlspecialchars($target_user['email']) ?></td>
+                                <td id="user-email">-</td>
                             </tr>
                         </table>
                     </div>
                 </div>
 
-                <form method="POST">
-                    <?= csrfField() ?>
+                <form method="POST" id="permissionsForm">
                     <div class="card">
                         <div class="card-body">
                             <h5 class="card-title mb-4">Permissions</h5>
                             
-                            <?php foreach ($permissions_by_category as $category => $permissions): ?>
-                                <div class="permission-category">
-                                    <h5><?= ucfirst(htmlspecialchars($category)) ?></h5>
-                                    <?php foreach ($permissions as $perm): ?>
-                                        <div class="permission-item">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" 
-                                                       name="permissions[]" 
-                                                       value="<?= htmlspecialchars($perm['kode']) ?>"
-                                                       id="perm_<?= htmlspecialchars($perm['kode']) ?>"
-                                                       <?= in_array($perm['kode'], $user_permission_codes) ? 'checked' : '' ?>>
-                                                <label class="form-check-label" for="perm_<?= htmlspecialchars($perm['kode']) ?>">
-                                                    <strong><?= htmlspecialchars($perm['nama']) ?></strong>
-                                                    <small class="text-muted d-block"><?= htmlspecialchars($perm['deskripsi']) ?></small>
-                                                </label>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
+                            <div id="permissions-container">
+                                <div class="text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
                                 </div>
-                            <?php endforeach; ?>
+                            </div>
                             
                             <div class="mt-4">
                                 <button type="submit" class="btn btn-primary">
@@ -179,5 +118,100 @@ $current_user = getCurrentUser();
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const userId = '<?php echo $user_id; ?>';
+
+        // Load permissions data via JSON API
+        $(document).ready(function() {
+            loadPermissionsData();
+        });
+
+        function loadPermissionsData() {
+            window.KewerAPI.getUserPermissions(userId).done(response => {
+                if (response.success) {
+                    renderPermissionsContainer(response.target_user, response.permissions_by_category, response.user_permission_codes);
+                } else {
+                    $('#permissions-container').html('<div class="alert alert-danger">Gagal memuat data permissions</div>');
+                }
+            }).fail(error => {
+                $('#permissions-container').html('<div class="alert alert-danger">Gagal memuat data permissions</div>');
+            });
+        }
+
+        function renderPermissionsContainer(targetUser, permissionsByCategory, userPermissionCodes) {
+            if (!targetUser) {
+                $('#permissions-container').html('<div class="alert alert-danger">User tidak ditemukan</div>');
+                return;
+            }
+
+            // Populate user info
+            $('#user-username').text(targetUser.username || '-');
+            $('#user-nama').text(targetUser.nama || '-');
+            $('#user-role').text(targetUser.role || '-');
+            $('#user-email').text(targetUser.email || '-');
+
+            let html = '';
+            for (const [category, permissions] of Object.entries(permissionsByCategory)) {
+                html += `
+                    <div class="permission-category">
+                        <h5>${category.charAt(0).toUpperCase() + category.slice(1)}</h5>
+                `;
+                permissions.forEach(perm => {
+                    const checked = userPermissionCodes.includes(perm.kode) ? 'checked' : '';
+                    html += `
+                        <div class="permission-item">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" 
+                                       name="permissions[]" 
+                                       value="${perm.kode}"
+                                       id="perm_${perm.kode}"
+                                       ${checked}>
+                                <label class="form-check-label" for="perm_${perm.kode}">
+                                    <strong>${perm.nama}</strong>
+                                    <small class="text-muted d-block">${perm.deskripsi}</small>
+                                </label>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            $('#permissions-container').html(html);
+        }
+
+        // Handle form submission
+        $('#permissionsForm').on('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const permissionsToGrant = formData.getAll('permissions[]');
+
+            window.KewerAPI.updateUserPermissions(userId, permissionsToGrant).done(response => {
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: 'Permissions berhasil disimpan',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = '../users/index.php';
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: response.error || 'Gagal menyimpan permissions'
+                    });
+                }
+            }).fail(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Gagal menyimpan permissions'
+                });
+            });
+        });
+    </script>
 </body>
 </html>

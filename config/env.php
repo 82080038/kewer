@@ -1,6 +1,12 @@
 <?php
+// Resolve project root locally (don't depend on BASE_PATH to avoid circular includes)
+$__envBasePath = dirname(__DIR__);
+if (!defined('BASE_PATH')) {
+    define('BASE_PATH', $__envBasePath);
+}
+
 // Load environment configuration
-$vendorAutoload = BASE_PATH . '/vendor/autoload.php';
+$vendorAutoload = $__envBasePath . '/vendor/autoload.php';
 $dotenvLoaded = false;
 
 if (file_exists($vendorAutoload)) {
@@ -8,7 +14,7 @@ if (file_exists($vendorAutoload)) {
     
     if (class_exists('Dotenv\Dotenv')) {
         try {
-            $dotenv = Dotenv\Dotenv::createImmutable(BASE_PATH);
+            $dotenv = Dotenv\Dotenv::createImmutable($__envBasePath);
             $dotenv->load();
             $dotenvLoaded = true;
         } catch (Exception $e) {
@@ -79,6 +85,5 @@ if (!defined('RATE_LIMIT_PER_MINUTE')) define('RATE_LIMIT_PER_MINUTE', (int)($_E
 if (!defined('CSRF_TOKEN_NAME')) define('CSRF_TOKEN_NAME', $_ENV['CSRF_TOKEN_NAME'] ?? 'csrf_token');
 if (!defined('SESSION_LIFETIME')) define('SESSION_LIFETIME', (int)($_ENV['SESSION_LIFETIME'] ?? 7200));
 
-// v2.3.1 Feature Flags Configuration
-if (!defined('WA_TOKEN')) define('WA_TOKEN', $_ENV['WA_TOKEN'] ?? '');
-if (!defined('WA_PROVIDER')) define('WA_PROVIDER', $_ENV['WA_PROVIDER'] ?? 'fonnte');
+// v2.3.1 Feature Flags Configuration (In-App Notifications)
+// External service integrations removed - using in-app notification system

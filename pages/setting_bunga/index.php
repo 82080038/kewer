@@ -8,14 +8,6 @@ if (!hasPermission('manage_bunga') && !hasPermission('view_settings')) {
     header('Location: ' . baseUrl('dashboard.php'));
     exit();
 }
-
-$calculator = new BungaCalculator();
-
-// Get all settings
-$settings = $calculator->getAllSettings();
-if (!is_array($settings)) {
-    $settings = [];
-}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -77,33 +69,12 @@ if (!is_array($settings)) {
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <?php foreach ($settings as $setting): ?>
+                                <tbody id="setting-bunga-table-body">
                                     <tr>
-                                        <td><?= $setting['nama_cabang'] ?? 'Global' ?></td>
-                                        <td><?= strtoupper($setting['jenis_pinjaman']) ?></td>
-                                        <td><?= $setting['tenor_min'] ?> - <?= $setting['tenor_max'] ?> bulan</td>
-                                        <td><?= $setting['bunga_default'] ?>%</td>
-                                        <td><?= $setting['bunga_min'] ?>%</td>
-                                        <td><?= $setting['bunga_max'] ?>%</td>
-                                        <td><?= $setting['faktor_risiko'] ?>%</td>
-                                        <td><?= $setting['jaminan_adjustment'] ?>%</td>
-                                        <td>
-                                            <?php if ($setting['status'] == 'aktif'): ?>
-                                                <span class="badge bg-success">Aktif</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-secondary">Nonaktif</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php if (hasRole('bos') || hasRole('manager_pusat') || hasRole('admin_pusat')): ?>
-                                            <button class="btn btn-sm btn-warning" onclick="editSetting(<?= $setting['id'] ?>)">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <?php endif; ?>
+                                        <td colspan="10" class="text-center">
+                                            <div class="spinner-border spinner-border-sm" role="status"></div>
                                         </td>
                                     </tr>
-                                    <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -273,42 +244,6 @@ if (!is_array($settings)) {
         }
 
         $(document).ready(function() {
-            // Only initialize DataTable if there's data
-            var hasData = <?php echo !empty($settings) ? 'true' : 'false'; ?>;
-
-            if (hasData) {
-                try {
-                    var table = $('#settingBungaTable').DataTable({
-                        language: {
-                            search: "Cari:",
-                            lengthMenu: "Tampilkan _MENU_ data per halaman",
-                            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-                            infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
-                            infoFiltered: "(difilter dari _MAX_ total data)",
-                            paginate: {
-                                first: "Pertama",
-                                last: "Terakhir",
-                                next: "Selanjutnya",
-                                previous: "Sebelumnya"
-                            },
-                            emptyTable: "Tidak ada data tersedia",
-                            zeroRecords: "Tidak ada data yang cocok"
-                        },
-                        pageLength: 25,
-                        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
-                        responsive: true,
-                        order: [[0, 'asc']]
-                    });
-                } catch (e) {
-                    console.error('DataTables initialization error:', e);
-                    $('#settingBungaTable').removeClass('table-striped table-hover');
-                }
-            } else {
-                // Hide DataTables controls when no data
-                $('#settingBungaTable').removeClass('table-striped table-hover');
-                $('#settingBungaTable_wrapper').hide();
-            }
-            
             // Initialize Select2
             $('.form-select').select2({
                 theme: 'bootstrap-5',
@@ -332,7 +267,57 @@ if (!is_array($settings)) {
                 document.getElementById('setting_id').value = '';
                 document.querySelector('#addModal .btn-primary').textContent = 'Simpan';
             });
+
+            // Load setting bunga data via JSON API
+            loadSettingBungaData();
         });
+
+        function loadSettingBungaData() {
+            window.KewerAPI.getSettingBunga().done(response => {
+                if (response.success) {
+                    renderSettingBungaTable(response.data);
+                } else {
+                    $('#setting-bunga-table-body').html('<tr><td colspan="10" class="text-center text-danger">Gagal memuat data</td></tr>');
+                }
+            }).fail(error => {
+                $('#setting-bunga-table-body').html('<tr><td colspan="10" class="text-center text-danger">Gagal memuat data</td></tr>');
+            });
+        }
+
+        function renderSettingBungaTable(data) {
+            if (!data || data.length === 0) {
+                $('#setting-bunga-table-body').html('<tr><td colspan="10" class="text-center text-muted">Tidak ada data setting bunga</td></tr>');
+                return;
+            }
+
+            let html = '';
+            data.forEach(setting => {
+                const statusClass = setting.status === 'aktif' ? 'success' : 'secondary';
+
+                html += `
+                    <tr>
+                        <td>${setting.nama_cabang || 'Global'}</td>
+                        <td>${setting.jenis_pinjaman ? setting.jenis_pinjaman.toUpperCase() : '-'}</td>
+                        <td>${setting.tenor_min || 0} - ${setting.tenor_max || 0} bulan</td>
+                        <td>${setting.bunga_default || 0}%</td>
+                        <td>${setting.bunga_min || 0}%</td>
+                        <td>${setting.bunga_max || 0}%</td>
+                        <td>${setting.faktor_risiko || 0}%</td>
+                        <td>${setting.jaminan_adjustment || 0}%</td>
+                        <td>
+                            <span class="badge bg-${statusClass}">${setting.status ? setting.status.charAt(0).toUpperCase() + setting.status.slice(1) : 'Aktif'}</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="editSetting(${setting.id})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            $('#setting-bunga-table-body').html(html);
+        }
         
         function calculateBunga() {
             const jenisPinjaman = document.getElementById('calc_jenis_pinjaman').value;

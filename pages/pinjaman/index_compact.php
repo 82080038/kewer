@@ -647,5 +647,13 @@ function getStatusBadge($status) {
         });
     });
     </script>
+    <!-- Include Notifications JS for compact pages -->
+    <script src="<?php echo baseUrl('includes/js/notifications.js'); ?>"></script>
+    <script>
+    // Initialize notifications for compact page
+    $(document).ready(function() {
+        window.KewerNotifications.updateBadge();
+    });
+    </script>
 </body>
 </html>

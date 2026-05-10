@@ -1,5 +1,9 @@
 <?php
-// Shared header for appOwner pages
+// Shared header for appOwner pages — partial, must not be accessed directly
+if (!defined('BASE_PATH')) {
+    http_response_code(403);
+    exit('Forbidden');
+}
 if (!isset($user) || $user['role'] !== 'appOwner') {
     header('Location: ' . baseUrl('dashboard.php'));
     exit();
