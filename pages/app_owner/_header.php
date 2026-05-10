@@ -60,7 +60,7 @@ $ao_nav = [
                         <i class="bi bi-bell-fill"></i> <?php echo $pending_count; ?>
                     </a>
                     <?php endif; ?>
-                    <span class="text-light small"><i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($user['nama']); ?></span>
+                    <span class="text-light small"><i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($user['nama']); ?> <span class="badge bg-secondary ms-1"><?php echo ucfirst($user['role']); ?></span></span>
                     <a href="<?php echo baseUrl('logout.php'); ?>" class="btn btn-outline-light btn-sm">Logout</a>
                 </div>
             </div>

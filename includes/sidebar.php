@@ -59,7 +59,7 @@ function safeHasPermission($permission_code) {
         <a class="navbar-brand" href="<?php echo baseUrl('dashboard.php'); ?>"><?php echo defined('APP_NAME') ? APP_NAME : 'Kewer'; ?></a>
         <div class="navbar-nav ms-auto">
             <span class="navbar-text me-3">
-                <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($user['nama']); ?>
+                <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($user['nama']); ?> <span class="badge bg-secondary ms-1"><?php echo ucfirst($user['role']); ?></span>
             </span>
             <a class="nav-link" href="<?php echo baseUrl('logout.php'); ?>">Logout</a>
         </div>
