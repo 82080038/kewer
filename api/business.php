@@ -92,6 +92,36 @@ if ($method === 'GET') {
             echo json_encode(['success' => true, 'data' => $rows]);
             break;
 
+        // Billing plans for settings page
+        case 'billing_plans':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            $plans = query("SELECT * FROM billing_plans ORDER BY harga_bulanan") ?: [];
+            echo json_encode(['success' => true, 'data' => $plans]);
+            break;
+
+        // Bank accounts for settings page
+        case 'bank_accounts':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            $accounts = query("SELECT * FROM platform_bank_accounts ORDER BY is_primary DESC, created_at DESC") ?: [];
+            echo json_encode(['success' => true, 'data' => $accounts]);
+            break;
+
+        // Platform stats for settings page
+        case 'platform_stats':
+            if ($user['role'] !== 'appOwner') { http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit(); }
+            $total_koperasi = query("SELECT COUNT(*) as c FROM bos_registrations WHERE status = 'approved'");
+            $total_koperasi = (is_array($total_koperasi) && isset($total_koperasi[0])) ? (int)$total_koperasi[0]['c'] : 0;
+            $total_invoices = query("SELECT COUNT(*) as c FROM koperasi_invoices");
+            $total_invoices = (is_array($total_invoices) && isset($total_invoices[0])) ? (int)$total_invoices[0]['c'] : 0;
+            $total_advice = query("SELECT COUNT(*) as c FROM ai_advice");
+            $total_advice = (is_array($total_advice) && isset($total_advice[0])) ? (int)$total_advice[0]['c'] : 0;
+            echo json_encode(['success' => true, 'data' => [
+                'total_koperasi' => $total_koperasi,
+                'total_invoices' => $total_invoices,
+                'total_advice' => $total_advice
+            ]]);
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['error' => 'Action tidak dikenali']);
